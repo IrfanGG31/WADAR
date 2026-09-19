@@ -13,6 +13,7 @@ export {
   correlationIdStorage,
   getCorrelationId,
 } from "./application/correlation-id.js";
+export { withTenantContext } from "./application/tenant-context.js";
 export { consumerQueueName, dlqQueueName, wireDeadLetterQueue } from "./infra/queues.js";
 export {
   PLATFORM_DB,
@@ -22,4 +23,20 @@ export {
 } from "./http/tokens.js";
 export { ZodValidationPipe } from "./http/zod-validation.pipe.js";
 export { IdempotencyKeyInterceptor } from "./http/idempotency-key.interceptor.js";
+export { TENANT_SCOPED_METADATA_KEY, TenantScoped } from "./http/tenant-scoped.decorator.js";
+export { tenantRlsPolicy } from "./db/rls.js";
+export { insertAuditLog, type AuditLogEntry } from "./infra/audit-log.repository.js";
+export { insertOutboxPending, type NewOutboxRow } from "./infra/outbox.repository.js";
 export type { Db } from "./infra/db.js";
+export type { Tx } from "./infra/outbox.repository.js";
+export {
+  discoverTenantScopedRoutes,
+  assertRouteIsolated,
+  registerWriteIsolationCase,
+  getRegisteredWriteIsolationCases,
+  clearWriteIsolationCasesForTesting,
+  type DiscoveredRoute,
+  type InjectFn,
+  type InjectResponse,
+  type WriteIsolationCase,
+} from "./testing/tenant-isolation.js";

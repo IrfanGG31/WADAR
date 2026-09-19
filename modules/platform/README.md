@@ -51,3 +51,12 @@ imports*. It cannot catch:
 These stay manual-review items for now. A per-module Postgres role with
 schema-scoped `GRANT`s is a candidate defense-in-depth for the SQL-literal
 case specifically, noted here for a later milestone rather than built in M0.
+
+**Partially addressed in M1** (`docs/adr/002-postgres-role-separation-for-rls.md`):
+runtime traffic now goes through `wadar_app`, a non-superuser role with
+`NOBYPASSRLS` — so a cross-module raw SQL literal is still caught by RLS at
+the row level (it can't read/write another tenant's data), but it is NOT
+caught at the *schema* level (`wadar_app` has DML grants across every
+module's schema, not scoped per-module) — that part of this note's original
+"candidate defense-in-depth" is still open for a later milestone if it turns
+out to matter in practice.

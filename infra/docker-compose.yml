@@ -11,6 +11,9 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - wadar_postgres_data:/var/lib/postgresql/data
+      # Creates the non-superuser wadar_app runtime role on first init only —
+      # see infra/postgres-init/README.md for existing volumes.
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wadar"]
       interval: 5s

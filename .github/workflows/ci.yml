@@ -28,6 +28,48 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright Chromium
+        run: pnpm --filter @wadar/web exec playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local stack (Postgres, Redis, Supabase Auth+Inbucket)
+        run: |
+          cp .env.example .env
+          docker compose -f infra/docker-compose.yml up -d --wait
+          supabase start
+
+      # `next build` inlines NEXT_PUBLIC_* at build time (Next.js's own
+      # convention) — they must be real values in the process environment
+      # BEFORE `pnpm build` runs, not just sitting in a `.env` file (Next
+      # only auto-loads `.env` from its own app dir, apps/web/, not the
+      # monorepo root). $GITHUB_ENV persists them to every later step.
+      - name: Point env at the local Supabase instance + push schema
+        run: |
+          SUPABASE_STATUS=$(supabase status -o json)
+          API_URL=$(echo "$SUPABASE_STATUS" | jq -r .API_URL)
+          ANON_KEY=$(echo "$SUPABASE_STATUS" | jq -r .ANON_KEY)
+          # Local `supabase start` signs JWTs with the CLI's shared HS256 demo
+          # secret (no signing_keys_path configured — see .env.example) —
+          # confirmed, not assumed, by reading `supabase status`'s own output
+          # for this project.
+          JWT_SECRET=$(echo "$SUPABASE_STATUS" | jq -r .JWT_SECRET)
+
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "NEXT_PUBLIC_API_URL=http://localhost:3001"
+            echo "SUPABASE_JWT_MODE=hs256"
+            echo "SUPABASE_JWT_SECRET=$JWT_SECRET"
+          } | tee -a .env >> "$GITHUB_ENV"
+
+          pnpm db:push
+          pnpm db:grant
+
       - name: Lint
         run: pnpm lint
 
@@ -45,3 +87,33 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Start web + api + worker
+        run: |
+          nohup pnpm dev > /tmp/wadar-dev.log 2>&1 &
+          echo $! > /tmp/wadar-dev.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3001/health/ready > /dev/null && curl -sf http://localhost:3000/masuk > /dev/null; then
+              echo "stack ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "stack did not become ready in time"
+          cat /tmp/wadar-dev.log
+          exit 1
+
+      - name: E2E tests (Playwright)
+        env:
+          INBUCKET_URL: http://localhost:54324
+        run: pnpm --filter @wadar/web test:e2e
+
+      - name: Lighthouse CI (mobile, /masuk)
+        run: pnpm --filter @wadar/web lighthouse
+
+      - name: Stop background stack
+        if: always()
+        run: |
+          kill "$(cat /tmp/wadar-dev.pid)" 2>/dev/null || true
+          supabase stop 2>/dev/null || true
+          docker compose -f infra/docker-compose.yml down 2>/dev/null || true

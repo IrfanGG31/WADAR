@@ -8,21 +8,34 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests yet — full web shell lands M1\" && exit 0",
-    "test:unit": "echo \"no tests yet\" && exit 0",
-    "test:integration": "echo \"no tests yet\" && exit 0"
+    "test": "echo \"no component-level tests yet — see test:e2e\" && exit 0",
+    "test:unit": "echo \"no component-level tests yet\" && exit 0",
+    "test:integration": "echo \"no component-level tests yet — see test:e2e\" && exit 0",
+    "test:e2e": "playwright test",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.116.0",
     "@wadar/brand": "workspace:*",
+    "@wadar/contracts": "workspace:*",
+    "@wadar/core": "workspace:*",
+    "@wadar/ui-web": "workspace:*",
+    "lucide-react": "1.47.0",
     "next": "16.3.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@wadar/config": "workspace:*",
     "eslint": "10.11.0",
+    "tailwindcss": "4.3.3",
     "typescript": "^6.0.0",
     "typescript-eslint": "8.70.0"
   }

@@ -11,8 +11,11 @@ fi
 echo "==> Menyalakan Postgres + Redis (infra/docker-compose.yml)"
 docker compose -f infra/docker-compose.yml up -d --wait
 
-echo "==> Push schema platform ke Postgres"
-pnpm --filter @wadar/platform exec drizzle-kit push --force
+echo "==> Push schema tiap modul ke Postgres (role migrate: wadar)"
+pnpm db:push
+
+echo "==> Grant akses role runtime wadar_app + FORCE RLS (idempoten)"
+pnpm db:grant
 
 echo "==> Menyalakan web (:3000) + api (:3001) + worker (:3002)"
 exec pnpm dev

@@ -27,21 +27,33 @@ module.exports = {
       name: "no-cross-module-internals",
       severity: "error",
       comment:
-        "modules/A may only import another module's public.ts — never its domain/application/infra/http/db files directly (CLAUDE.md aturan #1).",
+        "modules/A may only import another module's public.ts — never its domain/application/infra/http/db files directly (CLAUDE.md aturan #1). " +
+        "Note: public.ts lives at modules/X/src/public.ts, not modules/X/public.ts — the pathNot below matches on the '/public.ts' suffix " +
+        "regardless of nesting depth, not a bare 'public.ts' segment straight under modules/X/ (a first version of this rule got that wrong; " +
+        "it went uncaught through M0 because M0 only ever had one module, so no cross-module edge existed yet to exercise the exception).",
       from: { path: "^modules/([^/]+)/" },
       to: {
-        path: "^modules/[^/]+/(?!public\\.ts$).+",
-        pathNot: "^modules/$1/",
+        path: "^modules/[^/]+/.+",
+        pathNot: ["^modules/$1/", "/public\\.ts$"],
       },
     },
     {
       name: "domain-allowlist-direct",
       severity: "error",
       comment:
-        "domain/ may only depend on packages/contracts, packages/core, Zod, and other domain/ files directly — an allow-list, not a framework blocklist, so a new infra dependency (pg, ioredis, ...) can't sneak in unnoticed.",
+        "domain/ may only depend on packages/contracts, packages/core, Zod, other domain/ files, and vitest (test-only, not shipped) directly — " +
+        "an allow-list, not a framework blocklist, so a new infra dependency (pg, ioredis, ...) can't sneak in unnoticed even inside a *.test.ts file. " +
+        "Went uncaught through M0 for the same reason as the no-cross-module-internals fix above: platform (M0's only module) never had a domain/ " +
+        "directory at all, so no domain-level *.test.ts file existed yet to exercise this.",
       from: { path: "/domain/" },
       to: {
-        pathNot: ["^packages/contracts/", "^packages/core/", "node_modules/zod/", "/domain/"],
+        pathNot: [
+          "^packages/contracts/",
+          "^packages/core/",
+          "node_modules/zod/",
+          "node_modules/vitest/",
+          "/domain/",
+        ],
       },
     },
     {

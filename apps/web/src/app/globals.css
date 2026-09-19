@@ -1,12 +1,13 @@
+@import "@wadar/ui-web/theme.css";
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    sans-serif;
 }

@@ -20,8 +20,10 @@
     "test:unit": "turbo run test:unit",
     "test:integration": "turbo run test:integration",
     "depcruise": "depcruise --config .dependency-cruiser.cjs --ts-pre-compilation-deps apps modules packages",
-    "db:generate": "pnpm --filter @wadar/platform exec drizzle-kit generate",
-    "db:migrate": "pnpm --filter @wadar/platform exec drizzle-kit migrate",
+    "db:generate": "pnpm --filter \"./modules/*\" exec drizzle-kit generate",
+    "db:migrate": "pnpm --filter \"./modules/*\" exec drizzle-kit migrate",
+    "db:push": "pnpm --filter \"./modules/*\" exec drizzle-kit push --force",
+    "db:grant": "docker compose -f infra/docker-compose.yml exec -T postgres psql -U wadar -d wadar -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/02-grant-and-force-rls.sql",
     "evals": "echo \"no evals yet — mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

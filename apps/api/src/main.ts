@@ -16,6 +16,7 @@ import * as Sentry from "@sentry/node";
 import pino from "pino";
 import { AppModule } from "./app.module.js";
 import { loadApiEnv } from "./env.js";
+import { Rfc7807Filter } from "./filters/rfc7807.filter.js";
 
 const env = loadApiEnv();
 const logger = pino({ name: "wadar-api" });
@@ -31,6 +32,7 @@ async function bootstrap(): Promise<void> {
   );
 
   app.getHttpAdapter().getInstance().addHook("onRequest", correlationIdHook);
+  app.useGlobalFilters(new Rfc7807Filter());
 
   await app.listen(env.API_PORT, "0.0.0.0");
   logger.info({ port: env.API_PORT }, "wadar-api listening");

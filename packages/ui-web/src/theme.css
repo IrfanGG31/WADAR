@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 CSS-first theme (no tailwind.config.ts) — CLAUDE.md aturan #10:
+ * brand tokens come from @wadar/brand ONLY. The hex values below MUST match
+ * packages/brand/src/index.ts exactly; there's no build-time codegen step
+ * for M1 (5 values, low churn), so `theme.test.ts` in this package asserts
+ * they stay in sync — a value changed in one place without the other fails
+ * that test, not silently drifts.
+ */
+@theme {
+  --color-primary: #0f766e;
+  --color-primary-foreground: #f0fdfa;
+  --color-accent: #f59e0b;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-border: #e2e8f0;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #fef2f2;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
