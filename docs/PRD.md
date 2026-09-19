@@ -365,14 +365,15 @@ Tersedia di aplikasi (chat + voice) dan di WhatsApp pemilik. **Sejak v1.1 (R2):*
 | X3 | Autentikasi: nomor HP (OTP WA/SMS), email, Google | P0 |
 | X4 | Multi-tenant (toko) + multi-outlet + peran | P0 |
 | X5 | Pusat notifikasi (in-app, push web/app, WA) dengan preferensi per jenis | P0 |
-| X6 | Langganan & tagihan (trial 14 hari, paket, add-on, bayar via QRIS/VA, invoice) | P0 |
+| X6 | Langganan & tagihan (paket **Gratis** selamanya + trial 14 hari Growth otomatis untuk paket berbayar, add-on, bayar via QRIS/VA, invoice). **Alur (v1.1, R6):** pengguna baru default dapat trial 14 hari fitur Growth; kalau trial habis tanpa upgrade, turun otomatis ke paket Gratis (bukan diblokir) — funnel balik ke Starter/Growth kapan saja | P0 |
 | X7 | Pengaturan toko (profil, jam buka, zona waktu WIB/WITA/WIT, mata uang IDR) | P0 |
 | X8 | Ekspor & hapus data (UU PDP): ekspor semua data toko; hapus akun | P0 |
 | X9 | Audit log untuk aksi sensitif | P0 |
 | X10 | Pusat bantuan + chat dukungan (dijawab asisten, eskalasi ke tim) | P1 |
 | X11 | Referral (1 bulan gratis bagi pengajak) | P1 |
 | X12 | Mode gelap, ukuran huruf besar (aksesibilitas) | P1 |
-| X13 | Bahasa: Indonesia (default), Inggris | P0 / P2 |
+| X13a | Bahasa Indonesia (default) | P0 |
+| X13b | Bahasa Inggris | P2 |
 | X14 | Panel admin internal (support, lihat status tenant, feature flag, biaya AI per tenant) | P0 |
 
 ---
@@ -479,8 +480,9 @@ Aturan kuota: saat mendekati kuota (80%) → notifikasi; saat habis, customer ch
 
 | Fase | Waktu (indikatif) | Platform | Isi utama | Kriteria lolos |
 |---|---|---|---|---|
-| **M0 — Fondasi** | Minggu 1–2 | — | Monorepo, auth, tenant, desain sistem UI, CI/CD | Deploy staging hijau |
-| **MVP (Alpha pilot)** | Minggu 3–12 | Web PWA | Semua P0: payment listener (gateway), ledger, dasbor + insight, katalog, POS online, Order Hub + impor, stok + prediksi habis, CRM dasar, Owner Assistant (tanya data, konsultasi, catat, memori), Customer Chat WA + eskalasi + inbox, billing | Pilot 30 UMKM 8 minggu: akurasi chatbot ≥ 90%, ≥ 40% bersedia bayar |
+| **M0 — Fondasi** | Minggu 1 | — | Monorepo, platform inti (outbox, event bus, idempotency), CI/CD — lihat `BUILD-PLAN.md` M0 | Deploy staging hijau |
+| **MVP build (M1–M11)** | Minggu 2–14 *(indikatif, lihat `BUILD-PLAN.md` §Peta Milestone untuk rincian per milestone)* | Web PWA | Identitas & tenant, semua P0: payment listener (gateway), ledger, dasbor + insight, katalog, POS online, Order Hub + impor, stok + prediksi habis, CRM dasar, Owner Assistant (tanya data, konsultasi, catat, memori), Customer Chat WA + eskalasi + inbox, billing, hardening | Semua DoD milestone M1–M11 terpenuhi |
+| **Pilot (Alpha)** | 8 minggu setelah MVP build | Web PWA | 30 UMKM pakai WADAR paket Growth gratis | Akurasi chatbot ≥ 90%, ≥ 40% bersedia bayar setelah pilot |
 | **v1 (Launch berbayar)** | +3 bulan | Web PWA | P1: offline POS, split/kasbon, printer, OCR struk, parser notifikasi, skor kesehatan, proyeksi kas, PO & supplier, segmen & broadcast, multi-outlet, voice, automasi template, aksi asisten dengan persetujuan | Konversi trial ≥ 20%, churn ≤ 6% |
 | **v2 (Mobile App)** | +3–4 bulan | Android (utama) + iOS | App React Native (Expo) berbagi logika: POS offline-first, notification listener Android (QRIS apa pun), printer Bluetooth, push notif, scan barcode kamera, widget layar utama "uang masuk hari ini" | Rating ≥ 4,5; ≥ 50% WAU dari app |
 | **v3 (Skala)** | Tahun 2–3 | Web + App | P2: API marketplace resmi, simulasi what-if, AI Agent aksi lanjutan, IG DM, B2B2B dashboard untuk koperasi/dinas, paket siap pinjaman | 8 kontrak B2B2B/tahun |
@@ -511,13 +513,13 @@ Event wajib (dikirim ke analytics, tanpa PII sensitif):
 ## 14. Keputusan Terbuka & Catatan
 
 ### 14.1 Nama & brand
-"WADAR" adalah nama kerja. Semua teks brand (nama, tagline, warna, logo, suara TTS sapaan) disimpan di satu paket konfigurasi (`packages/brand`) agar rebranding cukup mengubah satu tempat. Ganti nama tidak boleh butuh perubahan di kode fitur.
+"WADAR" adalah nama kerja dan **dipakai penuh untuk build** (repo, `packages/brand`, semua dokumen) — lihat CLAUDE.md aturan #10, brand terpusat jadi rebrand nanti cukup ubah satu paket, tidak menyentuh kode fitur. Keputusan nama final ditunda sampai sebelum peluncuran berbayar (v1), tidak menghalangi build MVP/pilot.
 
 ### 14.2 Pertanyaan terbuka
-1. QRIS: memakai QRIS dinamis gateway (fee 0,7%, konfirmasi otomatis) sebagai default, atau fokus payment listener untuk QRIS statis milik toko? *(Rekomendasi: keduanya; gateway untuk POS/link bayar, listener untuk QRIS statis yang sudah ada.)*
-2. Vertikal pilot pertama: fesyen/kecantikan (volume chat tinggi) atau F&B (butuh resep)? *(Rekomendasi: fesyen & kecantikan dulu; resep F&B di v1.)*
+1. ~~QRIS: memakai QRIS dinamis gateway (fee 0,7%, konfirmasi otomatis) sebagai default, atau fokus payment listener untuk QRIS statis milik toko?~~ **Diputuskan (v1.1):** keduanya — gateway (Xendit) untuk POS/link bayar sejak MVP (M5), payment-parser untuk QRIS statis di balik flag (P1, M5) lalu notification listener Android di v2 (§6.1 ARCHITECTURE).
+2. ~~Vertikal pilot pertama: fesyen/kecantikan atau F&B?~~ **Diputuskan (v1.1):** fesyen & kecantikan — konsisten dengan persona utama Sari dan eval set customer chat `BUILD-PLAN.md` M9 (300 pertanyaan vertikal kecantikan). Resep F&B (O1.4) tetap dibangun P1 tapi bukan fokus eval/pilot pertama.
 3. ~~Apakah Owner Assistant di WhatsApp pemilik termasuk MVP atau cukup di aplikasi?~~ **Diputuskan (v1.1, R2):** laporan harian WA (F5.1) **dan** tanya-data read-only (A1.1) via WA pemilik masuk **MVP**; aksi tulis (buat PO, catat pengeluaran, dll.) via WA tetap di v1.
-4. Model harga B2B2B (lisensi per UMKM binaan vs kontrak program).
+4. Model harga B2B2B (lisensi per UMKM binaan vs kontrak program) — **masih terbuka**, tidak relevan sebelum Fase 3 (§2.1 S4), tidak menghambat MVP.
 
 ### 14.3 Glosarium
 | Istilah | Arti |

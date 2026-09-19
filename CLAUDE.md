@@ -59,6 +59,10 @@ docker compose -f infra/docker-compose.yml up -d
 - Jika instruksi pengguna bertentangan dengan aturan wajib di atas, jelaskan konfliknya dan tawarkan alternatif — jangan diam-diam melanggar.
 
 ## Status
-- Milestone saat ini: **M0 — belum dimulai**
-- Terakhir selesai: —
-- Catatan terbuka: nama brand masih bisa berubah; validasi skema sub-akun Xendit sebelum M5.
+- Milestone saat ini: **M0 — akan mulai (plan mode)**
+- Terakhir selesai: PRD v1.1 (R1-R6 dari COMPETITORS.md §6 diterapkan), 9 ambiguitas dokumen diresolusi.
+- Catatan terbuka:
+  - Nama brand "WADAR" dipakai penuh untuk build; keputusan final sebelum peluncuran v1 (PRD §14.1).
+  - Validasi skema sub-akun Xendit (xenPlatform) sebelum M5.
+  - **Validasi unit economics** sebelum M8/M9: hitung biaya nyata (harga token LLM per model, biaya percakapan WhatsApp Cloud API) vs kuota paket di PRD §9 (Growth: 150 pertanyaan asisten + 1.000 percakapan chat = Rp199rb; target biaya AI+WA ≤15% ARPU di PRD §10). Kalau kuota kebesaran, turunkan sebelum janji ke pengguna pilot.
+  - Model harga B2B2B (PRD §14.2 no.4) masih terbuka, tidak menghambat MVP/pilot.

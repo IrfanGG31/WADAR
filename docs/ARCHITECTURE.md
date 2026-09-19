@@ -358,6 +358,8 @@ Setiap eksekusi tool membawa `tenantId`, `actor`, `role`, dan `correlationId`; p
 ### 7.6 Aksi dengan persetujuan
 `action_proposals(id, tool, args, preview, status: pending|approved|rejected|expired|executed|failed, expires_at, idempotency_key)`. UI menampilkan kartu (ringkasan manusiawi + tombol Setujui/Ubah/Batal). Persetujuan → event `brain.action.approved` → command handler modul target dengan idempotency key → hasil dikirim balik ke thread.
 
+**Auto-approve rules** (PRD A1 aturan wajib, CLAUDE.md aturan #7): `brain.auto_approve_rules(id, tenant_id, tool, condition JSONB, enabled, created_by)` — per tenant, per tool, dengan kondisi eksplisit (mis. `{"field":"amount","op":"<","value":10000000}` untuk "catat pengeluaran < Rp100rb"). Orchestrator cek tabel ini sebelum membuat `action_proposal`: kalau tool+args cocok aturan aktif, eksekusi langsung (masih tercatat di `ai_runs` + `audit_log`, dengan flag `auto_approved: true`) tanpa kartu konfirmasi. Didefinisikan detail saat M8 sub-langkah action proposal.
+
 ### 7.7 Routing model & kendali biaya
 | Tugas | Kelas model | Contoh |
 |---|---|---|
