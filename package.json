@@ -9,6 +9,10 @@
   "packageManager": "pnpm@12.4.2",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:up": "bash scripts/dev-up.sh",
+    "dev:down": "docker compose -f infra/docker-compose.yml down",
+    "dev:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "dev:health": "bash scripts/dev-health.sh",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

@@ -30,6 +30,26 @@ Prasyarat: Node.js ≥22.22 (lihat `.nvmrc`), pnpm dikelola lewat `corepack`
 (versi dipin di `package.json` `packageManager`), Docker (untuk Postgres +
 Redis lokal dan untuk tes integrasi via Testcontainers).
 
+### Pintasan tercepat (satu perintah)
+
+```bash
+corepack enable && corepack prepare pnpm@12.4.2 --activate
+pnpm install
+pnpm dev:up   # scripts/dev-up.sh: salin .env kalau belum ada → nyalakan Postgres+Redis
+              # (tunggu sampai healthy) → push schema → pnpm dev (web+api+worker)
+```
+
+Buka tab terminal lain untuk mantau statusnya:
+
+```bash
+pnpm dev:health   # snapshot cepat: /health/live & /health/ready api+worker,
+                   # status container docker compose, dan web menyala atau tidak
+pnpm dev:logs     # tail log Postgres + Redis (docker compose logs -f)
+pnpm dev:down     # matikan Postgres + Redis
+```
+
+### Langkah manual (kalau mau kontrol tiap tahap)
+
 ```bash
 corepack enable
 corepack prepare pnpm@12.4.2 --activate
@@ -52,11 +72,14 @@ M0 — lihat `supabase/config.toml`):
 npx supabase start
 ```
 
-### Verifikasi
+### Verifikasi & monitoring
 
 ```bash
+pnpm dev:health   # cara tercepat — lihat "Pintasan tercepat" di atas
+
+# atau manual per endpoint:
 curl http://localhost:3001/health/live
-curl http://localhost:3001/health/ready
+curl http://localhost:3001/health/ready    # 503 dalam ~3 detik kalau DB/Redis mati (bukan nge-hang)
 
 pnpm lint
 pnpm typecheck
