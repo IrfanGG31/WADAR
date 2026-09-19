@@ -3,13 +3,14 @@
 
 | Meta | Isi |
 |---|---|
-| Versi | 1.0 (draft kerja) |
+| Versi | 1.1 |
 | Tanggal | 19 September 2026 |
 | Pemilik produk | Rafi |
 | Status | Siap dipakai sebagai acuan build di Claude Code |
 | Nama produk | **WADAR** (nama kerja; brand bisa berubah — lihat §14.1) |
-| Dokumen terkait | `ARCHITECTURE.md`, `BUILD-PLAN.md`, `CLAUDE.md` |
+| Dokumen terkait | `ARCHITECTURE.md`, `BUILD-PLAN.md`, `CLAUDE.md`, `COMPETITORS.md` |
 | Dasar | Proposal *BisniQu AI* (masalah, pasar, harga, unit economics) diadaptasi ke visi WADAR |
+| Riwayat | Lihat §15 Riwayat Perubahan |
 
 ---
 
@@ -148,7 +149,7 @@ Menangkap setiap uang masuk dari berbagai sumber secara realtime.
 | F1.2 | Notifikasi realtime "Uang masuk Rp50.000 dari GoPay" + **suara TTS Bahasa Indonesia** (web & app) | P0 |
 | F1.3 | Parser notifikasi pembayaran Indonesia (teks notifikasi bank/e-wallet, SMS, email mutasi) — mesin NLP/regex yang sudah pernah dibangun | P1 (web: tempel teks/forward email; app Android: notification listener) |
 | F1.4 | Pencocokan otomatis uang masuk ↔ pesanan/tagihan (by nominal unik, referensi, waktu) | P1 |
-| F1.5 | Mode "Layar Kasir": layar besar menampilkan uang masuk terakhir untuk dipasang di meja kasir | P1 |
+| F1.5 | Mode "Layar Kasir": layar besar menampilkan uang masuk terakhir untuk dipasang di meja kasir | **P0** *(naik dari P1, v1.1 — R1)* |
 | F1.6 | Import mutasi rekening (CSV/PDF bank) untuk rekonsiliasi | P2 |
 
 **Acceptance criteria (F1.1–F1.2):**
@@ -178,6 +179,8 @@ Menangkap setiap uang masuk dari berbagai sumber secara realtime.
 | F3.5 | **Insight naratif otomatis** harian & mingguan ("Minggu ini untung naik 12% karena...") | P0 |
 | F3.6 | Peringatan margin tergerus (produk dijual di bawah HPP, komisi kanal terlalu besar) | P1 |
 | F3.7 | Mode Lanjutan: laporan laba-rugi, arus kas, neraca sederhana | P1 |
+| F3.8 | **Feed aksi**: daftar "Hari ini perlu perhatian" berisi insight/peringatan prioritas, ditampilkan di atas kartu keuangan di Beranda (pola Shopify Sidekick Pulse) | P0 *(baru, v1.1 — R3)* |
+| F3.9 | **Kualitas katalog**: peringatan produk tanpa HPP/foto/harga (memengaruhi akurasi untung per produk) | P0 *(baru, v1.1 — R4)* |
 
 **Acceptance criteria (F3.1, F3.5):**
 - Dasbor terbuka ≤ 1,5 detik (p75) di Android kelas menengah via 4G.
@@ -289,7 +292,7 @@ Semua mode asisten memakai *Business Brain* yang sama, terdiri dari:
 Detail teknis: lihat `ARCHITECTURE.md §7`.
 
 #### Modul A1 — Owner Assistant (untuk pemilik & staf)
-Tersedia di aplikasi (chat + voice) dan di WhatsApp pemilik.
+Tersedia di aplikasi (chat + voice) dan di WhatsApp pemilik. **Sejak v1.1 (R2):** tanya-data read-only (A1.1) via WhatsApp pemilik masuk **MVP**; aksi tulis (A1.3, A1.4, dst.) via WA tetap di v1 — lihat §14.2 no. 3.
 
 | ID | Kemampuan | Contoh | Prioritas |
 |---|---|---|---|
@@ -325,6 +328,7 @@ Tersedia di aplikasi (chat + voice) dan di WhatsApp pemilik.
 | A2.7 | Widget chat di toko online/katalog WADAR (kanal cadangan bila WA bermasalah) | P1 |
 | A2.8 | Instagram DM | P2 |
 | A2.9 | Belajar dari koreksi admin (jawaban yang diedit admin menjadi contoh/FAQ baru setelah disetujui) | P1 |
+| A2.10 | Tab **"Belum bisa dijawab"**: daftar pertanyaan pembeli yang gagal dijawab AI (confidence rendah/eskalasi), satu tap jadi FAQ/knowledge base baru | P0 *(baru, v1.1 — R5)* |
 
 **Aturan keamanan customer chat:**
 - Tidak pernah membocorkan data internal (HPP, margin, data pelanggan lain, saldo).
@@ -409,7 +413,7 @@ Tombol mengambang **"+"** di semua layar: Catat jual · Catat pengeluaran · Tam
 ### 8.2 Daftar layar (MVP)
 | Layar | Isi utama |
 |---|---|
-| Beranda | 3 kartu (uang masuk, untung, saldo), feed peringatan, insight hari ini, grafik mini 7 hari |
+| Beranda | **Feed aksi** ("Hari ini perlu perhatian") di posisi teratas *(v1.1 — R3)*, lalu 3 kartu keuangan (uang masuk, untung, saldo), insight hari ini, grafik mini 7 hari |
 | Keuangan | Tab: Ringkasan · Masuk/Keluar · Dompet · Untung per Produk/Kanal · Laporan |
 | Kasir | Grid produk + pencarian/scan, keranjang, pembayaran, struk |
 | Pesanan | Filter kanal/status, detail pesanan, impor marketplace |
@@ -426,26 +430,28 @@ Tombol mengambang **"+"** di semua layar: Catat jual · Catat pengeluaran · Tam
 
 Harga belum termasuk PPN. Tahunan = bayar 10 bulan.
 
-| Fitur / Kuota | **Starter** Rp79.000 | **Growth** Rp199.000 | **Pro** Rp399.000 |
-|---|---|---|---|
-| Outlet | 1 | 1 | hingga 3 (+Rp99 rb/outlet) |
-| Pengguna/staf | 1 | 3 | 10 |
-| Payment Listener + suara | ✓ | ✓ | ✓ |
-| Dasbor keuangan & insight harian | ✓ | ✓ | ✓ |
-| Untung per produk & kanal | ✓ | ✓ | ✓ |
-| Skor Kesehatan Bisnis, proyeksi kas | — | ✓ | ✓ |
-| POS & Order Hub | ✓ | ✓ | ✓ |
-| Impor marketplace | 1 kanal | 3 kanal | tak terbatas |
-| Prediksi stok & saran pesan ulang | prediksi saja | ✓ | ✓ |
-| Pembelian/PO & supplier | — | ✓ | ✓ |
-| CRM segmen & broadcast | — | ✓ | ✓ |
-| Owner Assistant (pertanyaan/bulan) | 30 | 150 | wajar tanpa batas (fair use 1.500) |
-| Customer Chat WA (percakapan/bulan) | — | 1.000 | 3.000 |
-| Voice assistant | — | ✓ | ✓ |
-| Automasi Jika–Maka | — | 5 aturan | tak terbatas |
-| Laporan ekspor PDF/Excel | — | ✓ | ✓ |
-| Dukungan | pusat bantuan | chat jam kerja | prioritas ≤ 4 jam |
-| Add-on | +500 percakapan chat Rp50 rb | sama | sama |
+**Paket Gratis ditambahkan di v1.1 (R6)** — payment listener + suara + buku kas dasar, 1 pengguna, **tanpa fitur AI sama sekali** (bukan trial; berlaku selamanya). Tujuan: corong akuisisi bersaing dengan Kasir Pintar/Loyverse/BukuWarung (§6 COMPETITORS.md), bukan pengganti trial 14 hari paket berbayar — lihat pertanyaan terbuka relasi Gratis vs trial di daftar ambiguitas.
+
+| Fitur / Kuota | **Gratis** Rp0 | **Starter** Rp79.000 | **Growth** Rp199.000 | **Pro** Rp399.000 |
+|---|---|---|---|---|
+| Outlet | 1 | 1 | 1 | hingga 3 (+Rp99 rb/outlet) |
+| Pengguna/staf | 1 | 1 | 3 | 10 |
+| Payment Listener + suara | ✓ | ✓ | ✓ | ✓ |
+| Dasbor keuangan & insight harian | buku kas dasar saja (tanpa insight naratif) | ✓ | ✓ | ✓ |
+| Untung per produk & kanal | — | ✓ | ✓ | ✓ |
+| Skor Kesehatan Bisnis, proyeksi kas | — | — | ✓ | ✓ |
+| POS & Order Hub | kasir dasar saja (tanpa Order Hub) | ✓ | ✓ | ✓ |
+| Impor marketplace | — | 1 kanal | 3 kanal | tak terbatas |
+| Prediksi stok & saran pesan ulang | — | prediksi saja | ✓ | ✓ |
+| Pembelian/PO & supplier | — | — | ✓ | ✓ |
+| CRM segmen & broadcast | — | — | ✓ | ✓ |
+| Owner Assistant (pertanyaan/bulan) | — (tanpa AI) | 30 | 150 | wajar tanpa batas (fair use 1.500) |
+| Customer Chat WA (percakapan/bulan) | — | — | 1.000 | 3.000 |
+| Voice assistant | — | — | ✓ | ✓ |
+| Automasi Jika–Maka | — | — | 5 aturan | tak terbatas |
+| Laporan ekspor PDF/Excel | — | — | ✓ | ✓ |
+| Dukungan | pusat bantuan | pusat bantuan | chat jam kerja | prioritas ≤ 4 jam |
+| Add-on | upgrade ke Starter | +500 percakapan chat Rp50 rb | sama | sama |
 
 Aturan kuota: saat mendekati kuota (80%) → notifikasi; saat habis, customer chat berhenti dengan pesan sopan + eskalasi ke admin (tidak memutus layanan inti).
 
@@ -510,7 +516,7 @@ Event wajib (dikirim ke analytics, tanpa PII sensitif):
 ### 14.2 Pertanyaan terbuka
 1. QRIS: memakai QRIS dinamis gateway (fee 0,7%, konfirmasi otomatis) sebagai default, atau fokus payment listener untuk QRIS statis milik toko? *(Rekomendasi: keduanya; gateway untuk POS/link bayar, listener untuk QRIS statis yang sudah ada.)*
 2. Vertikal pilot pertama: fesyen/kecantikan (volume chat tinggi) atau F&B (butuh resep)? *(Rekomendasi: fesyen & kecantikan dulu; resep F&B di v1.)*
-3. Apakah Owner Assistant di WhatsApp pemilik termasuk MVP atau cukup di aplikasi? *(Rekomendasi: laporan harian WA di MVP; tanya-jawab penuh via WA di v1.)*
+3. ~~Apakah Owner Assistant di WhatsApp pemilik termasuk MVP atau cukup di aplikasi?~~ **Diputuskan (v1.1, R2):** laporan harian WA (F5.1) **dan** tanya-data read-only (A1.1) via WA pemilik masuk **MVP**; aksi tulis (buat PO, catat pengeluaran, dll.) via WA tetap di v1.
 4. Model harga B2B2B (lisensi per UMKM binaan vs kontrak program).
 
 ### 14.3 Glosarium
@@ -524,3 +530,21 @@ Event wajib (dikirim ke analytics, tanpa PII sensitif):
 | Business Brain | Gabungan kondisi bisnis live, memori, timeline, dan tools yang dipakai semua mode asisten |
 | Eskalasi | Percakapan diserahkan dari AI ke manusia |
 | Jendela layanan WA | Periode 24 jam setelah pesan pembeli terakhir; balasan di dalamnya gratis |
+
+---
+
+## 15. Riwayat Perubahan (Changelog)
+
+### v1.1 — 19 September 2026
+Perubahan berdasarkan usulan `docs/COMPETITORS.md` §6 (R1–R6), dibahas dan disetujui pemilik produk satu per satu:
+
+- **R1** — F1.5 Mode "Layar Kasir": prioritas naik **P1 → P0** (§5.1 Modul F1).
+- **R2** — Owner Assistant tanya-data read-only via WhatsApp pemilik: **v1 → MVP** (§5.3 Modul A1, menjawab pertanyaan terbuka §14.2 no. 3). Aksi tulis via WA tetap di v1.
+- **R3** — Beranda didesain ulang jadi **feed aksi** ("Hari ini perlu perhatian") di posisi teratas, di atas kartu keuangan (§8.2, §5.1 F3.8 baru).
+- **R4** — Tambah insight baru **F3.9 — Kualitas Katalog** (peringatan produk tanpa HPP/foto/harga) (§5.1 Modul F3).
+- **R5** — Tambah **A2.10 — Tab "Belum bisa dijawab"** di Inbox customer chat (§5.3 Modul A2).
+- **R6** — Tambah paket **Gratis** (payment listener + suara + buku kas dasar, 1 pengguna, tanpa fitur AI) (§9).
+- **R7** (pesan marketing "total biaya add-on kompetitor") **tidak** dimasukkan ke PRD — dicatat terpisah di `docs/marketing-notes.md` karena bukan keputusan produk/fitur.
+
+### v1.0 — 19 September 2026
+Draft awal.

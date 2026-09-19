@@ -90,7 +90,7 @@ yang otomatis mencakup setiap route baru. Rencana dulu, lalu eksekusi.
 - Impor produk CSV/Excel dengan pratinjau & validasi per baris.
 - `inventory`: stock_movements (append-only), stock_levels (proyeksi), penyesuaian manual, HPP rata-rata bergerak.
 - Event `catalog.product.*`, `inventory.stock.changed`.
-- UI: daftar produk dengan status stok (aman/menipis/kritis), detail + riwayat pergerakan, form tambah produk ≤ 30 detik.
+- UI: daftar produk dengan status stok (aman/menipis/kritis) **dan status kelengkapan data (HPP/foto/harga belum lengkap — dasar untuk insight kualitas katalog PRD F3.9, R4)**, detail + riwayat pergerakan, form tambah produk ≤ 30 detik.
 
 **DoD**
 - Impor 500 produk < 30 detik, baris invalid dilaporkan jelas.
@@ -156,7 +156,7 @@ deferred Σdebit=Σkredit, append-only (koreksi = entri pembalik). Pengguna hany
 - Event `payments.payment.received` → finance (posting ke dompet), sales (matching → `order.paid`), notification.
 - Realtime broadcast channel privat per tenant (Supabase Realtime) + hook klien `useTenantEvents`.
 - Notifikasi uang masuk + **TTS Bahasa Indonesia** (`packages/core/terbilang` + Web Speech API), toggle per perangkat.
-- Mode "Layar Kasir" (tampilan besar uang masuk terakhir).
+- Mode "Layar Kasir" (tampilan besar uang masuk terakhir) — **P0/wajib MVP sejak PRD v1.1 (R1)**, bukan boleh ditunda.
 - Job rekonsiliasi intent pending tiap 15 menit.
 - `packages/payment-parser` (port parser regex lama) + endpoint tempel teks notifikasi (fitur P1, boleh di balik flag).
 
@@ -164,6 +164,7 @@ deferred Σdebit=Σkredit, append-only (koreksi = entri pembalik). Pengguna hany
 - Pembayaran QRIS test → kasir melihat LUNAS + suara ≤ 3 detik (p95) tanpa refresh.
 - Webhook duplikat tidak membuat posting ganda.
 - Terbilang benar untuk 0 s/d 999.999.999.999 (tes tabel).
+- Mode Layar Kasir menampilkan uang masuk terakhir dengan update realtime (P0, R1).
 
 **Prompt**
 ```
@@ -180,19 +181,21 @@ channel privat per tenant. Buat paket terbilang + TTS dengan tes tabel. Rencana 
 - `insights`: konsumen event → daily_sales_agg, daily_product_agg, daily_channel_agg, cashflow_agg; job rekonsiliasi malam vs ledger.
 - Untung per produk & kanal (setelah HPP, diskon, komisi kanal yang dikonfigurasi per kanal).
 - Forecast stok (EWMA) → `inventory.forecasts`, event `stock.low`.
-- Beranda: 3 kartu (uang masuk, untung, saldo) dengan perbandingan + kalimat konteks (template deterministik dulu), feed peringatan, grafik 7 hari.
+- Beranda: **feed aksi ("Hari ini perlu perhatian") di posisi teratas** (PRD F3.8, R3) berisi peringatan prioritas — termasuk peringatan kualitas katalog (produk tanpa HPP/foto/harga, PRD F3.9, R4) — lalu 3 kartu keuangan (uang masuk, untung, saldo) dengan perbandingan + kalimat konteks (template deterministik dulu), grafik 7 hari.
 - Halaman Keuangan (Ringkasan, Masuk/Keluar, Dompet, Untung per Produk/Kanal).
 
 **DoD**
 - Beranda p75 ≤ 1,5 detik di throttling "Fast 4G" Chrome.
 - Angka kartu = hasil query ledger (tes rekonsiliasi).
 - Produk dengan stok < 7 hari muncul di peringatan dengan estimasi hari.
+- Feed aksi tampil di atas kartu keuangan dan mencakup peringatan kualitas katalog (produk tanpa HPP/foto/harga).
 
 **Prompt**
 ```
-Kerjakan M6 sesuai PRD F3.1, F3.3, F3.4, O4.2 dan ARCHITECTURE §5.4 (CQRS ringan) & §5.3 (forecast).
-Dasbor tidak boleh query tabel transaksi mentah — hanya agregat insights. Kalimat konteks di kartu
-dibuat deterministik (tanpa LLM) dulu. Rencana dulu.
+Kerjakan M6 sesuai PRD F3.1, F3.3, F3.4, F3.8, F3.9, O4.2 dan ARCHITECTURE §5.4 (CQRS ringan) & §5.3
+(forecast). Dasbor tidak boleh query tabel transaksi mentah — hanya agregat insights. Beranda = feed
+aksi dulu (F3.8, R3 COMPETITORS.md), baru kartu keuangan. Kalimat konteks di kartu dibuat deterministik
+(tanpa LLM) dulu. Rencana dulu.
 ```
 
 ---
@@ -226,18 +229,22 @@ Rencana dulu.
 - Action proposals + kartu konfirmasi di UI (§7.6).
 - `evals/owner`: generator fixture toko + 200 pertanyaan dengan jawaban dihitung; runner + skor.
 - Langfuse tracing.
+- **Kanal WhatsApp read-only untuk pemilik (PRD A1.1, R2, v1.1 — minimal, bukan modul messaging penuh):** onboarding nomor WA dasar (WhatsApp Cloud API) khusus akun pemilik + webhook masuk → routing pesan ke pipeline Owner Assistant yang sama (§7.5) dalam **mode baca saja** (tool `sideEffect: write` diblokir di kanal ini). Infra WA lengkap (multi-percakapan, customer chat, inbox admin, ambil alih) tetap di M9 — modul `messaging` yang dibangun di sini hanya subset kecil yang dipakai ulang oleh M9, bukan duplikat.
 
 **DoD**
 - Eval owner ≥ 95% akurat; 0 angka tidak ter-grounding lolos guardrail.
 - "Catat beli gula 5 kg 80 ribu tunai" → kartu konfirmasi → setelah setuju, pengeluaran & ledger tercatat.
 - p50 jawaban ≤ 4 dtk, token pertama ≤ 1,5 dtk.
+- Pemilik kirim pertanyaan data ke nomor WA WADAR → dapat jawaban read-only (mis. "untung minggu ini berapa?"); mencoba aksi tulis via WA ditolak dengan pesan yang mengarahkan ke aplikasi.
 
 **Prompt**
 ```
 Kerjakan M8 sesuai PRD §5.3 (A1, A3) dan ARCHITECTURE §7 secara lengkap. Prinsip wajib: AI tidak
 pernah mengakses DB langsung — semua lewat tool bertipe yang memanggil port modul dengan cek izin.
-Implementasikan numeric grounding guardrail dan eval set owner. Mulai dengan rencana yang memecah
-M8 menjadi 3–4 sub-langkah yang masing-masing bisa diuji.
+Implementasikan numeric grounding guardrail dan eval set owner. Tambahkan kanal WA read-only untuk
+pemilik (PRD A1.1, R2 COMPETITORS.md): subset minimal WhatsApp Cloud API (onboarding nomor + webhook)
+yang akan dipakai ulang oleh modul messaging penuh di M9 — jangan bangun infra WA dua kali. Mulai
+dengan rencana yang memecah M8 menjadi 3–4 sub-langkah yang masing-masing bisa diuji.
 ```
 
 ---
@@ -246,7 +253,7 @@ M8 menjadi 3–4 sub-langkah yang masing-masing bisa diuji.
 
 **Cakupan**
 - `messaging`: onboarding nomor WA (WhatsApp Cloud API, Embedded Signup bila tersedia), webhook (verifikasi signature, balas 200 cepat, proses async), conversations/messages, template, jendela layanan 24 jam.
-- Inbox di web: daftar percakapan, status AI/Manusia, ambil alih/lepas, saran balasan AI, balas manual.
+- Inbox di web: daftar percakapan, status AI/Manusia, ambil alih/lepas, saran balasan AI, balas manual, **tab "Belum bisa dijawab" (PRD A2.10, R5) — pertanyaan yang gagal dijawab AI (confidence rendah/eskalasi), satu tap jadi FAQ/knowledge base baru**.
 - Customer mode di brain: tool customer (search_products publik, get_stock terbatas, search_knowledge, get_order_status miliknya, escalate_to_human), knowledge base (upload dokumen + sinkron katalog → chunks + embedding, pencarian hibrida).
 - Guardrail customer: filter data internal & PII, larangan janji di luar kebijakan, ambang keyakinan → eskalasi.
 - Persona toko (sapaan, gaya, emoji) di pengaturan.
@@ -257,13 +264,15 @@ M8 menjadi 3–4 sub-langkah yang masing-masing bisa diuji.
 - Eval customer ≥ 90%, red-team 0 kebocoran.
 - Balasan p95 ≤ 10 dtk; eskalasi terkirim ke pemilik ≤ 5 dtk.
 - Saat admin ambil alih, AI berhenti membalas percakapan itu sampai dilepas.
+- Tab "Belum bisa dijawab" berisi semua pertanyaan yang dieskalasi karena confidence rendah; satu tap menyimpannya ke knowledge base.
 
 **Prompt**
 ```
-Kerjakan M9 sesuai PRD A2 dan ARCHITECTURE §4.4, §7.3–§7.5, §8 (baris WhatsApp). Gunakan nomor test
-WhatsApp Cloud API. Mode customer wajib memakai tool dengan skema output publik (tanpa HPP/margin/
-data pelanggan lain) plus pemeriksaan teks akhir. Sertakan eval customer dan red-team. Rencana dulu,
-pecah jadi sub-langkah.
+Kerjakan M9 sesuai PRD A2 (termasuk A2.10) dan ARCHITECTURE §4.4, §7.3–§7.5, §8 (baris WhatsApp).
+Gunakan nomor test WhatsApp Cloud API. Mode customer wajib memakai tool dengan skema output publik
+(tanpa HPP/margin/data pelanggan lain) plus pemeriksaan teks akhir. Sertakan eval customer dan
+red-team. Pakai ulang kanal WA read-only pemilik yang sudah dibangun di M8 sebagai basis onboarding
+nomor WA — jangan duplikasi. Rencana dulu, pecah jadi sub-langkah.
 ```
 *(Saga checkout WA §4.5 + payment link = v1, boleh mulai di sini bila waktu cukup.)*
 
@@ -294,7 +303,7 @@ store 90 hari yang realistis (pola harian/mingguan, tanggal kembar). Rencana dul
 ## M11 — Billing, admin, hardening → PILOT
 
 **Cakupan**
-- `billing`: plans (Starter/Growth/Pro), trial 14 hari, entitlement check (PRD §9) di API & UI, meter kuota (asisten, customer chat), pembayaran langganan via Xendit, invoice.
+- `billing`: plans (**Gratis**/Starter/Growth/Pro — Gratis tanpa fitur AI, PRD §9, R6), trial 14 hari (untuk Starter/Growth/Pro), entitlement check (PRD §9) di API & UI, meter kuota (asisten, customer chat), pembayaran langganan via Xendit, invoice.
 - Panel admin internal: cari tenant, status, biaya AI per tenant, feature flags, impersonasi baca-saja dengan audit.
 - Ekspor & hapus data (UU PDP), halaman kebijakan privasi.
 - Hardening: rate limiting, CSP, audit dependency, uji beban ringan (k6: 200 toko simulasi), backup & uji restore, alert (§10), runbook insiden.
