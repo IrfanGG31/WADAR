@@ -1,0 +1,43 @@
+{
+  "name": "@wadar/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --tsconfig ../../tsconfig.json --env-file ../../.env src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no app-level tests yet — covered by @wadar/platform\" && exit 0",
+    "test:unit": "echo \"no app-level tests yet\" && exit 0",
+    "test:integration": "echo \"no app-level tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@sentry/node": "10.75.0",
+    "@wadar/contracts": "workspace:*",
+    "@wadar/platform": "workspace:*",
+    "bullmq": "6.3.8",
+    "drizzle-orm": "^0.45.0",
+    "ioredis": "6.0.0",
+    "pg": "^8.13.0",
+    "pino": "10.3.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0",
+    "uuidv7": "^1.0.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@swc/core": "1.16.2",
+    "@wadar/config": "workspace:*",
+    "eslint": "10.11.0",
+    "tsup": "8.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "8.70.0"
+  }
+}

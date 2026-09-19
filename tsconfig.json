@@ -1,0 +1,10 @@
+{
+  "extends": "./packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": ["apps/**/src", "modules/**/src", "packages/**/src"],
+  "exclude": ["node_modules", "**/dist", "**/.next"]
+}

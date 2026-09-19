@@ -1,0 +1,19 @@
+{
+  "name": "@wadar/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "tsconfig.base.json",
+    "eslint.config.base.mjs"
+  ],
+  "exports": {
+    "./eslint": "./eslint.config.base.mjs",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.38.0",
+    "eslint": "10.11.0",
+    "typescript-eslint": "8.70.0"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@wadar/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet — full web shell lands M1\" && exit 0",
+    "test:unit": "echo \"no tests yet\" && exit 0",
+    "test:integration": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@wadar/brand": "workspace:*",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@wadar/config": "workspace:*",
+    "eslint": "10.11.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "8.70.0"
+  }
+}

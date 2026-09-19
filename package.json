@@ -1,0 +1,31 @@
+{
+  "name": "wadar",
+  "private": true,
+  "version": "0.0.0",
+  "description": "WADAR — asisten bisnis AI untuk UMKM Indonesia (monorepo)",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "depcruise": "depcruise --config .dependency-cruiser.cjs --ts-pre-compilation-deps apps modules packages",
+    "db:generate": "pnpm --filter @wadar/platform exec drizzle-kit generate",
+    "db:migrate": "pnpm --filter @wadar/platform exec drizzle-kit migrate",
+    "evals": "echo \"no evals yet — mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "dependency-cruiser": "18.3.1",
+    "prettier": "3.9.8",
+    "turbo": "2.11.2",
+    "typescript": "^6.0.0"
+  }
+}

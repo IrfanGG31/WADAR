@@ -550,7 +550,7 @@ wadar/
 |---|---|
 | Web | Next.js 15, React 19, Tailwind 4, shadcn/ui, TanStack Query, Zustand, Serwist (PWA), Dexie (offline), Recharts |
 | Mobile (v2) | Expo SDK terbaru, Expo Router, NativeWind, expo-sqlite, expo-speech, expo-notifications, modul native NotificationListener (Android), printer ESC/POS Bluetooth |
-| API & worker | Node 22, NestJS + Fastify, Zod (nestjs-zod), Drizzle ORM, BullMQ, pino, OpenTelemetry |
+| API & worker | Node 22, NestJS + Fastify, Zod (custom validation pipe + zod-openapi/zod-to-openapi, lihat `docs/adr/001-custom-zod-validation-pipe.md`), Drizzle ORM, BullMQ, pino, OpenTelemetry |
 | Data | Supabase (Postgres 16, pgvector, Auth, Realtime, Storage), Redis |
 | AI | Vercel AI SDK (multi-provider, tool calling, streaming), Gemini Flash/Flash-Lite, Claude Sonnet, embedding 768-d, Langfuse |
 | Integrasi | WhatsApp Cloud API, Xendit (xenPlatform), impor file marketplace |
