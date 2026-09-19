@@ -169,6 +169,9 @@ importers:
       dependency-cruiser:
         specifier: 18.3.1
         version: 18.3.1
+      drizzle-kit:
+        specifier: ^0.31.0
+        version: 0.31.10
       prettier:
         specifier: 3.9.8
         version: 3.9.8

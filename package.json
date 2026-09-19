@@ -20,9 +20,9 @@
     "test:unit": "turbo run test:unit",
     "test:integration": "turbo run test:integration",
     "depcruise": "depcruise --config .dependency-cruiser.cjs --ts-pre-compilation-deps apps modules packages",
-    "db:generate": "pnpm --filter \"./modules/*\" exec drizzle-kit generate",
-    "db:migrate": "pnpm --filter \"./modules/*\" exec drizzle-kit migrate",
-    "db:push": "pnpm --filter \"./modules/*\" exec drizzle-kit push --force",
+    "db:generate": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit generate --config=\"$f\" || exit 1; done",
+    "db:migrate": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit migrate --config=\"$f\" || exit 1; done",
+    "db:push": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit push --config=\"$f\" --force || exit 1; done",
     "db:grant": "docker compose -f infra/docker-compose.yml exec -T postgres psql -U wadar -d wadar -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/02-grant-and-force-rls.sql",
     "evals": "echo \"no evals yet — mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
     "format": "prettier --write .",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "dependency-cruiser": "18.3.1",
+    "drizzle-kit": "^0.31.0",
     "prettier": "3.9.8",
     "turbo": "2.11.2",
     "typescript": "^6.0.0"

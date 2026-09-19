@@ -59,6 +59,14 @@ $$;
 -- RLS. Drizzle ORM has no schema-builder API for FORCE as of the version
 -- pinned in this repo, so it's applied here instead — generically, to
 -- every table that already has RLS enabled, not a hardcoded list.
+--
+-- Scoped with the SAME schema exclusion as the grant loop above (found by
+-- actually running this against a real hosted Supabase project, not just
+-- Docker): without it, this loop also reaches Supabase-managed tables like
+-- `auth.saml_relay_states`, which already have RLS enabled but are owned by
+-- `supabase_auth_admin`, not this migrate role — `ALTER TABLE ... FORCE
+-- ROW LEVEL SECURITY` then fails with `must be owner of table`. Self-hosted
+-- Docker only ever has our own schemas, so this exclusion is a no-op there.
 DO $$
 DECLARE
   r record;
@@ -67,7 +75,17 @@ BEGIN
     SELECT n.nspname, c.relname
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relrowsecurity = true AND c.relforcerowsecurity = false
+    WHERE c.relrowsecurity = true
+      AND c.relforcerowsecurity = false
+      AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'public')
+      AND n.nspname NOT LIKE 'pg\_%'
+      AND n.nspname NOT LIKE 'auth%'
+      AND n.nspname NOT LIKE 'storage%'
+      AND n.nspname NOT LIKE 'realtime%'
+      AND n.nspname NOT LIKE 'supabase%'
+      AND n.nspname NOT LIKE 'graphql%'
+      AND n.nspname NOT LIKE 'extensions%'
+      AND n.nspname NOT LIKE 'vault%'
   LOOP
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', r.nspname, r.relname);
   END LOOP;
