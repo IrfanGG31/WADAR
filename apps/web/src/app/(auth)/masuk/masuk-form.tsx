@@ -16,17 +16,27 @@ type Step = "request" | "verify";
  * unconfigured (design decision #8, M1 plan) — submitting it will surface
  * whatever error Supabase returns instead of silently pretending to work.
  */
+const OTP_LINK_ERROR_MESSAGES: Record<string, string> = {
+  otp_expired: "Link masuk ini sudah kadaluarsa atau sudah dipakai. Kirim ulang, lalu klik link-nya secepatnya.",
+  access_denied: "Link masuk ini tidak valid lagi. Coba kirim ulang.",
+  auth_callback_failed: "Gagal memverifikasi link masuk. Coba kirim ulang.",
+};
+
 export function MasukForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/onboarding";
+  const linkErrorCode = searchParams.get("error_code") ?? searchParams.get("error");
+  const linkError = linkErrorCode
+    ? (OTP_LINK_ERROR_MESSAGES[linkErrorCode] ?? searchParams.get("error_description") ?? undefined)
+    : undefined;
 
   const [channel, setChannel] = useState<Channel>("email");
   const [step, setStep] = useState<Step>("request");
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>(linkError);
 
   async function handleRequestOtp() {
     setLoading(true);
