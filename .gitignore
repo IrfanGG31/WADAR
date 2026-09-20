@@ -31,6 +31,9 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
+# Claude Code local runtime state (not portable across machines/sessions)
+.claude/scheduled_tasks.lock
+
 # Test artifacts
 coverage/
 test-results/
