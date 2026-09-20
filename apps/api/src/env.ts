@@ -3,6 +3,14 @@ import { z } from "zod";
 
 export const ApiEnvSchema = BaseEnvSchema.extend({
   API_PORT: z.coerce.number().int().positive().default(3001),
+  // Comma-separated allowlist — apps/web's browser-side apiFetch (lib/api-client.ts)
+  // calls this API cross-origin (different host than the Next.js app), and
+  // Fastify/NestJS has no CORS enabled by default. Deployment-specific
+  // origins belong in env config, not hardcoded here.
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((value) => value.split(",").map((origin) => origin.trim())),
   // Supabase JWT verification (modules/identity SupabaseJwtGuard) — mode is
   // per-project, must be checked against the real instance, not assumed
   // (see .env.example). jwksUrl required for "jwks", hs256Secret for

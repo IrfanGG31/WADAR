@@ -33,6 +33,11 @@ async function bootstrap(): Promise<void> {
 
   app.getHttpAdapter().getInstance().addHook("onRequest", correlationIdHook);
   app.useGlobalFilters(new Rfc7807Filter());
+  app.enableCors({
+    origin: env.CORS_ALLOWED_ORIGINS,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+    allowedHeaders: ["content-type", "authorization", "x-tenant-id", "x-correlation-id", "idempotency-key"],
+  });
 
   await app.listen(env.API_PORT, "0.0.0.0");
   logger.info({ port: env.API_PORT }, "wadar-api listening");
