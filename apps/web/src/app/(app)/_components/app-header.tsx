@@ -32,7 +32,7 @@ export function AppHeader({ tenantName, outlets }: { tenantName: string; outlets
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    <header className="flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
       <div>
         <p className="text-xs text-muted-foreground">{tenantName}</p>
         <DropdownMenu>

@@ -15,7 +15,10 @@
   --color-background: #ffffff;
   --color-foreground: #0f172a;
 
-  --font-sans: Inter, system-ui, sans-serif;
+  /* var(--font-inter) is set by apps/web's next/font/google loader on <html>
+     (see apps/web/src/app/layout.tsx) — falls back gracefully if a consumer
+     of this package ever doesn't load it. */
+  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --color-border: #e2e8f0;

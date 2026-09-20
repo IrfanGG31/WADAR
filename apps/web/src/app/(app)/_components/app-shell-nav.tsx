@@ -1,7 +1,8 @@
 "use client";
 
+import { brand } from "@wadar/brand";
 import type { Permission } from "@wadar/contracts/identity";
-import { Home, ListChecks, MoreHorizontal, ShoppingCart, Sparkles } from "lucide-react";
+import { Home, ListChecks, MoreHorizontal, Radar, ShoppingCart, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
@@ -32,7 +33,7 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
     <>
       <nav
         aria-label="Navigasi utama"
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 shadow-[0_-1px_8px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
       >
         {visibleItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
@@ -42,7 +43,7 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`}
+              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}
             >
               <Icon className="h-5 w-5" />
               {item.label}
@@ -53,8 +54,12 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
 
       <nav
         aria-label="Navigasi utama"
-        className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex"
+        className="hidden w-60 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex"
       >
+        <div className="mb-4 flex items-center gap-2 px-2 text-lg font-semibold text-primary">
+          <Radar className="h-5 w-5" />
+          {brand.name}
+        </div>
         {visibleItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -63,8 +68,8 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium ${
-                isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
               }`}
             >
               <Icon className="h-4 w-4" />
