@@ -32,9 +32,18 @@ export function MasukForm() {
     setLoading(true);
     setError(undefined);
     const supabase = createClient();
+    // Email also gets emailRedirectTo so Supabase's hosted default email
+    // template (a plain link, no {{ .Token }} — editing the template needs
+    // custom SMTP, a separate external-account setup) still lands the user
+    // signed in when they click it, same PKCE code-exchange path as Google
+    // (see auth/callback/route.ts). Without this, Supabase falls back to
+    // redirecting the bare Site URL, which never reads the `code` param.
     const { error: otpError } =
       channel === "email"
-        ? await supabase.auth.signInWithOtp({ email: identifier })
+        ? await supabase.auth.signInWithOtp({
+            email: identifier,
+            options: { emailRedirectTo: buildCallbackUrl() },
+          })
         : await supabase.auth.signInWithOtp({ phone: identifier });
     setLoading(false);
     if (otpError) {
@@ -42,6 +51,12 @@ export function MasukForm() {
       return;
     }
     setStep("verify");
+  }
+
+  function buildCallbackUrl() {
+    const url = new URL("/auth/callback", window.location.origin);
+    url.searchParams.set("next", next);
+    return url.toString();
   }
 
   async function handleVerifyOtp() {
@@ -64,11 +79,9 @@ export function MasukForm() {
     setLoading(true);
     setError(undefined);
     const supabase = createClient();
-    const callbackUrl = new URL("/auth/callback", window.location.origin);
-    callbackUrl.searchParams.set("next", next);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callbackUrl.toString() },
+      options: { redirectTo: buildCallbackUrl() },
     });
     if (oauthError) {
       setLoading(false);
@@ -158,6 +171,11 @@ export function MasukForm() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
+                {channel === "email" && (
+                  <p className="mb-1 text-sm text-muted-foreground">
+                    Cek email kamu — klik link masuk di dalamnya, atau ketik kodenya di sini kalau ada.
+                  </p>
+                )}
                 <Label htmlFor="code">Kode OTP (6 digit)</Label>
                 <Input
                   id="code"
