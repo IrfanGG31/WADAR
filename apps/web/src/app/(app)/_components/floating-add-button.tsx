@@ -3,7 +3,7 @@
 import type { Permission } from "@wadar/contracts/identity";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@wadar/ui-web";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface QuickAction {
   label: string;
@@ -21,8 +21,10 @@ const ACTIONS: QuickAction[] = [
 
 export function FloatingAddButton({ permissions }: { permissions: Permission[] }) {
   const router = useRouter();
+  const pathname = usePathname();
   const actions = ACTIONS.filter((a) => a.requiresAny.some((p) => permissions.includes(p)));
-  if (actions.length === 0) return null;
+  // Kasir has its own sticky "Bayar" bar in the same thumb zone.
+  if (actions.length === 0 || pathname.startsWith("/kasir")) return null;
 
   return (
     <div className="fixed bottom-20 right-4 z-40 md:bottom-6">

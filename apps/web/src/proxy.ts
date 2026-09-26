@@ -8,7 +8,7 @@ import { getWebEnv } from "./lib/env";
 // once that route handler calls exchangeCodeForSession) — gating it here
 // would bounce every Google sign-in straight back to /masuk before the
 // route handler ever runs.
-const PUBLIC_PATHS = ["/masuk", "/undangan", "/auth/callback"];
+const PUBLIC_PATHS = ["/masuk", "/undangan", "/auth/callback", "/struk"];
 const APP_SHELL_PATHS = [
   "/beranda",
   "/kasir",
