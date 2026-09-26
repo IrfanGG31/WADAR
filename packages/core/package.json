@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./money": "./src/money.ts",
     "./date": "./src/date.ts",
-    "./cart": "./src/cart.ts"
+    "./cart": "./src/cart.ts",
+    "./terbilang": "./src/terbilang.ts"
   },
   "scripts": {
     "lint": "eslint .",

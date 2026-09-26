@@ -1,0 +1,395 @@
+{
+  "id": "96202cca-dcfc-4580-8834-330697df24a0",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "payments.incoming_payments": {
+      "name": "incoming_payments",
+      "schema": "payments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_id": {
+          "name": "intent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "name": "method",
+          "type": "incoming_method",
+          "typeSchema": "payments",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_event_id": {
+          "name": "provider_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "incoming_payments_tenant_received_idx": {
+          "name": "incoming_payments_tenant_received_idx",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "received_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "incoming_payments_intent_idx": {
+          "name": "incoming_payments_intent_idx",
+          "columns": [
+            {
+              "expression": "intent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "tenant_isolation": {
+          "name": "tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"payments\".\"incoming_payments\".\"tenant_id\" = current_setting('app.tenant_id')::uuid",
+          "withCheck": "\"payments\".\"incoming_payments\".\"tenant_id\" = current_setting('app.tenant_id')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "payments.payment_intents": {
+      "name": "payment_intents",
+      "schema": "payments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_ref": {
+          "name": "provider_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qr_string": {
+          "name": "qr_string",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "intent_status",
+          "typeSchema": "payments",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payment_intents_tenant_order_idx": {
+          "name": "payment_intents_tenant_order_idx",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payment_intents_status_idx": {
+          "name": "payment_intents_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "tenant_isolation": {
+          "name": "tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"payments\".\"payment_intents\".\"tenant_id\" = current_setting('app.tenant_id')::uuid",
+          "withCheck": "\"payments\".\"payment_intents\".\"tenant_id\" = current_setting('app.tenant_id')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "payments.provider_events": {
+      "name": "provider_events",
+      "schema": "payments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_event_id": {
+          "name": "provider_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "provider_events_provider_event_idx": {
+          "name": "provider_events_provider_event_idx",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "provider_event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "tenant_isolation": {
+          "name": "tenant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"payments\".\"provider_events\".\"tenant_id\" = current_setting('app.tenant_id')::uuid",
+          "withCheck": "\"payments\".\"provider_events\".\"tenant_id\" = current_setting('app.tenant_id')::uuid"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {
+    "payments.incoming_method": {
+      "name": "incoming_method",
+      "schema": "payments",
+      "values": [
+        "cash",
+        "transfer",
+        "qris",
+        "ewallet"
+      ]
+    },
+    "payments.intent_status": {
+      "name": "intent_status",
+      "schema": "payments",
+      "values": [
+        "pending",
+        "paid",
+        "expired"
+      ]
+    }
+  },
+  "schemas": {
+    "payments": "payments"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

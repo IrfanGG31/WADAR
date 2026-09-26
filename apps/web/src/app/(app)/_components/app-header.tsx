@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import { clearActiveTenantId, setActiveOutletId } from "../../../lib/tenant-cookie";
+import { RealtimeToasts } from "./realtime-toasts";
 
 interface Outlet {
   id: string;
@@ -80,6 +81,7 @@ export function AppHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        <RealtimeToasts />
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Menu akun"

@@ -16,9 +16,9 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { AppModule } from "../app.module.js";
 import type { ApiEnv } from "../env.js";
-import { Rfc7807Filter } from "../filters/rfc7807.filter.js";
+import { configureApp } from "../configure-app.js";
 
-export const ALL_MODULES = ["identity", "catalog", "inventory", "sales", "finance"];
+export const ALL_MODULES = ["identity", "catalog", "inventory", "sales", "finance", "payments"];
 
 export interface Actor {
   userId: string;
@@ -55,7 +55,7 @@ export interface Harness {
 }
 
 export async function createHarness(
-  registerConsumers: (eventBus: EventBus) => void,
+  registerConsumers: (eventBus: EventBus, app: NestFastifyApplication) => void,
   modules: string[] = ALL_MODULES,
 ): Promise<Harness> {
   const infra = await startTestInfra(modules);
@@ -78,13 +78,13 @@ export async function createHarness(
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(env)] }).compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-  app.useGlobalFilters(new Rfc7807Filter());
+  configureApp(app, { corsOrigins: ["http://localhost:3000"] });
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
   const inject: InjectFn = (opts) => app.getHttpAdapter().getInstance().inject(opts as InjectOptions);
 
   const eventBus = app.get<EventBus>(PLATFORM_EVENT_BUS);
-  registerConsumers(eventBus);
+  registerConsumers(eventBus, app);
   const runtimeDb = app.get<Db>(PLATFORM_DB);
 
   const call: Harness["call"] = async (actor, method, url, body, headers = {}) => {

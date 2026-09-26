@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import { BarcodeScanner, barcodeScanSupported } from "./barcode-scanner";
 import { CheckoutSheet } from "./checkout-sheet";
+import { QrisPayment } from "./qris-payment";
 import { SaleComplete } from "./sale-complete";
 
 export function Kasir({
@@ -31,6 +32,7 @@ export function Kasir({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [completed, setCompleted] = useState<OrderView>();
+  const [awaitingQris, setAwaitingQris] = useState<OrderView>();
   const searchRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
@@ -76,6 +78,22 @@ export function Kasir({
       add(filtered[0]!);
       setQuery("");
     }
+  }
+
+  if (awaitingQris) {
+    return (
+      <QrisPayment
+        order={awaitingQris}
+        onPaid={(order) => {
+          setAwaitingQris(undefined);
+          setCompleted(order);
+        }}
+        onClose={() => {
+          setAwaitingQris(undefined);
+          dispatch({ type: "clear" });
+        }}
+      />
+    );
   }
 
   if (completed) {
@@ -197,7 +215,8 @@ export function Kasir({
           onClose={() => setSheetOpen(false)}
           onCompleted={(order) => {
             setSheetOpen(false);
-            setCompleted(order);
+            if (order.paymentStatus !== "paid") setAwaitingQris(order);
+            else setCompleted(order);
           }}
         />
       )}

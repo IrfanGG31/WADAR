@@ -11,7 +11,7 @@ import { RupiahInput } from "../../../components/rupiah-input";
 import { apiFetch } from "../../../lib/api-client";
 import { errorMessage } from "../../../lib/errors";
 
-type Method = "cash" | "transfer";
+type Method = "cash" | "transfer" | "qris";
 
 export function CheckoutSheet({
   cart,
@@ -39,7 +39,7 @@ export function CheckoutSheet({
 
   const total = cartTotal(cart);
   const change = tendered !== undefined ? tendered - total : undefined;
-  const canPay = cart.items.length > 0 && (method === "transfer" || (change !== undefined && change >= 0));
+  const canPay = cart.items.length > 0 && (method !== "cash" || (change !== undefined && change >= 0));
 
   async function pay() {
     setSubmitting(true);
@@ -126,8 +126,8 @@ export function CheckoutSheet({
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Cara bayar">
-            {(["cash", "transfer"] as const).map((m) => (
+          <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Cara bayar">
+            {(["cash", "qris", "transfer"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -136,7 +136,7 @@ export function CheckoutSheet({
                 onClick={() => setMethod(m)}
                 className={`h-12 rounded-lg border text-sm font-semibold ${method === m ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
               >
-                {m === "cash" ? "Tunai" : "Transfer"}
+                {m === "cash" ? "Tunai" : m === "qris" ? "QRIS" : "Transfer"}
               </button>
             ))}
           </div>
@@ -165,6 +165,9 @@ export function CheckoutSheet({
               )}
             </div>
           )}
+          {method === "qris" && (
+            <p className="mt-4 rounded-lg bg-muted p-3 text-sm">QR akan muncul setelah ini. Pesanan tercatat, lalu otomatis LUNAS begitu pembeli membayar.</p>
+          )}
           {method === "transfer" && (
             <p className="mt-4 rounded-lg bg-muted p-3 text-sm">Pastikan transfer sudah masuk ke rekening toko sebelum menyelesaikan.</p>
           )}
@@ -174,7 +177,7 @@ export function CheckoutSheet({
 
         <div className="border-t border-border p-4">
           <Button size="lg" className="h-14 w-full text-base" disabled={!canPay || submitting} onClick={pay}>
-            {submitting ? "Memproses..." : `Selesaikan ${formatRupiah(total)}`}
+            {submitting ? "Memproses..." : method === "qris" ? `Tampilkan QRIS ${formatRupiah(total)}` : `Selesaikan ${formatRupiah(total)}`}
           </Button>
         </div>
       </div>

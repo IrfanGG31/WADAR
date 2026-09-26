@@ -7,3 +7,4 @@ export * from "./inventory/schemas.js";
 export * from "./events/payloads.js";
 export * from "./sales/schemas.js";
 export * from "./finance/schemas.js";
+export * from "./payments/schemas.js";

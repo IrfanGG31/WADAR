@@ -13,7 +13,8 @@
     "./inventory": "./src/inventory/schemas.ts",
     "./events": "./src/events/payloads.ts",
     "./sales": "./src/sales/schemas.ts",
-    "./finance": "./src/finance/schemas.ts"
+    "./finance": "./src/finance/schemas.ts",
+    "./payments": "./src/payments/schemas.ts"
   },
   "scripts": {
     "lint": "eslint .",

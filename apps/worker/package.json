@@ -23,6 +23,8 @@
     "@wadar/finance": "workspace:*",
     "@wadar/identity": "workspace:*",
     "@wadar/inventory": "workspace:*",
+    "@wadar/notification": "workspace:*",
+    "@wadar/payments": "workspace:*",
     "@wadar/platform": "workspace:*",
     "@wadar/sales": "workspace:*",
     "bullmq": "6.3.8",

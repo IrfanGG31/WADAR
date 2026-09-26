@@ -11,12 +11,11 @@ startInstrumentation();
 
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { correlationIdHook } from "@wadar/platform";
 import * as Sentry from "@sentry/node";
 import pino from "pino";
 import { AppModule } from "./app.module.js";
 import { loadApiEnv } from "./env.js";
-import { Rfc7807Filter } from "./filters/rfc7807.filter.js";
+import { configureApp } from "./configure-app.js";
 
 const env = loadApiEnv();
 const logger = pino({ name: "wadar-api" });
@@ -31,13 +30,8 @@ async function bootstrap(): Promise<void> {
     new FastifyAdapter(),
   );
 
-  app.getHttpAdapter().getInstance().addHook("onRequest", correlationIdHook);
-  app.useGlobalFilters(new Rfc7807Filter());
-  app.enableCors({
-    origin: env.CORS_ALLOWED_ORIGINS,
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allowedHeaders: ["content-type", "authorization", "x-tenant-id", "x-correlation-id", "idempotency-key"],
-  });
+  configureApp(app, { corsOrigins: env.CORS_ALLOWED_ORIGINS });
+  app.enableShutdownHooks();
 
   await app.listen(env.API_PORT, "0.0.0.0");
   logger.info({ port: env.API_PORT }, "wadar-api listening");

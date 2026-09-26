@@ -12,6 +12,12 @@ export const BaseEnvSchema = z.object({
   REDIS_URL: z.url(),
   SENTRY_DSN: z.string().optional(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+  // Payment gateway (M5). "simulator" = no real money, QRIS payments are
+  // simulated from the Kasir screen — the safe default until a Xendit
+  // (xenPlatform) account is set up.
+  PAYMENTS_PROVIDER: z.enum(["simulator", "xendit"]).default("simulator"),
+  XENDIT_SECRET_KEY: z.string().optional(),
+  XENDIT_CALLBACK_TOKEN: z.string().optional(),
 });
 
 export type BaseEnv = z.infer<typeof BaseEnvSchema>;

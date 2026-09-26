@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
   const scheduler = app.get<ScheduledJobRegistry>(PLATFORM_SCHEDULER);
 
   registerAllConsumers(app, eventBus, logger);
-  registerAllScheduledJobs(app, scheduler);
+  registerAllScheduledJobs(app, scheduler, env);
 
   // One BullMQ worker per consumer (ARCHITECTURE §8 bulkhead): a slow or
   // failing consumer never blocks another's queue.

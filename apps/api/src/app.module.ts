@@ -2,6 +2,8 @@ import { CatalogModule } from "@wadar/catalog";
 import { FinanceModule } from "@wadar/finance";
 import { IdentityModule } from "@wadar/identity";
 import { InventoryModule } from "@wadar/inventory";
+import { NotificationModule } from "@wadar/notification";
+import { PaymentsModule, paymentsOptionsFromEnv } from "@wadar/payments";
 import { SalesModule } from "@wadar/sales";
 import { PlatformModule } from "@wadar/platform";
 import { Module, type DynamicModule } from "@nestjs/common";
@@ -30,6 +32,8 @@ export class AppModule {
         }),
         InventoryModule.forRoot(),
         FinanceModule.forRoot(),
+        PaymentsModule.forRoot(paymentsOptionsFromEnv(env)),
+        NotificationModule.forRoot(),
         SalesModule.forRoot({
           receiptSecret:
             env.RECEIPT_SIGNING_SECRET ??
