@@ -9,8 +9,8 @@
  * that test, not silently drifts.
  */
 @theme {
-  --color-primary: #0f766e;
-  --color-primary-foreground: #f0fdfa;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
   --color-accent: #f59e0b;
   --color-background: #ffffff;
   --color-foreground: #0f172a;
