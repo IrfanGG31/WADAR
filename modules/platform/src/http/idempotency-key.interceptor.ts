@@ -34,17 +34,18 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
         code: "IDEMPOTENCY_KEY_REQUIRED",
       });
     }
-    // Tenant guard (x-tenant-id -> app.tenant_id) is built in M1; M0's dummy
-    // endpoint only needs a value to key the snapshot by, so it reads the
-    // header directly instead of a real tenant context.
     const tenantId = (request.headers["x-tenant-id"] as string | undefined) ?? "unset";
+    // Namespaced by tenant: a key is only meaningful within the tenant that
+    // sent it, and a bare-key lookup would hand tenant A's cached response
+    // to anyone who replays A's key under tenant B.
+    const scopedKey = `${tenantId}:${key}`;
 
-    return from(getSnapshot(this.db, key)).pipe(
+    return from(getSnapshot(this.db, scopedKey)).pipe(
       switchMap((existing) => {
         if (existing !== undefined) return of(existing);
         return next.handle().pipe(
           tap((response: unknown) => {
-            void saveSnapshot(this.db, key, tenantId, response);
+            void saveSnapshot(this.db, scopedKey, tenantId, response);
           }),
         );
       }),

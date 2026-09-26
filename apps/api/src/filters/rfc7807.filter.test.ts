@@ -65,6 +65,20 @@ describe("Rfc7807Filter", () => {
     expect(JSON.stringify(body)).not.toContain("app.tenant_id");
   });
 
+  it("recognizes SQLSTATE 42704 when Drizzle wraps the pg error as `cause` (the real runtime shape)", () => {
+    const filter = new Rfc7807Filter();
+    const { host, response } = createMockHost({ "x-correlation-id": "corr-4" });
+    const pgError = Object.assign(new Error('unrecognized configuration parameter "app.tenant_id"'), {
+      code: "42704",
+    });
+    const drizzleError = Object.assign(new Error("Failed query: select ..."), { cause: pgError });
+
+    filter.catch(drizzleError, host);
+
+    const [body] = response.send.mock.calls[0] as [Record<string, unknown>];
+    expect(body).toMatchObject({ status: 500, code: "TENANT_CONTEXT_MISSING", correlationId: "corr-4" });
+  });
+
   it("falls back to a generic 500 for a completely unknown thrown value", () => {
     const filter = new Rfc7807Filter();
     const { host, response } = createMockHost();

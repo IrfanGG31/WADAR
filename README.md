@@ -62,7 +62,7 @@ cp .env.example .env   # lalu isi kalau perlu — default sudah cocok dengan doc
 
 pnpm install
 docker compose -f infra/docker-compose.yml up -d   # Postgres 16 + pgvector, Redis — juga bikin role wadar_app di volume baru
-pnpm db:push    # buat tabel schema `platform` + `identity` (role migrate: wadar)
+pnpm db:migrate # buat tabel semua modul dari migrasi (role migrate: wadar) — BUKAN db:push, lihat CLAUDE.md
 pnpm db:grant   # grant akses role runtime wadar_app + FORCE RLS (idempoten)
 
 pnpm dev   # web (Next.js), api (NestJS), worker (NestJS) jalan sekaligus lewat Turborepo

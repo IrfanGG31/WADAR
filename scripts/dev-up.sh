@@ -11,8 +11,8 @@ fi
 echo "==> Menyalakan Postgres + Redis (infra/docker-compose.yml)"
 docker compose -f infra/docker-compose.yml up -d --wait
 
-echo "==> Push schema tiap modul ke Postgres (role migrate: wadar)"
-pnpm db:push
+echo "==> Jalankan migrasi tiap modul ke Postgres (role migrate: wadar)"
+pnpm db:migrate
 
 echo "==> Grant akses role runtime wadar_app + FORCE RLS (idempoten)"
 pnpm db:grant

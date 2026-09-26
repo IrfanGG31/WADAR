@@ -14,12 +14,17 @@ export {
   getCorrelationId,
 } from "./application/correlation-id.js";
 export { withTenantContext } from "./application/tenant-context.js";
+export { emitEvent, type EmitEventInput } from "./application/emit-event.js";
+export { RealtimeBroker, type RealtimeListener, type RealtimeMessage } from "./infra/realtime.js";
+export { ScheduledJobRegistry, type ScheduledJob } from "./application/scheduled-jobs.js";
 export { consumerQueueName, dlqQueueName, wireDeadLetterQueue } from "./infra/queues.js";
 export {
   PLATFORM_DB,
   PLATFORM_EVENT_BUS,
   PLATFORM_OUTBOX_RELAY,
+  PLATFORM_REALTIME,
   PLATFORM_REDIS,
+  PLATFORM_SCHEDULER,
 } from "./http/tokens.js";
 export { ZodValidationPipe } from "./http/zod-validation.pipe.js";
 export { IdempotencyKeyInterceptor } from "./http/idempotency-key.interceptor.js";

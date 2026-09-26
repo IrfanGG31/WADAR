@@ -1,17 +1,16 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "drizzle-kit";
 
-// Absolute paths so this config works no matter the invoking process's cwd
-// — see the identical comment in modules/platform/drizzle.config.ts for why
-// this module must be invoked from the repo root.
-const here = dirname(fileURLToPath(import.meta.url));
+// Repo-root-relative paths — see modules/platform/drizzle.config.ts.
 
 export default defineConfig({
-  schema: resolve(here, "./src/db/schema.ts"),
-  out: resolve(here, "./drizzle"),
+  schema: "./modules/identity/src/db/schema.ts",
+  out: "./modules/identity/drizzle",
   dialect: "postgresql",
   schemaFilter: ["identity"],
+  // One tracking table per module: drizzle-kit migrate skips any migration
+  // older than the newest row in its table, so a shared table would make
+  // one module silently skip another module's earlier migrations.
+  migrations: { table: "__drizzle_migrations_identity", schema: "drizzle" },
   dbCredentials: {
     // Migrate role (superuser/table owner) — never DATABASE_URL (runtime,
     // non-privileged wadar_app) here. See

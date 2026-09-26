@@ -1,4 +1,5 @@
 import type { Job } from "bullmq";
+import { sql } from "drizzle-orm";
 import { tryClaimProcessing } from "../infra/processed-events.repository.js";
 import type { Db } from "../infra/db.js";
 import type { EventBus } from "./event-bus.js";
@@ -32,6 +33,10 @@ export function createIdempotentProcessor(
     }
 
     await db.transaction(async (tx) => {
+      // Handlers write to RLS-protected tables in their own module schemas,
+      // so the tenant context must be set here — the job's tenantId comes
+      // from the outbox row, never from an untrusted caller.
+      await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
       const claimed = await tryClaimProcessing(tx, consumerName, eventId, tenantId);
       if (!claimed) return; // already processed by a previous delivery — skip, no error
       await handler(tx, payload, tenantId);

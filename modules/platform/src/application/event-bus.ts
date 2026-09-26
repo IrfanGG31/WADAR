@@ -25,6 +25,14 @@ export class EventBus {
     return (this.registrations.get(eventType) ?? []).map((r) => r.consumerName);
   }
 
+  allConsumerNames(): string[] {
+    const names = new Set<string>();
+    for (const registrations of this.registrations.values()) {
+      for (const r of registrations) names.add(r.consumerName);
+    }
+    return [...names];
+  }
+
   handlerFor(eventType: string, consumerName: string): EventHandler | undefined {
     return this.registrations
       .get(eventType)

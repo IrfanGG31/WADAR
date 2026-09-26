@@ -13,3 +13,9 @@ export const PLATFORM_REDIS = Symbol("PLATFORM_REDIS");
  * the relay never runs twice (docs/ARCHITECTURE.md: relay lives in the worker).
  */
 export const PLATFORM_OUTBOX_RELAY = Symbol("PLATFORM_OUTBOX_RELAY");
+
+/** NestJS DI token for the RealtimeBroker (per-tenant Redis pub/sub → SSE). */
+export const PLATFORM_REALTIME = Symbol("PLATFORM_REALTIME");
+
+/** NestJS DI token for the ScheduledJobRegistry (periodic jobs run by apps/worker). */
+export const PLATFORM_SCHEDULER = Symbol("PLATFORM_SCHEDULER");

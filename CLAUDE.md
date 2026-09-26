@@ -19,18 +19,18 @@ pnpm + Turborepo · Next.js 16 (web PWA) · Expo (mobile, v2) · NestJS 11 + Fas
 
 ## Perintah
 ```bash
-pnpm dev:up         # pintasan satu-perintah: .env + docker compose up --wait + db push + db grant + pnpm dev
+pnpm dev:up         # pintasan satu-perintah: .env + docker compose up --wait + db migrate + db grant + pnpm dev
 pnpm dev            # web + api + worker (asumsi infra sudah nyala — dipanggil dev:up di atas)
 pnpm dev:health     # monitoring cepat: /health/live & /health/ready api+worker, status docker compose, web
 pnpm dev:logs       # tail log Postgres + Redis
 pnpm dev:down       # matikan Postgres + Redis
 pnpm test           # unit + integration
 pnpm test:unit      # tanpa Docker
-pnpm test:integration  # Testcontainers Postgres+Redis, butuh Docker
+pnpm test:integration  # Testcontainers Postgres+Redis (butuh Docker), ATAU set WADAR_TEST_PG_ADMIN_URL + WADAR_TEST_REDIS_URL ke Postgres 16/Redis yang sudah jalan
 pnpm lint && pnpm typecheck && pnpm depcruise
 pnpm db:generate    # drizzle migration dari schema, semua modul (role migrate: wadar)
 pnpm db:migrate
-pnpm db:push        # drizzle-kit push tiap modul, dev only (role migrate: wadar)
+pnpm db:push        # JANGAN dipakai: drizzle-kit push 0.31 bikin policy RLS dengan USING/WITH CHECK kosong (semua write ditolak) — pakai db:generate + db:migrate
 pnpm db:grant       # grant akses role runtime wadar_app + FORCE RLS (idempoten, jalan lagi tiap migrasi)
 pnpm --filter @wadar/web test:e2e     # Playwright — butuh stack lokal penuh + `supabase start`
 pnpm --filter @wadar/web lighthouse   # Lighthouse CI mobile terhadap /masuk — butuh `pnpm dev` jalan

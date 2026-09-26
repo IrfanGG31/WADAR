@@ -67,7 +67,7 @@ jobs:
             echo "SUPABASE_JWT_SECRET=$JWT_SECRET"
           } | tee -a .env >> "$GITHUB_ENV"
 
-          pnpm db:push
+          pnpm db:migrate
           pnpm db:grant
 
       - name: Lint

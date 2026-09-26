@@ -1,10 +1,9 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "drizzle-kit";
 
-// Absolute paths so this config works no matter the invoking process's cwd
-// — required for `pnpm db:generate`/`db:push` to run from the repo root
-// (see root package.json), which is itself required so drizzle-kit's
+// Paths are relative to the REPO ROOT: drizzle-kit must always be invoked
+// from there (see root package.json db:* scripts). Absolute paths don't work
+// either — drizzle-kit prefixes "./" onto `out` when reading existing
+// snapshots. Running from the root is itself required so drizzle-kit's
 // tsconfig auto-discovery (`getTsconfig(process.cwd())`) finds the ROOT
 // tsconfig.json (whose `include` spans every modules/**/src, packages/**/src)
 // instead of this module's own tsconfig.json (whose `include: ["src"]` is
@@ -15,13 +14,16 @@ import { defineConfig } from "drizzle-kit";
 // discovered tsconfig's `include`, breaking on the first parameter decorator
 // it hits ("Parameter decorators only work when experimental decorators are
 // enabled") — found by actually running `pnpm db:generate` against this repo.
-const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  schema: resolve(here, "./src/db/schema.ts"),
-  out: resolve(here, "./drizzle"),
+  schema: "./modules/platform/src/db/schema.ts",
+  out: "./modules/platform/drizzle",
   dialect: "postgresql",
   schemaFilter: ["platform"],
+  // One tracking table per module: drizzle-kit migrate skips any migration
+  // older than the newest row in its table, so a shared table would make
+  // one module silently skip another module's earlier migrations.
+  migrations: { table: "__drizzle_migrations_platform", schema: "drizzle" },
   dbCredentials: {
     // Migrate role (superuser/table owner) — never DATABASE_URL (runtime,
     // non-privileged wadar_app) here. See

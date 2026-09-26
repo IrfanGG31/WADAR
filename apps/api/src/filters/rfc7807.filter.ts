@@ -23,12 +23,14 @@ function isPostgresUndefinedSettingError(exception: unknown): boolean {
   // "fail loud" choice, not a bug to silently swallow — this filter's job
   // is only to stop it from leaking a raw stack trace / crashing the
   // process, not to make it disappear.
-  return (
-    typeof exception === "object" &&
-    exception !== null &&
-    "code" in exception &&
-    (exception as { code?: unknown }).code === "42704"
-  );
+  // Drizzle wraps driver errors in DrizzleQueryError with the pg error as
+  // `cause`, so the SQLSTATE can be one level down.
+  let current: unknown = exception;
+  for (let depth = 0; depth < 3 && typeof current === "object" && current !== null; depth++) {
+    if ((current as { code?: unknown }).code === "42704") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 function toProblemDetails(exception: unknown, correlationId: string): ProblemDetails {

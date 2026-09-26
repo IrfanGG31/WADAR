@@ -1,7 +1,3 @@
-import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { InjectOptions } from "fastify";
 import { ModulesContainer } from "@nestjs/core";
@@ -19,18 +15,13 @@ import {
 } from "@wadar/platform";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { SignJWT } from "jose";
+import { signTestJwt, startTestInfra, TEST_JWT_SECRET, type TestInfra } from "@wadar/test-infra";
 import { Pool } from "pg";
-import { GenericContainer, type StartedTestContainer } from "testcontainers";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTenant } from "../application/create-tenant.js";
 import { IdentityModule } from "../identity.module.js";
 
 /**
- * Same caveat as modules/platform's own integration tests: needs Docker,
- * which the sandbox that authored this could not use (Docker Hub pulls
- * blocked by egress policy). Verify in CI/dev machine before trusting it.
- *
  * Proves the 3 things the M1 plan calls out explicitly:
  * 1. `wadar_app` (runtime role) WITHOUT `set_config` throws (SQLSTATE
  *    42704) — never silently returns 0 rows.
@@ -44,24 +35,10 @@ import { IdentityModule } from "../identity.module.js";
  * `@TenantScoped()` discovery) and the registered write-isolation cases
  * against identity's own routes — see modules/platform/src/testing/tenant-isolation.ts.
  */
-const execFileAsync = promisify(execFile);
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
-
-const HS256_SECRET = "test-only-secret-at-least-32-characters-long!!";
-
-async function signTestJwt(userId: string, email: string): Promise<string> {
-  const key = new TextEncoder().encode(HS256_SECRET);
-  return new SignJWT({ email })
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(userId)
-    .setIssuedAt()
-    .setExpirationTime("1h")
-    .sign(key);
-}
-
-describe("identity tenant isolation (Testcontainers Postgres+Redis)", () => {
-  let pgContainer: StartedTestContainer;
-  let redisContainer: StartedTestContainer;
+describe("identity tenant isolation (Postgres+Redis via @wadar/test-infra)", () => {
+  let infra: TestInfra;
+  let migratePool: Pool;
+  let appPool: Pool;
   let app: NestFastifyApplication;
   let migrateDb: Db; // connected as `wadar` (superuser/owner) — bypasses RLS by design
   let appDb: Db; // connected as `wadar_app` (non-superuser, RLS applies) — same role the running app uses
@@ -76,48 +53,18 @@ describe("identity tenant isolation (Testcontainers Postgres+Redis)", () => {
   let tenantAOutletId: string;
 
   beforeAll(async () => {
-    pgContainer = await new GenericContainer("pgvector/pgvector:pg16")
-      .withEnvironment({ POSTGRES_USER: "wadar", POSTGRES_PASSWORD: "wadar", POSTGRES_DB: "wadar" })
-      .withExposedPorts(5432)
-      .start();
-    const host = pgContainer.getHost();
-    const port = pgContainer.getMappedPort(5432);
-    const migrateUrl = `postgres://wadar:wadar@${host}:${port}/wadar`;
-    const appUrl = `postgres://wadar_app:wadar_app@${host}:${port}/wadar`;
-
-    redisContainer = await new GenericContainer("redis:7-alpine").withExposedPorts(6379).start();
-    const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
-
-    // Migrations run as `wadar` (owner role) for both modules' schemas.
-    await execFileAsync(
-      "pnpm",
-      ["--filter", "@wadar/platform", "exec", "drizzle-kit", "push", "--config=drizzle.config.ts", "--force"],
-      { cwd: repoRoot, env: { ...process.env, DATABASE_MIGRATE_URL: migrateUrl } },
-    );
-    await execFileAsync(
-      "pnpm",
-      ["--filter", "@wadar/identity", "exec", "drizzle-kit", "push", "--config=drizzle.config.ts", "--force"],
-      { cwd: repoRoot, env: { ...process.env, DATABASE_MIGRATE_URL: migrateUrl } },
-    );
-
-    // Provision wadar_app + grants + FORCE RLS exactly like `pnpm db:grant`
-    // does locally — reads the real SQL files, doesn't duplicate their logic.
-    const migratePool = new Pool({ connectionString: migrateUrl });
-    const rawMigrateDb = drizzle(migratePool);
-    const initSql1 = readFileSync(`${repoRoot}/infra/postgres-init/01-create-app-role.sql`, "utf-8");
-    const initSql2 = readFileSync(`${repoRoot}/infra/postgres-init/02-grant-and-force-rls.sql`, "utf-8");
-    await rawMigrateDb.execute(sql.raw(initSql1));
-    await rawMigrateDb.execute(sql.raw(initSql2));
-
-    migrateDb = rawMigrateDb as unknown as Db;
-    const appPool = new Pool({ connectionString: appUrl });
+    infra = await startTestInfra(["identity"]);
+    const { migrateUrl, appUrl, redisUrl } = infra;
+    migratePool = new Pool({ connectionString: migrateUrl });
+    appPool = new Pool({ connectionString: appUrl });
+    migrateDb = drizzle(migratePool) as unknown as Db;
     appDb = drizzle(appPool) as unknown as Db;
 
     clearWriteIsolationCasesForTesting();
     const moduleRef = await Test.createTestingModule({
       imports: [
         PlatformModule.forRoot({ databaseUrl: appUrl, redisUrl }),
-        IdentityModule.forRoot({ supabaseJwt: { mode: "hs256", hs256Secret: HS256_SECRET } }),
+        IdentityModule.forRoot({ supabaseJwt: { mode: "hs256", hs256Secret: TEST_JWT_SECRET } }),
       ],
     }).compile();
 
@@ -153,15 +100,16 @@ describe("identity tenant isolation (Testcontainers Postgres+Redis)", () => {
 
   afterAll(async () => {
     await app?.close();
-    await pgContainer?.stop();
-    await redisContainer?.stop();
+    await migratePool?.end();
+    await appPool?.end();
+    await infra?.stop();
   });
 
   describe("RLS role separation (docs/adr/002)", () => {
     it("wadar_app WITHOUT set_config throws SQLSTATE 42704, not 0 rows", async () => {
       await expect(
         appDb.execute(sql`select * from identity.outlets where id = ${tenantAOutletId}`),
-      ).rejects.toMatchObject({ code: "42704" });
+      ).rejects.toMatchObject({ cause: { code: "42704" } });
     });
 
     it("wadar_app WITH set_config to tenant B cannot see tenant A's outlet", async () => {
