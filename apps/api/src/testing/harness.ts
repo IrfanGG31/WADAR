@@ -18,7 +18,7 @@ import { AppModule } from "../app.module.js";
 import type { ApiEnv } from "../env.js";
 import { Rfc7807Filter } from "../filters/rfc7807.filter.js";
 
-export const ALL_MODULES = ["identity", "catalog", "inventory", "sales"];
+export const ALL_MODULES = ["identity", "catalog", "inventory", "sales", "finance"];
 
 export interface Actor {
   userId: string;

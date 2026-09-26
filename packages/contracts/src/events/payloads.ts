@@ -126,6 +126,10 @@ export const FinanceEntryPostedV1 = z.object({
   sourceType: z.string(),
   sourceId: z.string(),
   description: z.string(),
+  /** false for moves that aren't real money in/out: wallet transfers, opening balances, balance corrections. */
+  cashflow: z.boolean(),
+  /** Original business time for reversals (void lands on the sale's day in aggregates). */
+  reversalOfOccurredAt: z.iso.datetime({ offset: true }).nullable(),
   lines: z.array(
     z.object({
       accountId: z.uuid(),

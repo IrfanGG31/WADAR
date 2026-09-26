@@ -12,7 +12,8 @@
     "./catalog": "./src/catalog/schemas.ts",
     "./inventory": "./src/inventory/schemas.ts",
     "./events": "./src/events/payloads.ts",
-    "./sales": "./src/sales/schemas.ts"
+    "./sales": "./src/sales/schemas.ts",
+    "./finance": "./src/finance/schemas.ts"
   },
   "scripts": {
     "lint": "eslint .",

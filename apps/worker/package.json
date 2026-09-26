@@ -20,6 +20,7 @@
     "@sentry/node": "10.75.0",
     "@wadar/catalog": "workspace:*",
     "@wadar/contracts": "workspace:*",
+    "@wadar/finance": "workspace:*",
     "@wadar/identity": "workspace:*",
     "@wadar/inventory": "workspace:*",
     "@wadar/platform": "workspace:*",
