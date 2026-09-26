@@ -1,13 +1,33 @@
 import type { ConnectionOptions, Queue } from "bullmq";
 import type { Logger } from "pino";
 import type { Db } from "../infra/db.js";
-import { claimPendingBatch, markPublished } from "../infra/outbox.repository.js";
-import { DEFAULT_JOB_OPTIONS, consumerQueueName, createConsumerQueue } from "../infra/queues.js";
+import {
+  claimPendingBatch,
+  markPublished,
+} from "../infra/outbox.repository.js";
+import {
+  DEFAULT_JOB_OPTIONS,
+  consumerQueueName,
+  createConsumerQueue,
+} from "../infra/queues.js";
 import type { EventBus } from "./event-bus.js";
 
 export interface OutboxRelayOptions {
   pollIntervalMs?: number;
   batchSize?: number;
+  /** ARCHITECTURE §8: Redis/BullMQ calls time out after 2 s. */
+  publishTimeoutMs?: number;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`publish timed out after ${ms}ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -30,6 +50,7 @@ export interface OutboxRelayOptions {
 export class OutboxRelay {
   private readonly pollIntervalMs: number;
   private readonly batchSize: number;
+  private readonly publishTimeoutMs: number;
   private readonly queues = new Map<string, Queue>();
   private timer: ReturnType<typeof setInterval> | undefined;
   private ticking = false;
@@ -43,6 +64,7 @@ export class OutboxRelay {
   ) {
     this.pollIntervalMs = options.pollIntervalMs ?? 250;
     this.batchSize = options.batchSize ?? 20;
+    this.publishTimeoutMs = options.publishTimeoutMs ?? 2_000;
   }
 
   start(): void {
@@ -78,19 +100,26 @@ export class OutboxRelay {
         for (const row of claimed) {
           const consumers = this.eventBus.consumersFor(row.eventType);
           try {
-            await Promise.all(
-              consumers.map((consumerName) =>
-                this.getQueue(consumerName).add(
-                  row.eventType,
-                  {
-                    eventId: row.id,
-                    tenantId: row.tenantId,
-                    eventType: row.eventType,
-                    payload: row.payload,
-                  },
-                  { jobId: row.id, ...DEFAULT_JOB_OPTIONS },
+            // Without a timeout, an unreachable Redis makes `add` wait
+            // forever (maxRetriesPerRequest: null) while this transaction
+            // holds the rows' FOR UPDATE locks. A late duplicate publish is
+            // harmless: BullMQ dedupes by jobId = event id.
+            await withTimeout(
+              Promise.all(
+                consumers.map((consumerName) =>
+                  this.getQueue(consumerName).add(
+                    row.eventType,
+                    {
+                      eventId: row.id,
+                      tenantId: row.tenantId,
+                      eventType: row.eventType,
+                      payload: row.payload,
+                    },
+                    { jobId: row.id, ...DEFAULT_JOB_OPTIONS },
+                  ),
                 ),
               ),
+              this.publishTimeoutMs,
             );
             publishedIds.push(row.id);
           } catch (error) {
@@ -107,7 +136,10 @@ export class OutboxRelay {
       // process — found by actually running the worker against an
       // unreachable database, where an uncaught rejection here took the
       // process down. Log and let the next scheduled tick retry instead.
-      this.logger.error({ err: error }, "outbox-relay: tick failed, will retry next interval");
+      this.logger.error(
+        { err: error },
+        "outbox-relay: tick failed, will retry next interval",
+      );
     } finally {
       this.ticking = false;
     }

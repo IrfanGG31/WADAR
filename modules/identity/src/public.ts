@@ -16,3 +16,9 @@ export {
 export { PermissionGuard, RequirePermission } from "./http/permission.guard.js";
 export { SupabaseJwtGuard, type SupabaseJwtGuardOptions, type AuthenticatedUser } from "./http/supabase-jwt.guard.js";
 export { TenantGuard, type TenantRequestContext } from "./http/tenant.guard.js";
+export {
+  getTenantTimezone,
+  listAllTenants,
+  listTenantOutletIds,
+  outletBelongsToTenant,
+} from "./application/ports.js";

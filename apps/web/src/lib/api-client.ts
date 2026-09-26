@@ -43,10 +43,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     data: { session },
   } = await supabase.auth.getSession();
 
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-    "x-correlation-id": crypto.randomUUID(),
-  };
+  const headers: Record<string, string> = { "x-correlation-id": crypto.randomUUID() };
+  // Only with a body: Fastify rejects an empty body sent as application/json
+  // (this broke accepting an invitation, a body-less POST).
+  if (options.body !== undefined) headers["content-type"] = "application/json";
   if (session?.access_token) {
     headers.authorization = `Bearer ${session.access_token}`;
   }

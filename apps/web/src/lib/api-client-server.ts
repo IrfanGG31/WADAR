@@ -19,7 +19,8 @@ export async function apiFetchServer<T>(path: string, options: ApiFetchServerOpt
     data: { session },
   } = await supabase.auth.getSession();
 
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  // Only with a body: Fastify rejects an empty body sent as application/json.
+  const headers: Record<string, string> = options.body !== undefined ? { "content-type": "application/json" } : {};
   if (session?.access_token) {
     headers.authorization = `Bearer ${session.access_token}`;
   }

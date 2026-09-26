@@ -1,4 +1,6 @@
+import { CatalogModule } from "@wadar/catalog";
 import { IdentityModule } from "@wadar/identity";
+import { InventoryModule } from "@wadar/inventory";
 import { PlatformModule } from "@wadar/platform";
 import { Module, type DynamicModule } from "@nestjs/common";
 import type { ApiEnv } from "./env.js";
@@ -17,6 +19,13 @@ export class AppModule {
             hs256Secret: env.SUPABASE_JWT_SECRET,
           },
         }),
+        CatalogModule.forRoot({
+          photoStorage:
+            env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+              ? { supabaseUrl: env.SUPABASE_URL, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY }
+              : undefined,
+        }),
+        InventoryModule.forRoot(),
       ],
     };
   }

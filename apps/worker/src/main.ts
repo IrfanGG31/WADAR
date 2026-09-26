@@ -7,18 +7,20 @@ import {
   PLATFORM_EVENT_BUS,
   PLATFORM_OUTBOX_RELAY,
   PLATFORM_REDIS,
+  PLATFORM_SCHEDULER,
   consumerQueueName,
   createIdempotentProcessor,
   wireDeadLetterQueue,
   type Db,
   type EventBus,
   type OutboxRelay,
+  type ScheduledJobRegistry,
 } from "@wadar/platform";
-import { Worker } from "bullmq";
+import { Queue, Worker } from "bullmq";
 import type { Redis } from "ioredis";
 import pino from "pino";
 import { AppModule } from "./app.module.js";
-import { registerDummyConsumer, DUMMY_CONSUMER_NAME } from "./consumers/dummy.consumer.js";
+import { registerAllConsumers, registerAllScheduledJobs } from "./consumers/registry.js";
 import { loadWorkerEnv } from "./env.js";
 
 const env = loadWorkerEnv();
@@ -29,31 +31,54 @@ if (env.SENTRY_DSN) {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule.forRoot(env),
-    new FastifyAdapter(),
-  );
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(env), new FastifyAdapter());
 
   const db = app.get<Db>(PLATFORM_DB);
   const redis = app.get<Redis>(PLATFORM_REDIS);
   const eventBus = app.get<EventBus>(PLATFORM_EVENT_BUS);
   const relay = app.get<OutboxRelay>(PLATFORM_OUTBOX_RELAY);
+  const scheduler = app.get<ScheduledJobRegistry>(PLATFORM_SCHEDULER);
 
-  registerDummyConsumer(eventBus, logger);
+  registerAllConsumers(app, eventBus, logger);
+  registerAllScheduledJobs(app, scheduler);
 
-  const worker = new Worker(
-    consumerQueueName(DUMMY_CONSUMER_NAME),
-    createIdempotentProcessor(DUMMY_CONSUMER_NAME, eventBus, db),
-    { connection: redis },
-  );
-  worker.on("failed", (job, err) => {
-    logger.error({ err, jobId: job?.id }, "dummy-consumer job failed");
-  });
+  // One BullMQ worker per consumer (ARCHITECTURE §8 bulkhead): a slow or
+  // failing consumer never blocks another's queue.
+  const closers: Array<() => Promise<void>> = [];
+  for (const consumerName of eventBus.allConsumerNames()) {
+    const worker = new Worker(consumerQueueName(consumerName), createIdempotentProcessor(consumerName, eventBus, db), {
+      connection: redis,
+      concurrency: 5,
+    });
+    worker.on("failed", (job, err) => {
+      logger.error({ err, jobId: job?.id, consumer: consumerName, eventType: job?.name }, "consumer job failed");
+    });
+    wireDeadLetterQueue(consumerName, redis);
+    closers.push(() => worker.close());
+  }
 
-  wireDeadLetterQueue(DUMMY_CONSUMER_NAME, redis);
+  for (const job of scheduler.all()) {
+    const queueName = `scheduled.${job.name}`;
+    const queue = new Queue(queueName, { connection: redis });
+    await queue.upsertJobScheduler(job.name, { every: job.everyMs }, { name: job.name, opts: { removeOnComplete: 50, removeOnFail: 50 } });
+    const worker = new Worker(
+      queueName,
+      async () => {
+        const started = Date.now();
+        await job.run(db, logger.child({ job: job.name }));
+        logger.info({ job: job.name, ms: Date.now() - started }, "scheduled job done");
+      },
+      { connection: redis, concurrency: 1 },
+    );
+    worker.on("failed", (_job, err) => logger.error({ err, job: job.name }, "scheduled job failed"));
+    closers.push(async () => {
+      await worker.close();
+      await queue.close();
+    });
+  }
 
   relay.start();
-  logger.info("outbox relay started");
+  logger.info({ consumers: eventBus.allConsumerNames(), jobs: scheduler.all().map((j) => j.name) }, "outbox relay started");
 
   await app.listen(env.WORKER_HEALTH_PORT, "0.0.0.0");
   logger.info({ port: env.WORKER_HEALTH_PORT }, "wadar-worker health endpoint listening");
@@ -61,7 +86,7 @@ async function bootstrap(): Promise<void> {
   process.on("SIGTERM", () => {
     void (async () => {
       await relay.stop();
-      await worker.close();
+      for (const close of closers) await close();
       await app.close();
     })();
   });

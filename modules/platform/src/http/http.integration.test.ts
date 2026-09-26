@@ -1,55 +1,32 @@
-import { execFile } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
-import { GenericContainer, type StartedTestContainer } from "testcontainers";
+import { startTestInfra, type TestInfra } from "@wadar/test-infra";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PlatformModule } from "../platform.module.js";
 
-/**
- * Same caveat as outbox.integration.test.ts: needs Docker, which the sandbox
- * that authored this could not use (Docker Hub blocked by egress policy).
- * Verify in CI before trusting it.
- */
-const execFileAsync = promisify(execFile);
-const moduleRoot = fileURLToPath(new URL("../..", import.meta.url));
-
-describe("platform HTTP: health + Idempotency-Key (Testcontainers Postgres+Redis)", () => {
-  let pgContainer: StartedTestContainer;
-  let redisContainer: StartedTestContainer;
+describe("platform HTTP: health + Idempotency-Key (Postgres+Redis via @wadar/test-infra)", () => {
+  let infra: TestInfra;
   let app: NestFastifyApplication;
   const tenantId = "018f2f1e-7b1a-7b1a-8b1a-000000000099";
 
-  beforeAll(async () => {
-    pgContainer = await new GenericContainer("pgvector/pgvector:pg16")
-      .withEnvironment({ POSTGRES_USER: "wadar", POSTGRES_PASSWORD: "wadar", POSTGRES_DB: "wadar" })
-      .withExposedPorts(5432)
-      .start();
-    const databaseUrl = `postgres://wadar:wadar@${pgContainer.getHost()}:${pgContainer.getMappedPort(5432)}/wadar`;
-
-    redisContainer = await new GenericContainer("redis:7-alpine").withExposedPorts(6379).start();
-    const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
-
-    await execFileAsync(
-      "pnpm",
-      ["exec", "drizzle-kit", "push", "--config=drizzle.config.ts", "--force"],
-      { cwd: moduleRoot, env: { ...process.env, DATABASE_URL: databaseUrl } },
-    );
-
+  async function buildApp(databaseUrl: string, redisUrl: string): Promise<NestFastifyApplication> {
     const moduleRef = await Test.createTestingModule({
       imports: [PlatformModule.forRoot({ databaseUrl, redisUrl })],
     }).compile();
+    const built = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await built.init();
+    await built.getHttpAdapter().getInstance().ready();
+    return built;
+  }
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+  beforeAll(async () => {
+    infra = await startTestInfra([]);
+    app = await buildApp(infra.migrateUrl, infra.redisUrl);
   }, 180_000);
 
   afterAll(async () => {
     await app?.close();
-    await pgContainer?.stop();
-    await redisContainer?.stop();
+    await infra?.stop();
   });
 
   it("GET /health/live always returns 200", async () => {
@@ -108,9 +85,13 @@ describe("platform HTTP: health + Idempotency-Key (Testcontainers Postgres+Redis
     expect(secondBody).toEqual(firstBody);
   });
 
-  it("GET /health/ready returns 503 once Redis is stopped", async () => {
-    await redisContainer.stop();
-    const res = await app.getHttpAdapter().getInstance().inject({ method: "GET", url: "/health/ready" });
-    expect(res.statusCode).toBe(503);
+  it("GET /health/ready returns 503 when Redis is unreachable", async () => {
+    const broken = await buildApp(infra.migrateUrl, "redis://127.0.0.1:1");
+    try {
+      const res = await broken.getHttpAdapter().getInstance().inject({ method: "GET", url: "/health/ready" });
+      expect(res.statusCode).toBe(503);
+    } finally {
+      await broken.close();
+    }
   }, 30_000);
 });

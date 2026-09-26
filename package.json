@@ -2,7 +2,7 @@
   "name": "wadar",
   "private": true,
   "version": "0.0.0",
-  "description": "WADAR — asisten bisnis AI untuk UMKM Indonesia (monorepo)",
+  "description": "WADAR \u2014 asisten bisnis AI untuk UMKM Indonesia (monorepo)",
   "engines": {
     "node": ">=22.22.0"
   },
@@ -20,11 +20,11 @@
     "test:unit": "turbo run test:unit",
     "test:integration": "turbo run test:integration",
     "depcruise": "depcruise --config .dependency-cruiser.cjs --ts-pre-compilation-deps apps modules packages",
-    "db:generate": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit generate --config=\"$f\" || exit 1; done",
-    "db:migrate": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit migrate --config=\"$f\" || exit 1; done",
+    "db:generate": "for f in modules/*/drizzle.config.ts; do [ -f \"$(dirname \"$f\")/src/db/schema.ts\" ] || continue; pnpm exec drizzle-kit generate --config=\"$f\" || exit 1; done",
+    "db:migrate": "for f in modules/*/drizzle.config.ts; do [ -f \"$(dirname \"$f\")/drizzle/meta/_journal.json\" ] || continue; pnpm exec drizzle-kit migrate --config=\"$f\" || exit 1; done",
     "db:push": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit push --config=\"$f\" --force || exit 1; done",
     "db:grant": "docker compose -f infra/docker-compose.yml exec -T postgres psql -U wadar -d wadar -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/02-grant-and-force-rls.sql",
-    "evals": "echo \"no evals yet — mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
+    "evals": "echo \"no evals yet \u2014 mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

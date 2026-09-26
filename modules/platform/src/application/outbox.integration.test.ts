@@ -1,9 +1,6 @@
-import { execFile } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { Worker } from "bullmq";
 import pino from "pino";
-import { GenericContainer, type StartedTestContainer } from "testcontainers";
+import { startTestInfra, type TestInfra } from "@wadar/test-infra";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "../infra/db.js";
 import { createRedisConnection } from "../infra/redis.js";
@@ -13,47 +10,19 @@ import { createIdempotentProcessor, type OutboxJobData } from "./idempotent-cons
 import { OutboxRelay } from "./outbox-relay.js";
 import { createPing } from "./ping-command.js";
 
-/**
- * NOTE for whoever runs this next: this suite needs Docker to pull
- * `pgvector/pgvector:pg16` and `redis:7-alpine`. It could NOT be executed in
- * the sandbox that authored it (Docker Hub pulls are blocked by that
- * sandbox's egress policy — confirmed via the proxy's recentRelayFailures,
- * not a flaky network issue). It should run normally in GitHub Actions CI
- * and on a real dev machine with Docker. Run it there before trusting it.
- */
-const execFileAsync = promisify(execFile);
-const moduleRoot = fileURLToPath(new URL("../..", import.meta.url));
-
-describe("outbox relay + idempotent consumer (Testcontainers Postgres+Redis)", () => {
-  let pgContainer: StartedTestContainer;
-  let redisContainer: StartedTestContainer;
+describe("outbox relay + idempotent consumer (Postgres+Redis via @wadar/test-infra)", () => {
+  let infra: TestInfra;
   let databaseUrl: string;
   let redisUrl: string;
 
   beforeAll(async () => {
-    pgContainer = await new GenericContainer("pgvector/pgvector:pg16")
-      .withEnvironment({
-        POSTGRES_USER: "wadar",
-        POSTGRES_PASSWORD: "wadar",
-        POSTGRES_DB: "wadar",
-      })
-      .withExposedPorts(5432)
-      .start();
-    databaseUrl = `postgres://wadar:wadar@${pgContainer.getHost()}:${pgContainer.getMappedPort(5432)}/wadar`;
-
-    redisContainer = await new GenericContainer("redis:7-alpine").withExposedPorts(6379).start();
-    redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
-
-    await execFileAsync(
-      "pnpm",
-      ["exec", "drizzle-kit", "push", "--config=drizzle.config.ts", "--force"],
-      { cwd: moduleRoot, env: { ...process.env, DATABASE_URL: databaseUrl } },
-    );
+    infra = await startTestInfra([]);
+    databaseUrl = infra.migrateUrl;
+    redisUrl = infra.redisUrl;
   }, 180_000);
 
   afterAll(async () => {
-    await pgContainer?.stop();
-    await redisContainer?.stop();
+    await infra?.stop();
   });
 
   async function setup() {

@@ -23,6 +23,9 @@ export class IdentityModule {
 
     return {
       module: IdentityModule,
+      // Global so every other module's controllers can use these guards
+      // via @UseGuards() without re-importing IdentityModule.
+      global: true,
       controllers: [TenantsController, OutletsController, MembershipsController, InvitationsController],
       providers: [
         { provide: IDENTITY_JWT_OPTIONS, useValue: options.supabaseJwt },
@@ -30,6 +33,7 @@ export class IdentityModule {
         TenantGuard,
         PermissionGuard,
       ],
+      exports: [IDENTITY_JWT_OPTIONS, SupabaseJwtGuard, TenantGuard, PermissionGuard],
     };
   }
 }

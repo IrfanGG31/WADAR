@@ -147,6 +147,8 @@ export interface WriteIsolationCase {
   method: "POST" | "PUT" | "PATCH" | "DELETE";
   /** Route path; may reference `:id`-shaped params the caller fills in after calling createFixture. */
   path: (fixtureId: string) => string;
+  /** Request body to send — should be VALID for the route, so a 403/404 proves isolation, not validation. */
+  body?: unknown;
   /**
    * Creates a resource owned by `tenantAId` inside the given transaction
    * (already wrapped by `withTenantContext`) and returns its id, so the

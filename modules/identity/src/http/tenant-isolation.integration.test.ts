@@ -179,7 +179,7 @@ describe("identity tenant isolation (Postgres+Redis via @wadar/test-infra)", () 
             "x-tenant-id": tenantBId,
             "content-type": "application/json",
           },
-          payload: { roleKey: "manager" },
+          payload: testCase.body ?? {},
         });
 
         expect([403, 404]).toContain(res.statusCode);

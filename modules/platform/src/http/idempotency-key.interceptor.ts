@@ -11,6 +11,11 @@ import { from, of, switchMap, tap, type Observable } from "rxjs";
 import { PLATFORM_DB } from "./tokens.js";
 import { getSnapshot, saveSnapshot } from "../infra/idempotency-keys.repository.js";
 import type { Db } from "../infra/db.js";
+import pino from "pino";
+
+const logger = pino({ name: "idempotency" });
+/** `idempotency_keys.tenant_id` is a NOT NULL uuid; tenant-less routes store the nil UUID. */
+const NO_TENANT = "00000000-0000-0000-0000-000000000000";
 
 /**
  * Enforces CLAUDE.md aturan #6 (Idempotency-Key wajib untuk POST yang membuat
@@ -34,18 +39,25 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
         code: "IDEMPOTENCY_KEY_REQUIRED",
       });
     }
-    const tenantId = (request.headers["x-tenant-id"] as string | undefined) ?? "unset";
-    // Namespaced by tenant: a key is only meaningful within the tenant that
-    // sent it, and a bare-key lookup would hand tenant A's cached response
-    // to anyone who replays A's key under tenant B.
-    const scopedKey = `${tenantId}:${key}`;
+    // Guards run before interceptors, so `request.tenant`/`request.user` are
+    // already verified here. The key is namespaced by the verified tenant —
+    // or by the user on tenant-less routes (onboarding, accepting an
+    // invitation) — so one caller can never replay another's cached response.
+    const verified = request as FastifyRequest & { tenant?: { tenantId: string }; user?: { id: string } };
+    const tenantId = verified.tenant?.tenantId ?? NO_TENANT;
+    const scope = verified.tenant ? `t:${verified.tenant.tenantId}` : `u:${verified.user?.id ?? "anon"}`;
+    const scopedKey = `${scope}:${key}`;
 
     return from(getSnapshot(this.db, scopedKey)).pipe(
       switchMap((existing) => {
         if (existing !== undefined) return of(existing);
         return next.handle().pipe(
           tap((response: unknown) => {
-            void saveSnapshot(this.db, scopedKey, tenantId, response);
+            // Never leave this promise unhandled: an unhandled rejection
+            // terminates a Node 22 process.
+            saveSnapshot(this.db, scopedKey, tenantId, response).catch((error: unknown) => {
+              logger.error({ err: error }, "idempotency snapshot save failed");
+            });
           }),
         );
       }),

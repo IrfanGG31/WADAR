@@ -39,7 +39,7 @@ export function createIdempotentProcessor(
       await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
       const claimed = await tryClaimProcessing(tx, consumerName, eventId, tenantId);
       if (!claimed) return; // already processed by a previous delivery — skip, no error
-      await handler(tx, payload, tenantId);
+      await handler(tx, payload, tenantId, { eventId, eventType });
     });
   };
 }

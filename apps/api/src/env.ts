@@ -17,6 +17,10 @@ export const ApiEnvSchema = BaseEnvSchema.extend({
   // "hs256" — validated with .refine below rather than a discriminated
   // union so an operator gets one clear message instead of a Zod union
   // mismatch error.
+  // Product photo storage (Supabase Storage, private bucket). Both unset =
+  // photo upload disabled; the rest of the catalog works without it.
+  SUPABASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().or(z.literal("").transform(() => undefined)),
   SUPABASE_JWT_MODE: z.enum(["jwks", "hs256"]).default("jwks"),
   SUPABASE_JWKS_URL: z.string().optional(),
   SUPABASE_JWT_SECRET: z.string().optional(),

@@ -1,6 +1,11 @@
 import type { Tx } from "../infra/outbox.repository.js";
 
-export type EventHandler = (tx: Tx, payload: unknown, tenantId: string) => Promise<void>;
+export interface EventMeta {
+  eventId: string;
+  eventType: string;
+}
+
+export type EventHandler = (tx: Tx, payload: unknown, tenantId: string, meta: EventMeta) => Promise<void>;
 
 interface Registration {
   consumerName: string;

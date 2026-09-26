@@ -43,6 +43,13 @@ export async function findInvitationByToken(
   token: string,
 ): Promise<typeof invitations.$inferSelect | undefined> {
   return db.transaction(async (tx) => {
+    // Postgres evaluates EVERY permissive policy's expression, including
+    // tenant_isolation's strict `current_setting('app.tenant_id')::uuid` —
+    // which throws when unset (fresh connection) or '' (a pooled connection
+    // that previously ran withTenantContext). Pinning it to the nil UUID
+    // makes tenant_isolation match nothing without erroring, so only the
+    // token policy can grant this read.
+    await tx.execute(sql`select set_config('app.tenant_id', '00000000-0000-0000-0000-000000000000', true)`);
     await tx.execute(sql`select set_config('app.invitation_lookup_token', ${token}, true)`);
     const [row] = await tx.select().from(invitations).where(eq(invitations.token, token));
     return row;

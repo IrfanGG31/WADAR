@@ -35,6 +35,7 @@ export function registerIdentityWriteIsolationCases(): void {
     module: "identity",
     method: "PATCH",
     path: (membershipId) => `/v1/memberships/${membershipId}/role`,
+    body: { roleKey: "manager" },
     createFixture: async (tx, tenantAId) => {
       const cashierRole = await getRoleByKey(tx, tenantAId, SystemRole.Cashier);
       if (!cashierRole) {

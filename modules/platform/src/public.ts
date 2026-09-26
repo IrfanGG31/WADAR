@@ -4,7 +4,7 @@
  * `infra/`, `http/`, or `db/schema.ts` directly from outside this module.
  */
 export { PlatformModule, type PlatformModuleOptions } from "./platform.module.js";
-export { EventBus, type EventHandler } from "./application/event-bus.js";
+export { EventBus, type EventHandler, type EventMeta } from "./application/event-bus.js";
 export { OutboxRelay } from "./application/outbox-relay.js";
 export { createIdempotentProcessor, type OutboxJobData } from "./application/idempotent-consumer.js";
 export { createPing, type CreatePingCommand } from "./application/ping-command.js";
@@ -27,6 +27,7 @@ export {
   PLATFORM_SCHEDULER,
 } from "./http/tokens.js";
 export { ZodValidationPipe } from "./http/zod-validation.pipe.js";
+export { problem } from "./http/problem.js";
 export { IdempotencyKeyInterceptor } from "./http/idempotency-key.interceptor.js";
 export { TENANT_SCOPED_METADATA_KEY, TenantScoped } from "./http/tenant-scoped.decorator.js";
 export { tenantRlsPolicy } from "./db/rls.js";
@@ -45,3 +46,4 @@ export {
   type InjectResponse,
   type WriteIsolationCase,
 } from "./testing/tenant-isolation.js";
+export { drainOutboxForTesting } from "./testing/drain-outbox.js";
