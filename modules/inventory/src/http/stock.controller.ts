@@ -21,7 +21,7 @@ function canSeeCost(request: FastifyRequest): boolean {
 export class StockController {
   constructor(
     @Inject(PLATFORM_DB) private readonly db: Db,
-    private readonly photos: CatalogPhotoUrls,
+    @Inject(CatalogPhotoUrls) private readonly photos: CatalogPhotoUrls,
   ) {}
 
   @Get()

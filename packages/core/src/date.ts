@@ -50,3 +50,67 @@ export function formatDateIndonesian(date: Date, timeZone: string = DEFAULT_TIME
 export function formatMonthYearIndonesian(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric", timeZone }).format(date);
 }
+
+function toDate(value: Date | string): Date {
+  return typeof value === "string" ? new Date(value) : value;
+}
+
+/** "19 Sep 2026 10.05" in the tenant's timezone. */
+export function formatDateTimeId(value: Date | string, timeZone: string = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone,
+  })
+    .format(toDate(value))
+    .replace(",", "");
+}
+
+/** "10.05" in the tenant's timezone. */
+export function formatTimeId(value: Date | string, timeZone: string = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone }).format(toDate(value));
+}
+
+/**
+ * Indonesia has no daylight saving time, so each of the 3 tenant timezones
+ * (PRD X7) is a fixed UTC offset — which lets business-day math stay exact
+ * and dependency-free.
+ */
+const UTC_OFFSET_MINUTES: Record<string, number> = {
+  "Asia/Jakarta": 7 * 60,
+  "Asia/Makassar": 8 * 60,
+  "Asia/Jayapura": 9 * 60,
+};
+
+function offsetMinutes(timeZone: string): number {
+  return UTC_OFFSET_MINUTES[timeZone] ?? UTC_OFFSET_MINUTES[DEFAULT_TIMEZONE]!;
+}
+
+/** The tenant-local business day ("2026-09-19") an instant falls on. */
+export function localDateKey(value: Date | string, timeZone: string = DEFAULT_TIMEZONE): string {
+  const shifted = new Date(toDate(value).getTime() + offsetMinutes(timeZone) * MINUTE_MS);
+  return shifted.toISOString().slice(0, 10);
+}
+
+/** "2026-09-19" + n days. */
+export function addDays(dateKey: string, days: number): string {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** [start, end) instants of a tenant-local day. */
+export function localDayRange(dateKey: string, timeZone: string = DEFAULT_TIMEZONE): { start: Date; end: Date } {
+  const start = new Date(new Date(`${dateKey}T00:00:00.000Z`).getTime() - offsetMinutes(timeZone) * MINUTE_MS);
+  return { start, end: new Date(start.getTime() + DAY_MS) };
+}
+
+/** "Sab, 19 Sep" for a date key — chart axes and day headers. */
+export function formatDateKeyShort(dateKey: string): string {
+  return new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(`${dateKey}T00:00:00.000Z`),
+  );
+}

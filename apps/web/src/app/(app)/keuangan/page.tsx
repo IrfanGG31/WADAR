@@ -1,5 +1,5 @@
 import { Card, CardContent, Button, FakeChart } from "@wadar/ui-web";
-import { Sparkles, TrendingDown, Info, ChevronRight } from "lucide-react";
+import { Sparkles, TrendingDown } from "lucide-react";
 import Link from "next/link";
 
 export default function KeuanganPage() {

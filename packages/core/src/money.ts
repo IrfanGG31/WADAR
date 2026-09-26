@@ -13,6 +13,25 @@ const numberFormatter = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 });
 
-export function formatRupiah(amount: bigint): string {
-  return `Rp${numberFormatter.format(amount)}`;
+/**
+ * Accepts bigint (DB BIGINT) or a whole-number `number` (API JSON carries
+ * rupiah as safe integers). Negative amounts render as "-Rp5.000".
+ */
+export function formatRupiah(amount: bigint | number): string {
+  const value = typeof amount === "number" ? BigInt(Math.trunc(amount)) : amount;
+  if (value < 0n) return `-Rp${numberFormatter.format(-value)}`;
+  return `Rp${numberFormatter.format(value)}`;
+}
+
+/** Compact form for chart axes and tight cards: "Rp1,2 jt", "Rp850 rb". */
+export function formatRupiahCompact(amount: bigint | number): string {
+  const value = Number(amount);
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const compact = (n: number, unit: string) =>
+    `${sign}Rp${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(n)} ${unit}`;
+  if (abs >= 1_000_000_000) return compact(abs / 1_000_000_000, "M");
+  if (abs >= 1_000_000) return compact(abs / 1_000_000, "jt");
+  if (abs >= 1_000) return compact(abs / 1_000, "rb");
+  return `${sign}Rp${abs}`;
 }

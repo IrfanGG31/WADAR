@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, SetMetadata } from "@nestjs/common";
+import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, SetMetadata } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { FastifyRequest } from "fastify";
 import type { Permission } from "../domain/role.js";
@@ -11,7 +11,10 @@ export const RequirePermission = (permission: Permission) =>
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  // Explicit @Inject: tsx (dev) and tsup (prod) compile with esbuild, which
+  // doesn't emit decorator type metadata — an un-annotated class parameter
+  // is injected as undefined there (vitest does emit it, so tests pass).
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride<Permission | undefined>(

@@ -5,3 +5,6 @@
  * succeeds and read by every subsequent `x-tenant-id` API call.
  */
 export const TENANT_COOKIE_NAME = "wadar_tenant_id";
+
+/** The outlet the user is working in (Kasir, stock, adjustments) — picked in the header. */
+export const OUTLET_COOKIE_NAME = "wadar_outlet_id";

@@ -1,5 +1,5 @@
 import type { Permission } from "@wadar/contracts/identity";
-import { Settings, Users } from "lucide-react";
+import { Monitor, Package, Settings, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import { apiFetchServer } from "../../../lib/api-client-server";
@@ -17,6 +17,34 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
+  {
+    href: "/stok",
+    label: "Produk & Stok",
+    description: "Daftar produk, stok, impor dari Excel",
+    icon: Package,
+    requiredPermission: "cashier:operate",
+  },
+  {
+    href: "/stok",
+    label: "Produk & Stok",
+    description: "Daftar produk, stok, impor dari Excel",
+    icon: Package,
+    requiredPermission: "inventory:manage",
+  },
+  {
+    href: "/keuangan",
+    label: "Keuangan",
+    description: "Uang masuk & keluar, dompet, untung per produk",
+    icon: Wallet,
+    requiredPermission: "finance:view",
+  },
+  {
+    href: "/layar-kasir",
+    label: "Layar Kasir",
+    description: "Tampilan besar uang masuk untuk meja kasir",
+    icon: Monitor,
+    requiredPermission: "cashier:operate",
+  },
   {
     href: "/pengaturan/toko",
     label: "Pengaturan Toko",
@@ -36,7 +64,12 @@ const MENU_ITEMS: MenuItem[] = [
 /** DoD: "kasir hanya melihat menu sesuai peran" — items with no matching permission just don't render. */
 export default async function LainnyaPage() {
   const membership = await apiFetchServer<MyMembership>("/v1/memberships/me");
-  const visibleItems = MENU_ITEMS.filter((item) => membership.permissions.includes(item.requiredPermission));
+  const seen = new Set<string>();
+  const visibleItems = MENU_ITEMS.filter((item) => {
+    if (!membership.permissions.includes(item.requiredPermission) || seen.has(item.href)) return false;
+    seen.add(item.href);
+    return true;
+  });
 
   return (
     <div className="p-4">

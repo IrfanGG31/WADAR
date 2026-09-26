@@ -55,7 +55,7 @@ function toHttpError(error: unknown): never {
 export class ProductsController {
   constructor(
     @Inject(PLATFORM_DB) private readonly db: Db,
-    private readonly photos: CatalogPhotoUrls,
+    @Inject(CatalogPhotoUrls) private readonly photos: CatalogPhotoUrls,
   ) {}
 
   private ctx(request: FastifyRequest, correlationId: string | undefined): CommandContext {

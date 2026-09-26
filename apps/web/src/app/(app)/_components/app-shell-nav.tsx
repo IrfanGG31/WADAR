@@ -2,35 +2,54 @@
 
 import { brand } from "@wadar/brand";
 import type { Permission } from "@wadar/contracts/identity";
-import { Home, ShoppingCart, Package, Wallet, Users, MessageSquare, Sparkles, Settings } from "lucide-react";
+import {
+  Home,
+  ListChecks,
+  MessageSquare,
+  MoreHorizontal,
+  Package,
+  ShoppingCart,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { Button } from "@wadar/ui-web";
 
 interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  requiredPermission?: Permission;
+  /** Shown if the member has ANY of these (M1 DoD: "kasir hanya melihat menu sesuai peran"). */
+  requiresAny?: Permission[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+/** PRD §8.1 — the 5 bottom tabs on mobile. */
+const MOBILE_ITEMS: NavItem[] = [
   { href: "/beranda", label: "Beranda", icon: Home },
-  { href: "/penjualan", label: "Penjualan", icon: ShoppingCart },
-  { href: "/stok", label: "Stok", icon: Package },
-  { href: "/keuangan", label: "Keuangan", icon: Wallet },
-  { href: "/pelanggan", label: "Pelanggan", icon: Users },
-  { href: "/asisten", label: "Chat AI", icon: MessageSquare },
-  { href: "/konsultasi", label: "Konsultasi Bisnis", icon: Sparkles },
-  { href: "/pengaturan", label: "Pengaturan", icon: Settings },
+  { href: "/kasir", label: "Kasir", icon: ShoppingCart, requiresAny: ["cashier:operate"] },
+  { href: "/pesanan", label: "Pesanan", icon: ListChecks, requiresAny: ["orders:manage"] },
+  { href: "/asisten", label: "Asisten", icon: MessageSquare, requiresAny: ["assistant:use"] },
+  { href: "/lainnya", label: "Lainnya", icon: MoreHorizontal },
 ];
+
+/** Desktop sidebar: the same tabs plus the "Lainnya" destinations used daily. */
+const DESKTOP_ITEMS: NavItem[] = [
+  { href: "/beranda", label: "Beranda", icon: Home },
+  { href: "/kasir", label: "Kasir", icon: ShoppingCart, requiresAny: ["cashier:operate"] },
+  { href: "/pesanan", label: "Pesanan", icon: ListChecks, requiresAny: ["orders:manage"] },
+  { href: "/stok", label: "Produk & Stok", icon: Package, requiresAny: ["catalog:manage", "inventory:manage", "cashier:operate"] },
+  { href: "/keuangan", label: "Keuangan", icon: Wallet, requiresAny: ["finance:view"] },
+  { href: "/asisten", label: "Asisten", icon: MessageSquare, requiresAny: ["assistant:use"] },
+  { href: "/lainnya", label: "Lainnya", icon: MoreHorizontal },
+];
+
+function visible(items: NavItem[], permissions: Permission[]): NavItem[] {
+  return items.filter((item) => !item.requiresAny || item.requiresAny.some((p) => permissions.includes(p)));
+}
 
 export function AppShellNav({ permissions }: { permissions: Permission[] }) {
   const pathname = usePathname();
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.requiredPermission || permissions.includes(item.requiredPermission),
-  );
 
   return (
     <>
@@ -38,13 +57,7 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
         aria-label="Navigasi utama"
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 shadow-[0_-1px_8px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
       >
-        {[
-          { href: "/beranda", label: "Beranda", icon: Home },
-          { href: "/penjualan", label: "Transaksi", icon: ShoppingCart },
-          { href: "/laporan", label: "Laporan", icon: Wallet },
-          { href: "/asisten", label: "Chat AI", icon: MessageSquare },
-          { href: "/lainnya", label: "Lainnya", icon: Settings },
-        ].map((item) => {
+        {visible(MOBILE_ITEMS, permissions).map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -52,7 +65,7 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
               <Icon className="h-5 w-5" />
               {item.label}
@@ -63,17 +76,17 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
 
       <nav
         aria-label="Navigasi utama"
-        className="hidden w-64 shrink-0 flex-col border-r border-border bg-background p-4 md:flex overflow-y-auto"
+        className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-background p-4 md:flex"
       >
         <div className="mb-6 mt-2 flex items-center gap-2 px-2 text-2xl font-bold tracking-tight text-primary">
           <span className="relative flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
-             <Sparkles className="h-5 w-5 absolute -top-1 -right-1 text-primary-foreground bg-primary rounded-full p-0.5" />
-             <span className="font-bold text-xl">W</span>
+            <Sparkles className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-primary p-0.5 text-primary-foreground" />
+            <span className="text-xl font-bold">{brand.name.charAt(0)}</span>
           </span>
           {brand.name}
         </div>
-        <div className="flex-1 flex flex-col gap-1.5">
-          {visibleItems.map((item) => {
+        <div className="flex flex-1 flex-col gap-1.5">
+          {visible(DESKTOP_ITEMS, permissions).map((item) => {
             const isActive = pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -91,25 +104,19 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
             );
           })}
         </div>
-        
-        {/* Promotion block at bottom of sidebar matching the mockup */}
-        <div className="mt-8 rounded-xl bg-primary/10 p-4 relative overflow-hidden">
-           <div className="flex items-start gap-3">
-             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
-               <Sparkles className="h-5 w-5" />
-             </div>
-             <div>
-                <h4 className="text-xs font-bold text-foreground">Tingkatkan Bisnis Anda Bersama WADAR</h4>
-                <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                  Data lebih rapi, keputusan lebih tepat. Coba lebih maju.
-                </p>
-             </div>
-           </div>
-           <div className="mt-3 flex justify-end">
-             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground cursor-pointer">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-             </div>
-           </div>
+
+        <div className="relative mt-8 overflow-hidden rounded-xl bg-primary/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-foreground">{brand.tagline}</h4>
+              <p className="mt-1 text-xs leading-tight text-muted-foreground">
+                Tanya apa saja soal tokomu di menu Asisten.
+              </p>
+            </div>
+          </div>
         </div>
       </nav>
     </>

@@ -1,13 +1,13 @@
 "use client";
 
-import { CreateTenantBody, type TenantTimezone } from "@wadar/contracts/identity";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@wadar/ui-web";
+import { CreateTenantBody } from "@wadar/contracts/identity";
+import { Button, Card, CardContent, Input, Label } from "@wadar/ui-web";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch, ApiError } from "../../../lib/api-client";
 import { setActiveTenantId } from "../../../lib/tenant-cookie";
 import { brand } from "@wadar/brand";
-import { Check, ChevronRight, Upload, Building2, Store, MessageSquare, Database } from "lucide-react";
+import { Check, ChevronRight, Upload, Building2, Store, MessageSquare, Database, Sparkles } from "lucide-react";
 
 export default function OnboardingWizard() {
   const router = useRouter();

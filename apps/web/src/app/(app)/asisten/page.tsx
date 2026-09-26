@@ -1,5 +1,5 @@
 import { Button, Input, Card, CardContent } from "@wadar/ui-web";
-import { Sparkles, Mic, Send, Bot, User, ArrowRight } from "lucide-react";
+import { Sparkles, Mic, Send, User, ArrowRight } from "lucide-react";
 
 export default function AsistenPage() {
   return (

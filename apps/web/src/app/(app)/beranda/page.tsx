@@ -3,7 +3,6 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle,
-  CardDescription,
   FakeChart
 } from "@wadar/ui-web";
 import { 
@@ -15,7 +14,6 @@ import {
   ReceiptText,
   ShoppingBag,
   ArrowUp,
-  ArrowDown,
   ChevronRight,
   Package,
   LineChart,

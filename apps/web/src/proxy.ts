@@ -9,7 +9,17 @@ import { getWebEnv } from "./lib/env";
 // would bounce every Google sign-in straight back to /masuk before the
 // route handler ever runs.
 const PUBLIC_PATHS = ["/masuk", "/undangan", "/auth/callback"];
-const APP_SHELL_PATHS = ["/beranda", "/kasir", "/pesanan", "/asisten", "/lainnya", "/pengaturan"];
+const APP_SHELL_PATHS = [
+  "/beranda",
+  "/kasir",
+  "/pesanan",
+  "/asisten",
+  "/lainnya",
+  "/pengaturan",
+  "/stok",
+  "/keuangan",
+  "/layar-kasir",
+];
 
 /**
  * Next.js 16 renamed `middleware.ts` → `proxy.ts` (same runtime, Node-only

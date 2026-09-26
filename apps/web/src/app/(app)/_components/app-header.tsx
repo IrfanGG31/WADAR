@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,23 +10,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  Avatar,
-  AvatarFallback,
 } from "@wadar/ui-web";
-import { Bell, ChevronDown, LogOut, Search } from "lucide-react";
+import { Check, ChevronDown, LogOut, Search, Store } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { createClient } from "../../../lib/supabase/client";
-import { clearActiveTenantId } from "../../../lib/tenant-cookie";
+import { clearActiveTenantId, setActiveOutletId } from "../../../lib/tenant-cookie";
 
 interface Outlet {
   id: string;
   name: string;
 }
 
-export function AppHeader({ tenantName, outlets }: { tenantName: string; outlets: Outlet[] }) {
+export function AppHeader({
+  tenantName,
+  outlets,
+  activeOutletId,
+  userLabel,
+}: {
+  tenantName: string;
+  outlets: Outlet[];
+  activeOutletId: string | undefined;
+  userLabel: string;
+}) {
   const router = useRouter();
-  const [activeOutletId, setActiveOutletId] = useState(outlets[0]?.id);
+  const [search, setSearch] = useState("");
   const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? outlets[0];
 
   async function handleLogout() {
@@ -34,49 +44,68 @@ export function AppHeader({ tenantName, outlets }: { tenantName: string; outlets
     router.push("/masuk");
   }
 
+  function chooseOutlet(outletId: string) {
+    setActiveOutletId(outletId);
+    router.refresh();
+  }
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    const query = search.trim();
+    if (query) router.push(`/stok?search=${encodeURIComponent(query)}`);
+  }
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
-      <div className="flex flex-1 items-center gap-4">
-         <div className="relative w-full max-w-md hidden md:flex">
-           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-           <Input 
-             type="search" 
-             placeholder="Cari produk, transaksi, atau pertanyaan..." 
-             className="pl-9 h-10 w-full rounded-full bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/30"
-           />
-         </div>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex min-w-0 items-center gap-1.5 rounded-full px-2 py-1 text-left outline-none hover:bg-muted md:hidden">
+            <Store className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold">{activeOutlet?.name ?? tenantName}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <OutletMenu outlets={outlets} activeId={activeOutlet?.id} onChoose={chooseOutlet} />
+        </DropdownMenu>
+        <form onSubmit={submitSearch} className="relative hidden w-full max-w-md md:flex" role="search">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Cari produk, SKU, atau barcode..."
+            aria-label="Cari produk"
+            className="h-10 w-full rounded-full border-none bg-muted/50 pl-9 focus-visible:ring-1 focus-visible:ring-primary/30"
+          />
+        </form>
       </div>
 
-      <div className="flex items-center gap-4">
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive border-2 border-background"></span>
-        </button>
-
+      <div className="flex items-center gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-muted p-1 pr-2 rounded-full transition-colors text-left outline-none">
+          <DropdownMenuTrigger
+            aria-label="Menu akun"
+            className="flex items-center gap-3 rounded-full p-1 pr-2 text-left outline-none transition-colors hover:bg-muted"
+          >
             <Avatar>
-              <AvatarFallback>S</AvatarFallback>
+              <AvatarFallback>{userLabel.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="hidden md:block">
-              <p className="text-sm font-semibold leading-tight">Salsabila</p>
-              <p className="text-xs text-muted-foreground">{activeOutlet?.name ?? tenantName}</p>
+              <p className="max-w-40 truncate text-sm font-semibold leading-tight">{tenantName}</p>
+              <p className="text-xs text-muted-foreground">{activeOutlet?.name}</p>
             </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
+            <ChevronDown className="hidden h-4 w-4 text-muted-foreground md:block" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Salsabila</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {tenantName}
-                </p>
+                <p className="truncate text-sm font-medium leading-none">{userLabel}</p>
+                <p className="text-xs leading-none text-muted-foreground">{tenantName}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Pilih outlet</DropdownMenuLabel>
             {outlets.map((outlet) => (
-              <DropdownMenuItem key={outlet.id} onSelect={() => setActiveOutletId(outlet.id)}>
+              <DropdownMenuItem key={outlet.id} onSelect={() => chooseOutlet(outlet.id)}>
+                {outlet.id === activeOutlet?.id ? <Check className="mr-2 h-4 w-4" /> : <span className="mr-2 w-4" />}
                 {outlet.name}
               </DropdownMenuItem>
             ))}
@@ -89,5 +118,28 @@ export function AppHeader({ tenantName, outlets }: { tenantName: string; outlets
         </DropdownMenu>
       </div>
     </header>
+  );
+}
+
+function OutletMenu({
+  outlets,
+  activeId,
+  onChoose,
+}: {
+  outlets: Outlet[];
+  activeId: string | undefined;
+  onChoose: (id: string) => void;
+}) {
+  return (
+    <DropdownMenuContent align="start">
+      <DropdownMenuLabel>Pilih outlet</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {outlets.map((outlet) => (
+        <DropdownMenuItem key={outlet.id} onSelect={() => onChoose(outlet.id)}>
+          {outlet.id === activeId ? <Check className="mr-2 h-4 w-4" /> : <span className="mr-2 w-4" />}
+          {outlet.name}
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
   );
 }

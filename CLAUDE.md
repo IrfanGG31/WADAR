@@ -61,6 +61,7 @@ npx supabase start  # Supabase Auth lokal (OTP email via Inbucket :54324, Google
 - Error API: RFC 7807 dengan `code` dan `correlationId`.
 - Commit: `feat(sales): complete order with idempotency [O2.1]`.
 - Tes: domain logic → unit; handler/port/DB → integration (Testcontainers); alur pengguna inti → Playwright.
+- NestJS DI: **selalu `@Inject(Token)` eksplisit** untuk setiap parameter constructor (termasuk class seperti `Reflector`). `tsx` (dev) dan `tsup` (prod) pakai esbuild yang TIDAK meng-emit decorator metadata, jadi parameter tanpa `@Inject` jadi `undefined` di runtime — padahal di Vitest lolos.
 
 ## Cara Bekerja
 - Mulai tugas besar dengan rencana (plan mode) yang menyebut file yang akan diubah dan tes yang akan ditulis; tunggu persetujuan.
