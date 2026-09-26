@@ -11,8 +11,8 @@ export const brand = {
   tagline:
     "Bukan sekadar mencatat. WADAR mengawasi, memperingatkan, dan menjawab — supaya kamu tenang bisnismu hidup dan bergerak.",
   colors: {
-    primary: "#0F766E",
-    primaryForeground: "#F0FDFA",
+    primary: "#2563EB",
+    primaryForeground: "#FFFFFF",
     accent: "#F59E0B",
     background: "#FFFFFF",
     foreground: "#0F172A",
