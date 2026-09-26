@@ -43,6 +43,8 @@ export enum Permission {
   CatalogManage = "catalog:manage",
   InventoryManage = "inventory:manage",
   OrdersManage = "orders:manage",
+  /** Void/refund a completed order — audited (ARCHITECTURE §9); not for cashiers. */
+  OrdersVoid = "orders:void",
   PurchasingManage = "purchasing:manage",
   CashierOperate = "cashier:operate",
   AssistantUse = "assistant:use",
@@ -72,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> = {
     Permission.CatalogManage,
     Permission.InventoryManage,
     Permission.OrdersManage,
+    Permission.OrdersVoid,
     Permission.PurchasingManage,
     Permission.CashierOperate,
     Permission.AssistantUse,

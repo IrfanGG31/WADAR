@@ -5,3 +5,4 @@ export * from "./identity/schemas.js";
 export * from "./catalog/schemas.js";
 export * from "./inventory/schemas.js";
 export * from "./events/payloads.js";
+export * from "./sales/schemas.js";

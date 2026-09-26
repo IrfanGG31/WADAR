@@ -1,47 +1,48 @@
 {
-  "name": "@wadar/worker",
+  "name": "@wadar/sales",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./src/public.ts",
+  "types": "./src/public.ts",
+  "exports": {
+    ".": "./src/public.ts"
+  },
   "scripts": {
-    "dev": "tsx watch --tsconfig ../../tsconfig.json --env-file ../../.env src/main.ts",
-    "build": "tsup",
-    "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no app-level tests yet \u2014 covered by @wadar/platform\" && exit 0",
-    "test:unit": "echo \"no app-level tests yet\" && exit 0",
-    "test:integration": "echo \"no app-level tests yet\" && exit 0"
+    "test": "vitest run",
+    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run src/**/*.integration.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
-    "@nestjs/platform-fastify": "^11.0.0",
-    "@sentry/node": "10.75.0",
     "@wadar/catalog": "workspace:*",
     "@wadar/contracts": "workspace:*",
+    "@wadar/core": "workspace:*",
     "@wadar/identity": "workspace:*",
     "@wadar/inventory": "workspace:*",
     "@wadar/platform": "workspace:*",
-    "@wadar/sales": "workspace:*",
-    "bullmq": "6.3.8",
     "drizzle-orm": "^0.45.0",
-    "ioredis": "6.0.0",
-    "pg": "^8.13.0",
-    "pino": "10.3.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0",
     "uuidv7": "^1.0.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
     "@types/node": "^22.0.0",
-    "@swc/core": "1.16.2",
+    "@types/pg": "^8.11.0",
     "@wadar/config": "workspace:*",
+    "drizzle-kit": "^0.31.0",
     "eslint": "10.11.0",
-    "tsup": "8.5.1",
-    "tsx": "^4.19.0",
+    "fastify": "^5.12.4",
+    "@wadar/test-infra": "workspace:*",
+    "pg": "^8.13.0",
     "typescript": "^6.0.0",
-    "typescript-eslint": "8.70.0"
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
   }
 }

@@ -34,3 +34,20 @@ export async function listTenantOutletIds(tx: Tx, tenantId: string): Promise<str
 export async function listAllTenants(db: Db): Promise<Array<{ id: string; timezone: TenantTimezone }>> {
   return db.select({ id: tenants.id, timezone: tenants.timezone }).from(tenants);
 }
+
+export async function getTenantProfile(tx: Tx, tenantId: string): Promise<{ name: string; timezone: TenantTimezone } | undefined> {
+  const [row] = await tx.select({ name: tenants.name, timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+  return row;
+}
+
+export async function getOutletInfo(
+  tx: Tx,
+  tenantId: string,
+  outletId: string,
+): Promise<{ name: string; address: string | null } | undefined> {
+  const [row] = await tx
+    .select({ name: outlets.name, address: outlets.address })
+    .from(outlets)
+    .where(and(eq(outlets.tenantId, tenantId), eq(outlets.id, outletId)));
+  return row;
+}

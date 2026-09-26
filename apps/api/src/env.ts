@@ -21,6 +21,10 @@ export const ApiEnvSchema = BaseEnvSchema.extend({
   // photo upload disabled; the rest of the catalog works without it.
   SUPABASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional().or(z.literal("").transform(() => undefined)),
+  // HMAC secret for public receipt links (/struk/...). Optional: when unset
+  // it's derived from DATABASE_URL (a secret in every environment) — see
+  // app.module.ts — so an existing deployment keeps booting.
+  RECEIPT_SIGNING_SECRET: z.string().min(32).optional().or(z.literal("").transform(() => undefined)),
   SUPABASE_JWT_MODE: z.enum(["jwks", "hs256"]).default("jwks"),
   SUPABASE_JWKS_URL: z.string().optional(),
   SUPABASE_JWT_SECRET: z.string().optional(),

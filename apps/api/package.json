@@ -27,6 +27,7 @@
     "@wadar/identity": "workspace:*",
     "@wadar/inventory": "workspace:*",
     "@wadar/platform": "workspace:*",
+    "@wadar/sales": "workspace:*",
     "bullmq": "6.3.8",
     "drizzle-orm": "^0.45.0",
     "ioredis": "6.0.0",

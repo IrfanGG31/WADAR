@@ -29,6 +29,7 @@ export const Permission = z.enum([
   "catalog:manage",
   "inventory:manage",
   "orders:manage",
+  "orders:void",
   "purchasing:manage",
   "cashier:operate",
   "assistant:use",

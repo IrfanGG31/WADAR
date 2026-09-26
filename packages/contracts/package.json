@@ -11,7 +11,8 @@
     "./common": "./src/common/schemas.ts",
     "./catalog": "./src/catalog/schemas.ts",
     "./inventory": "./src/inventory/schemas.ts",
-    "./events": "./src/events/payloads.ts"
+    "./events": "./src/events/payloads.ts",
+    "./sales": "./src/sales/schemas.ts"
   },
   "scripts": {
     "lint": "eslint .",
