@@ -67,7 +67,7 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
         className="hidden w-64 shrink-0 flex-col border-r border-border bg-background p-4 md:flex overflow-y-auto"
       >
         <div className="mb-6 mt-2 flex items-center px-2">
-          <Image src="/wadar-logo.jpg" alt="WADAR Logo" width={140} height={140} className="w-28 h-auto mix-blend-multiply" />
+          <Image src="/wadar-logo.png" alt="WADAR Logo" width={140} height={140} className="w-28 h-auto " />
         </div>
         <div className="flex-1 flex flex-col gap-1.5">
           {visibleItems.map((item) => {

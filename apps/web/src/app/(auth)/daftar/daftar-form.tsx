@@ -129,7 +129,7 @@ export function DaftarForm() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col gap-1.5 md:mb-10">
             <div className="mb-2 flex items-center md:hidden">
-              <Image src="/wadar-logo.jpg" alt="WADAR Logo" width={120} height={120} className="w-24 h-auto mix-blend-multiply" />
+              <Image src="/wadar-logo.png" alt="WADAR Logo" width={120} height={120} className="w-24 h-auto " />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Buat Akun {brand.name}</h1>
             <p className="text-sm text-muted-foreground">Mulai uji coba gratis 14 harimu sekarang.</p>
