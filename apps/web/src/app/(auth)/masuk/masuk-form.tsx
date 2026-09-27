@@ -140,7 +140,7 @@ export function MasukForm() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col gap-1.5 md:mb-10">
             <div className="mb-2 flex items-center md:hidden">
-              <Image src={brand.logo.src} alt={brand.logo.alt} width={120} height={120} className="w-24 h-auto mix-blend-multiply" />
+              <Image src={brand.logo.src} alt={brand.logo.alt} width={120} height={120} className="w-24 h-auto" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Masuk ke {brand.name}</h1>
             <p className="text-sm text-muted-foreground">{brand.tagline}</p>

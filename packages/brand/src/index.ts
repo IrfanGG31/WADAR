@@ -19,7 +19,7 @@ export const brand = {
   },
   /** Served from each web app's /public folder (apps/web/public). */
   logo: {
-    src: "/wadar-logo.jpg",
+    src: "/wadar-logo.png",
     alt: "Logo WADAR",
   },
   fonts: {
