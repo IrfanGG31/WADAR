@@ -6,13 +6,21 @@ export type ProductRow = typeof products.$inferSelect;
 export type VariantRow = typeof variants.$inferSelect;
 
 export async function upsertCategory(tx: Tx, tenantId: string, id: string, name: string): Promise<string> {
+  // Insert first: with select-then-insert, two products saved at the same
+  // moment with the same NEW category both miss the select and the second
+  // insert hits the (tenant_id, lower(name)) unique index → 500. ON CONFLICT
+  // makes the loser wait for the winner's commit and then reuse its row.
+  const [inserted] = await tx
+    .insert(categories)
+    .values({ id, tenantId, name })
+    .onConflictDoNothing()
+    .returning({ id: categories.id });
+  if (inserted) return inserted.id;
   const [existing] = await tx
     .select({ id: categories.id })
     .from(categories)
     .where(and(eq(categories.tenantId, tenantId), sql`lower(${categories.name}) = lower(${name})`));
-  if (existing) return existing.id;
-  await tx.insert(categories).values({ id, tenantId, name });
-  return id;
+  return existing!.id;
 }
 
 export async function insertProduct(tx: Tx, row: typeof products.$inferInsert): Promise<void> {

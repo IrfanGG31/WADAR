@@ -61,6 +61,19 @@ describe("M2 — catalog & inventory (real Postgres + RLS)", () => {
     expect(res.body).toMatchObject({ code: "DUPLICATE_SKU" });
   });
 
+  it("products saved at the same moment with the same new category share one category (no 500)", async () => {
+    const results = await Promise.all(
+      ["Kopi Susu", "Es Teh", "Air Mineral", "Jus Jeruk"].map((name) =>
+        h.call(h.ownerA, "POST", "/v1/products", { name, category: "Minuman Dingin", outletId: h.ownerA.outletId, variants: [{ price: 5_000 }] }),
+      ),
+    );
+    results.forEach((res) => expect(res.status, res.raw).toBe(201));
+    const rows = await h.migrateDb.execute(
+      sql`select count(*)::int as n from catalog.categories where tenant_id = ${h.ownerA.tenantId} and lower(name) = 'minuman dingin'`,
+    );
+    expect(rows.rows[0]).toMatchObject({ n: 1 });
+  });
+
   it("receiving stock with a purchase cost updates the moving-average HPP; opname records the difference", async () => {
     const variant = (await stock()).find((s) => s.sku === "SVC-20")!;
     const receive = await h.call(h.ownerA, "POST", "/v1/stock/adjustments", {
