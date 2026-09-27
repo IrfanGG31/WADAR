@@ -107,7 +107,18 @@ export const memberships = identitySchema.table(
   (table) => [
     index("memberships_tenant_id_idx").on(table.tenantId),
     uniqueIndex("memberships_tenant_id_user_id_idx").on(table.tenantId, table.userId),
+    index("memberships_user_id_idx").on(table.userId),
     tenantRlsPolicy(table.tenantId),
+    // Second narrow exception, same shape as `invitation_token_lookup` below:
+    // "which shops do I belong to?" is asked before any tenant is chosen
+    // (signing in on a new device). SELECT-only, and only the rows of the
+    // user id pinned in `app.membership_lookup_user` for that transaction —
+    // set exclusively from the verified JWT `sub` (see
+    // infra/memberships.repository.ts#listTenantsForUser).
+    pgPolicy("own_membership_lookup", {
+      for: "select",
+      using: sql`${table.userId} = nullif(current_setting('app.membership_lookup_user', true), '')::uuid`,
+    }),
   ],
 ).enableRLS();
 

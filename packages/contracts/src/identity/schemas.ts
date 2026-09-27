@@ -46,6 +46,12 @@ export const CreateTenantBody = z.object({
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantBody>;
 
+/** `GET /v1/tenants/mine` — shops the signed-in user belongs to. */
+export interface MyTenantView {
+  tenantId: string;
+  name: string;
+}
+
 export const CreateOutletBody = z.object({
   name: z.string().min(2).max(120),
   address: z.string().max(500).optional(),

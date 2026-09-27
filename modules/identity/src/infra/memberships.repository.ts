@@ -1,6 +1,6 @@
-import type { Tx } from "@wadar/platform";
-import { and, eq } from "drizzle-orm";
-import { memberships, roles } from "../db/schema.js";
+import type { Db, Tx } from "@wadar/platform";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { memberships, roles, tenants } from "../db/schema.js";
 
 export interface NewMembershipRow {
   id: string;
@@ -75,4 +75,25 @@ export async function getMembershipById(
     .from(memberships)
     .where(and(eq(memberships.tenantId, tenantId), eq(memberships.id, membershipId)));
   return row;
+}
+
+/**
+ * Every shop `userId` belongs to, across tenants — the one cross-tenant read
+ * a signed-in user needs before choosing a shop. Goes through the
+ * `own_membership_lookup` RLS policy (SELECT, own rows only); tenant_isolation
+ * is pinned to the nil UUID so it matches nothing instead of throwing (same
+ * technique as findInvitationByToken). `userId` must come from the verified
+ * JWT, never from request input.
+ */
+export async function listTenantsForUser(db: Db, userId: string): Promise<Array<{ tenantId: string; name: string }>> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', '00000000-0000-0000-0000-000000000000', true)`);
+    await tx.execute(sql`select set_config('app.membership_lookup_user', ${userId}, true)`);
+    return tx
+      .select({ tenantId: tenants.id, name: tenants.name })
+      .from(memberships)
+      .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
+      .where(eq(memberships.userId, userId))
+      .orderBy(asc(memberships.createdAt));
+  });
 }

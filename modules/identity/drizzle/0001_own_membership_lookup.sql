@@ -1,0 +1,2 @@
+CREATE INDEX "memberships_user_id_idx" ON "identity"."memberships" USING btree ("user_id");--> statement-breakpoint
+CREATE POLICY "own_membership_lookup" ON "identity"."memberships" AS PERMISSIVE FOR SELECT TO public USING ("identity"."memberships"."user_id" = nullif(current_setting('app.membership_lookup_user', true), '')::uuid);

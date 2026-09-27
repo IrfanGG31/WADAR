@@ -1,15 +1,15 @@
 "use client";
 
-import { CreateTenantBody } from "@wadar/contracts/identity";
+import { CreateTenantBody, type MyTenantView } from "@wadar/contracts/identity";
 import { Button, Card, CardContent, Input, Label } from "@wadar/ui-web";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "../../../lib/api-client";
 import { setActiveTenantId } from "../../../lib/tenant-cookie";
 import { brand } from "@wadar/brand";
 import { Check, ChevronRight, Upload, Building2, Store, MessageSquare, Database, Sparkles } from "lucide-react";
 
-export default function OnboardingWizard() {
+function CreateShopWizard() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -279,6 +279,85 @@ export default function OnboardingWizard() {
           </div>
         )}
       </div>
+    </main>
+  );
+}
+
+/**
+ * After any sign-in (OTP, Google, admin password) the user lands here. An
+ * owner or staff member who already belongs to a shop goes straight back
+ * into it — on a new device there is no active-shop cookie yet, and without
+ * this they could only create a second, empty shop.
+ */
+export default function OnboardingPage() {
+  const router = useRouter();
+  const [shops, setShops] = useState<MyTenantView[] | undefined>();
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<MyTenantView[]>("/v1/tenants/mine", { skipTenant: true })
+      .then((mine) => {
+        if (cancelled) return;
+        if (mine.length === 1) {
+          openShop(mine[0]!.tenantId);
+          return;
+        }
+        setShops(mine);
+      })
+      .catch(() => {
+        if (!cancelled) setShops([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function openShop(tenantId: string) {
+    setActiveTenantId(tenantId);
+    router.replace("/beranda");
+    router.refresh();
+  }
+
+  if (creating || shops?.length === 0) return <CreateShopWizard />;
+
+  if (shops === undefined) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center p-6 text-sm text-muted-foreground">
+        Membuka tokomu…
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="flex flex-col gap-4 p-6">
+          <div>
+            <h1 className="text-xl font-semibold">Pilih toko</h1>
+            <p className="text-sm text-muted-foreground">Kamu terdaftar di beberapa toko. Mau buka yang mana?</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {shops.map((shop) => (
+              <button
+                key={shop.tenantId}
+                type="button"
+                onClick={() => openShop(shop.tenantId)}
+                className="flex items-center justify-between rounded-lg border border-border p-4 text-left hover:bg-muted"
+              >
+                <span className="flex items-center gap-3 font-medium">
+                  <Store className="h-5 w-5 text-muted-foreground" />
+                  {shop.name}
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" onClick={() => setCreating(true)}>
+            Buat toko baru
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 }

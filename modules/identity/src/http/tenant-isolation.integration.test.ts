@@ -186,4 +186,44 @@ describe("identity tenant isolation (Postgres+Redis via @wadar/test-infra)", () 
       }
     });
   });
+
+  describe("own shops lookup — GET /v1/tenants/mine (own_membership_lookup policy)", () => {
+    it("lists every shop of the caller and none of anyone else's", async () => {
+      const runtimeDb = app.get<Db>(PLATFORM_DB);
+      await createTenant(runtimeDb, {
+        ownerUserId: ownerAId,
+        tenantName: "Toko A Cabang",
+        timezone: "Asia/Jakarta",
+        outletName: "Outlet A2",
+        correlationId: "test-setup-a2",
+      });
+
+      const mineA = await inject({ method: "GET", url: "/v1/tenants/mine", headers: { authorization: `Bearer ${ownerAToken}` } });
+      expect(mineA.statusCode).toBe(200);
+      expect((JSON.parse(mineA.body) as Array<{ name: string }>).map((t) => t.name)).toEqual(["Toko A", "Toko A Cabang"]);
+
+      const mineB = await inject({ method: "GET", url: "/v1/tenants/mine", headers: { authorization: `Bearer ${ownerBToken}` } });
+      expect(JSON.parse(mineB.body)).toEqual([{ tenantId: tenantBId, name: "Toko B" }]);
+
+      const anonymous = await inject({ method: "GET", url: "/v1/tenants/mine" });
+      expect(anonymous.statusCode).toBe(401);
+    });
+
+    it("at the DB level the policy only exposes the pinned user's rows, and never allows writes", async () => {
+      const visible = await appDb.transaction(async (tx) => {
+        await tx.execute(sql`select set_config('app.tenant_id', '00000000-0000-0000-0000-000000000000', true)`);
+        await tx.execute(sql`select set_config('app.membership_lookup_user', ${ownerAId}, true)`);
+        return tx.execute(sql`select user_id from identity.memberships`);
+      });
+      expect(visible.rows.length).toBeGreaterThan(0);
+      expect(visible.rows.every((row) => (row as { user_id: string }).user_id === ownerAId)).toBe(true);
+
+      const updated = await appDb.transaction(async (tx) => {
+        await tx.execute(sql`select set_config('app.tenant_id', '00000000-0000-0000-0000-000000000000', true)`);
+        await tx.execute(sql`select set_config('app.membership_lookup_user', ${ownerAId}, true)`);
+        return tx.execute(sql`update identity.memberships set created_at = now() where user_id = ${ownerAId}`);
+      });
+      expect(updated.rowCount).toBe(0);
+    });
+  });
 });
