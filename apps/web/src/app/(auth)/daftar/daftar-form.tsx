@@ -4,6 +4,7 @@ import { brand } from "@wadar/brand";
 import { Button, Input, Label } from "@wadar/ui-web";
 import { Radar } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
@@ -127,9 +128,8 @@ export function DaftarForm() {
       <div className="flex items-center justify-center bg-background px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col gap-1.5 md:mb-10">
-            <div className="mb-2 flex items-center gap-2 text-lg font-semibold text-primary md:hidden">
-              <Radar className="h-6 w-6" />
-              {brand.name}
+            <div className="mb-2 flex items-center md:hidden">
+              <Image src="/wadar-logo.jpg" alt="WADAR Logo" width={120} height={120} className="w-24 h-auto mix-blend-multiply" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Buat Akun {brand.name}</h1>
             <p className="text-sm text-muted-foreground">Mulai uji coba gratis 14 harimu sekarang.</p>

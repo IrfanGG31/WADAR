@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@wadar/ui-web";
 import { brand } from "@wadar/brand";
 import { ArrowRight, Bot, BarChart3, Package, ShieldCheck } from "lucide-react";
@@ -8,8 +9,8 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header className="px-6 lg:px-14 h-20 flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-2 text-2xl font-bold text-primary tracking-tight">
-          {brand.name}
+        <div className="flex items-center">
+          <Image src="/wadar-logo.jpg" alt="WADAR Logo" width={140} height={140} className="w-24 h-auto mix-blend-multiply" />
         </div>
         <nav className="hidden md:flex gap-8 text-sm font-medium text-muted-foreground">
           <Link href="#fitur" className="hover:text-foreground transition-colors">Fitur</Link>
@@ -101,8 +102,8 @@ export default function LandingPage() {
       </main>
       
       <footer className="px-6 lg:px-14 py-12 border-t border-border bg-background text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="text-xl font-bold text-primary tracking-tight">
-          {brand.name}
+        <div className="flex items-center">
+          <Image src="/wadar-logo.jpg" alt="WADAR Logo" width={140} height={140} className="w-24 h-auto mix-blend-multiply" />
         </div>
         <p className="text-sm text-muted-foreground">© 2026 {brand.name}. All rights reserved.</p>
       </footer>
