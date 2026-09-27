@@ -4,6 +4,7 @@ import { brand } from "@wadar/brand";
 import { Button, Input, Label } from "@wadar/ui-web";
 import { Radar } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DemoButton } from "../../../components/demo-button";
@@ -242,6 +243,13 @@ export function MasukForm() {
             {error && (
               <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
             )}
+
+            <Link
+              href="/masuk/admin"
+              className="text-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Admin / pemilik? Masuk dengan email &amp; kata sandi
+            </Link>
 
             {showGoogle && (
               <>

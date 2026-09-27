@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@wadar/ui-web";
-import { Check, ChevronDown, LogOut, Search, Store } from "lucide-react";
+import { Check, ChevronDown, KeyRound, LogOut, Search, Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "../../../lib/supabase/client";
@@ -28,11 +28,14 @@ export function AppHeader({
   outlets,
   activeOutletId,
   userLabel,
+  canChangePassword = false,
 }: {
   tenantName: string;
   outlets: Outlet[];
   activeOutletId: string | undefined;
   userLabel: string;
+  /** False for demo (anonymous) users — they have no email to attach a password to. */
+  canChangePassword?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -112,6 +115,12 @@ export function AppHeader({
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
+            {canChangePassword && (
+              <DropdownMenuItem onSelect={() => router.push("/masuk/sandi-baru")}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Ganti kata sandi
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onSelect={handleLogout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Keluar

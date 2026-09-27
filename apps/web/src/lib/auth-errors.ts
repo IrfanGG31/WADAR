@@ -16,6 +16,18 @@ export function describeAuthError(error: AuthErrorLike): string {
   if (error.status === 429 || code.startsWith("over_") || message.includes("rate limit")) {
     return "Terlalu sering minta kode. Tunggu beberapa menit, lalu coba lagi.";
   }
+  if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
+    return "Email atau kata sandi salah.";
+  }
+  if (code === "email_not_confirmed") {
+    return "Email ini belum dikonfirmasi. Masuk sekali lewat kode email dulu, atau minta admin mengonfirmasinya.";
+  }
+  if (code === "weak_password") {
+    return "Kata sandi terlalu lemah. Pakai minimal 8 karakter, campur huruf dan angka.";
+  }
+  if (code === "same_password") {
+    return "Kata sandi baru tidak boleh sama dengan yang lama.";
+  }
   if (code === "email_address_invalid" || message.includes("invalid format")) {
     return "Alamat email belum benar. Periksa lagi penulisannya.";
   }

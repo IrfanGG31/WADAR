@@ -44,6 +44,7 @@ export default async function AppShellLayout({
             outlets={outlets}
             activeOutletId={activeOutlet?.id}
             userLabel={userLabel}
+            canChangePassword={!isDemo && Boolean(user?.email)}
           />
           <main className="flex-1 pb-20 md:pb-6">{children}</main>
         </div>
