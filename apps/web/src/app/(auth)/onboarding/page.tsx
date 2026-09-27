@@ -7,7 +7,7 @@ import { useState } from "react";
 import { apiFetch, ApiError } from "../../../lib/api-client";
 import { setActiveTenantId } from "../../../lib/tenant-cookie";
 import { brand } from "@wadar/brand";
-import { Check, ChevronRight, Upload, Building2, Store, MessageSquare, Database } from "lucide-react";
+import { Check, ChevronRight, Upload, Building2, Store, MessageSquare, Database, Sparkles } from "lucide-react";
 
 export default function OnboardingWizard() {
   const router = useRouter();

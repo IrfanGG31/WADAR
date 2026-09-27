@@ -21,8 +21,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/stok", label: "Stok", icon: Package },
   { href: "/keuangan", label: "Keuangan", icon: Wallet },
   { href: "/pelanggan", label: "Pelanggan", icon: Users },
-  { href: "/asisten", label: "Chat AI", icon: MessageSquare },
-  { href: "/konsultasi", label: "Konsultasi Bisnis", icon: Sparkles },
+  { href: "/asisten", label: "WADAR AI", icon: MessageSquare },
+  { href: "/integrasi", label: "Integrasi", icon: Sparkles },
   { href: "/pengaturan", label: "Pengaturan", icon: Settings },
 ];
 

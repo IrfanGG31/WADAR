@@ -48,10 +48,60 @@ export function AppHeader({ tenantName, outlets }: { tenantName: string; outlets
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive border-2 border-background"></span>
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors outline-none">
+            <Bell className="h-5 w-5" />
+            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive border-2 border-background"></span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 sm:w-96 p-0">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <span className="font-semibold text-sm">Notifikasi</span>
+              <span className="text-xs text-primary cursor-pointer hover:underline">Tandai semua dibaca</span>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto flex flex-col divide-y divide-border">
+              
+              {/* Urgent Notification */}
+              <div className="px-4 py-3 hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer">
+                <div className="h-8 w-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-lg">🧴</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold text-destructive">Stok kritis: Serum Niacinamide</span>
+                  <span className="text-xs text-muted-foreground">Tersisa 8 unit (habis dalam 2 hari).</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-1">2 menit yang lalu</span>
+                </div>
+              </div>
+
+              {/* Insight Notification */}
+              <div className="px-4 py-3 hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer bg-primary/5">
+                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-lg">📈</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold text-blue-700">Insight Penjualan</span>
+                  <span className="text-xs text-muted-foreground">Penjualan naik 18% dari promo 9.9.</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-1">1 jam yang lalu</span>
+                </div>
+              </div>
+
+              {/* Recommendation Notification */}
+              <div className="px-4 py-3 hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer">
+                <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-lg">✨</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold text-emerald-700">Rekomendasi Reorder</span>
+                  <span className="text-xs text-muted-foreground">Waktunya pesan ulang 50 unit Kardus Packing M.</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-1">3 jam yang lalu</span>
+                </div>
+              </div>
+
+            </div>
+            <div className="px-4 py-2 border-t border-border text-center">
+              <span className="text-xs text-primary font-medium cursor-pointer hover:underline">Lihat Semua Notifikasi</span>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-muted p-1 pr-2 rounded-full transition-colors text-left outline-none">
