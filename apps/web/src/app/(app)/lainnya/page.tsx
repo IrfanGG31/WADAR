@@ -1,5 +1,5 @@
 import type { Permission } from "@wadar/contracts/identity";
-import { Monitor, Package, Settings, Users, Wallet } from "lucide-react";
+import { Contact, Monitor, Package, Plug, Settings, ShoppingBag, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import { apiFetchServer } from "../../../lib/api-client-server";
@@ -61,6 +61,13 @@ const MENU_ITEMS: MenuItem[] = [
   },
 ];
 
+/** UI mockups built ahead of their milestone (each page carries a "Pratinjau desain" notice). */
+const PREVIEW_ITEMS: Omit<MenuItem, "requiredPermission">[] = [
+  { href: "/penjualan", label: "Pesanan lintas kanal", description: "Shopee, TikTok, WhatsApp dalam satu daftar", icon: ShoppingBag },
+  { href: "/pelanggan", label: "Pelanggan & chat", description: "Kotak masuk WhatsApp dengan balasan asisten", icon: Contact },
+  { href: "/integrasi", label: "Integrasi", description: "Hubungkan marketplace, WhatsApp, dan kasir lain", icon: Plug },
+];
+
 /** DoD: "kasir hanya melihat menu sesuai peran" — items with no matching permission just don't render. */
 export default async function LainnyaPage() {
   const membership = await apiFetchServer<MyMembership>("/v1/memberships/me");
@@ -70,6 +77,8 @@ export default async function LainnyaPage() {
     seen.add(item.href);
     return true;
   });
+
+  const showPreviews = membership.permissions.includes("settings:manage");
 
   return (
     <div className="p-4">
@@ -95,6 +104,29 @@ export default async function LainnyaPage() {
             );
           })}
         </div>
+      )}
+      {showPreviews && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-muted-foreground">Segera hadir · pratinjau desain</h2>
+          <div className="mt-2 flex flex-col gap-2">
+            {PREVIEW_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 rounded-lg border border-dashed border-border p-4 hover:bg-muted"
+                >
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

@@ -8,7 +8,11 @@ import { getWebEnv } from "./lib/env";
 // once that route handler calls exchangeCodeForSession) — gating it here
 // would bounce every Google sign-in straight back to /masuk before the
 // route handler ever runs.
-const PUBLIC_PATHS = ["/masuk", "/undangan", "/auth/callback", "/struk"];
+const PUBLIC_PATHS = ["/masuk", "/daftar", "/undangan", "/auth/callback", "/struk"];
+/** Marketing landing page: public, but signed-in users go straight to the app. */
+const LANDING_PATH = "/";
+/** Sign-in/sign-up pages a signed-in user has no reason to see. */
+const SIGNED_OUT_ONLY_PATHS = [LANDING_PATH, "/masuk", "/daftar"];
 const APP_SHELL_PATHS = [
   "/beranda",
   "/kasir",
@@ -19,6 +23,9 @@ const APP_SHELL_PATHS = [
   "/stok",
   "/keuangan",
   "/layar-kasir",
+  "/penjualan",
+  "/pelanggan",
+  "/integrasi",
 ];
 
 /**
@@ -52,7 +59,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = data !== null;
   const pathname = request.nextUrl.pathname;
-  const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublicPath = pathname === LANDING_PATH || PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!isAuthenticated && !isPublicPath) {
     const url = request.nextUrl.clone();
@@ -60,7 +67,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(url);
   }
 
-  if (isAuthenticated && pathname === "/masuk") {
+  if (isAuthenticated && SIGNED_OUT_ONLY_PATHS.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/beranda";
     return NextResponse.redirect(url);
