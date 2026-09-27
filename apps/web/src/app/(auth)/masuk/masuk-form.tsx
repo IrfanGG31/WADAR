@@ -5,7 +5,10 @@ import { Button, Input, Label } from "@wadar/ui-web";
 import { Radar } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DemoButton } from "../../../components/demo-button";
+import { describeAuthError } from "../../../lib/auth-errors";
+import { fetchAuthAvailability, type AuthAvailability } from "../../../lib/auth-settings";
 import { createClient } from "../../../lib/supabase/client";
 
 type Channel = "email" | "phone";
@@ -38,6 +41,15 @@ export function MasukForm() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>(linkError);
+  // undefined = not known yet (or unreadable) → show every method, as before.
+  const [available, setAvailable] = useState<AuthAvailability | undefined>();
+
+  useEffect(() => {
+    void fetchAuthAvailability().then(setAvailable);
+  }, []);
+
+  const showPhone = available?.phone !== false;
+  const showGoogle = available?.google !== false;
 
   async function handleRequestOtp() {
     setLoading(true);
@@ -58,7 +70,7 @@ export function MasukForm() {
         : await supabase.auth.signInWithOtp({ phone: identifier });
     setLoading(false);
     if (otpError) {
-      setError(otpError.message);
+      setError(describeAuthError(otpError));
       return;
     }
     setStep("verify");
@@ -80,7 +92,7 @@ export function MasukForm() {
         : await supabase.auth.verifyOtp({ phone: identifier, token: code, type: "sms" });
     setLoading(false);
     if (verifyError) {
-      setError(verifyError.message);
+      setError(describeAuthError(verifyError));
       return;
     }
     router.push(next);
@@ -96,7 +108,7 @@ export function MasukForm() {
     });
     if (oauthError) {
       setLoading(false);
-      setError(oauthError.message);
+      setError(describeAuthError(oauthError));
     }
     // On success, Supabase redirects the browser away — nothing else to do here.
   }
@@ -135,30 +147,48 @@ export function MasukForm() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setChannel("email");
-                  setStep("request");
-                  setError(undefined);
-                }}
-                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${channel === "email" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Email
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setChannel("phone");
-                  setStep("request");
-                  setError(undefined);
-                }}
-                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${channel === "phone" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                No. HP
-              </button>
+            <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div>
+                <p className="text-sm font-semibold">Mau lihat dulu?</p>
+                <p className="text-sm text-muted-foreground">
+                  Buka toko contoh lengkap — kasir, stok, dan laporan untung — tanpa email.
+                </p>
+              </div>
+              <DemoButton variant="default" />
             </div>
+
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              atau masuk ke tokomu
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            {showPhone && (
+              <div className="flex gap-1 rounded-lg bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChannel("email");
+                    setStep("request");
+                    setError(undefined);
+                  }}
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${channel === "email" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChannel("phone");
+                    setStep("request");
+                    setError(undefined);
+                  }}
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${channel === "phone" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  No. HP
+                </button>
+              </div>
+            )}
 
             {step === "request" ? (
               <div className="flex flex-col gap-2">
@@ -213,15 +243,19 @@ export function MasukForm() {
               <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
             )}
 
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              atau
-              <span className="h-px flex-1 bg-border" />
-            </div>
+            {showGoogle && (
+              <>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  atau
+                  <span className="h-px flex-1 bg-border" />
+                </div>
 
-            <Button variant="outline" size="lg" disabled={loading} onClick={handleGoogle}>
-              Lanjutkan dengan Google
-            </Button>
+                <Button variant="outline" size="lg" disabled={loading} onClick={handleGoogle}>
+                  Lanjutkan dengan Google
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

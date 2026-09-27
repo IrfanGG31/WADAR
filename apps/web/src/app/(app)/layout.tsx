@@ -5,6 +5,7 @@ import { RealtimeProvider } from "../../lib/realtime";
 import { createClient } from "../../lib/supabase/server";
 import { AppHeader } from "./_components/app-header";
 import { AppShellNav } from "./_components/app-shell-nav";
+import { DemoBanner } from "./_components/demo-banner";
 import { FloatingAddButton } from "./_components/floating-add-button";
 
 export default async function AppShellLayout({
@@ -28,13 +29,16 @@ export default async function AppShellLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const userLabel = user?.email ?? user?.phone ?? "Akun";
+  // Anonymous users come from "Coba demo" (lib/demo.ts).
+  const isDemo = user?.is_anonymous === true;
+  const userLabel = isDemo ? "Pengguna demo" : (user?.email ?? user?.phone ?? "Akun");
 
   return (
     <RealtimeProvider>
       <div className="flex min-h-dvh flex-col md:flex-row">
         <AppShellNav permissions={membership.permissions} />
         <div className="flex min-w-0 flex-1 flex-col">
+          {isDemo && <DemoBanner />}
           <AppHeader
             tenantName={tenant.name}
             outlets={outlets}

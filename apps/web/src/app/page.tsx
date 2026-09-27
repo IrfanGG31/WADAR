@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@wadar/ui-web";
 import { brand } from "@wadar/brand";
+import { DemoButton } from "../components/demo-button";
 import { ArrowRight, Bot, BarChart3, Package } from "lucide-react";
 
 export default function LandingPage() {
@@ -49,11 +50,7 @@ export default function LandingPage() {
                 Coba Gratis 14 Hari <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/masuk">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base rounded-full">
-                Lihat Demo
-              </Button>
-            </Link>
+            <DemoButton label="Lihat Demo" className="w-full sm:w-auto h-14 px-8 text-base rounded-full" />
           </div>
         </section>
 
