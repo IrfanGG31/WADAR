@@ -55,15 +55,15 @@ export function MemberRoleSelect({
         value={value}
         disabled={loading}
         onChange={(e) => handleChange(e.target.value as SystemRoleKeyType)}
-        className="h-9 rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
+        className="h-8 rounded-md border border-border bg-background px-3 text-xs focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 outline-none w-[120px] cursor-pointer"
       >
         {SystemRoleKey.options.map((key) => (
-          <option key={key} value={key}>
+          <option key={key} value={key} disabled={key === "owner"}>
             {ROLE_LABEL[key]}
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
   );
 }
