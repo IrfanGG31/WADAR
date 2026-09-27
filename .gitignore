@@ -39,3 +39,6 @@ coverage/
 test-results/
 playwright-report/
 .lighthouseci/
+
+# Local redis-server snapshots (when run outside Docker from the repo root)
+dump.rdb

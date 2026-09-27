@@ -7,23 +7,53 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ],
+      "cache": false,
+      "passThroughEnv": [
+        "WADAR_TEST_PG_ADMIN_URL",
+        "WADAR_TEST_REDIS_URL",
+        "DOCKER_HOST",
+        "TESTCONTAINERS_*"
+      ]
     },
     "test:unit": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test:integration": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ],
+      "cache": false,
+      "passThroughEnv": [
+        "WADAR_TEST_PG_ADMIN_URL",
+        "WADAR_TEST_REDIS_URL",
+        "DOCKER_HOST",
+        "TESTCONTAINERS_*"
+      ]
     }
   }
 }

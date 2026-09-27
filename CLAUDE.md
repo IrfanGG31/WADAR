@@ -26,7 +26,7 @@ pnpm dev:logs       # tail log Postgres + Redis
 pnpm dev:down       # matikan Postgres + Redis
 pnpm test           # unit + integration
 pnpm test:unit      # tanpa Docker
-pnpm test:integration  # Testcontainers Postgres+Redis (butuh Docker), ATAU set WADAR_TEST_PG_ADMIN_URL + WADAR_TEST_REDIS_URL ke Postgres 16/Redis yang sudah jalan
+pnpm test:integration  # Testcontainers Postgres+Redis (butuh Docker), ATAU set WADAR_TEST_PG_ADMIN_URL + WADAR_TEST_REDIS_URL ke Postgres 16/Redis yang sudah jalan — pakai DB Redis terpisah (mis. redis://localhost:6379/5) kalau worker dev sedang jalan, kalau tidak worker dev ikut mengambil job tes
 pnpm lint && pnpm typecheck && pnpm depcruise
 pnpm db:generate    # drizzle migration dari schema, semua modul (role migrate: wadar)
 pnpm db:migrate

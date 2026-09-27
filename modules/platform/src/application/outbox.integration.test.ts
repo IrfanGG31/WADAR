@@ -21,13 +21,19 @@ describe("outbox relay + idempotent consumer (Postgres+Redis via @wadar/test-inf
     redisUrl = infra.redisUrl;
   }, 180_000);
 
+  const cleanups: Array<() => Promise<unknown>> = [];
+
   afterAll(async () => {
+    // Close every pool/connection before the test database is dropped, or
+    // the forced drop kills idle clients and surfaces as an unhandled 57P01.
+    await Promise.all(cleanups.map((close) => close().catch(() => {})));
     await infra?.stop();
   });
 
   async function setup() {
-    const { db } = createDb(databaseUrl);
+    const { db, pool } = createDb(databaseUrl);
     const redis = createRedisConnection(redisUrl);
+    cleanups.push(() => pool.end(), () => redis.quit());
     const eventBus = new EventBus();
     const logger = pino({ level: "silent" });
     const relay = new OutboxRelay(db, eventBus, redis, logger, { pollIntervalMs: 100_000 });
