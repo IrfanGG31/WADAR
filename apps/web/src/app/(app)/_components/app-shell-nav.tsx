@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 
@@ -78,12 +79,8 @@ export function AppShellNav({ permissions }: { permissions: Permission[] }) {
         aria-label="Navigasi utama"
         className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-background p-4 md:flex"
       >
-        <div className="mb-6 mt-2 flex items-center gap-2 px-2 text-2xl font-bold tracking-tight text-primary">
-          <span className="relative flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
-            <Sparkles className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-primary p-0.5 text-primary-foreground" />
-            <span className="text-xl font-bold">{brand.name.charAt(0)}</span>
-          </span>
-          {brand.name}
+        <div className="mb-6 mt-2 flex items-center px-2">
+          <Image src={brand.logo.src} alt={brand.logo.alt} width={140} height={140} className="w-28 h-auto mix-blend-multiply" />
         </div>
         <div className="flex flex-1 flex-col gap-1.5">
           {visible(DESKTOP_ITEMS, permissions).map((item) => {

@@ -17,6 +17,11 @@ export const brand = {
     background: "#FFFFFF",
     foreground: "#0F172A",
   },
+  /** Served from each web app's /public folder (apps/web/public). */
+  logo: {
+    src: "/wadar-logo.jpg",
+    alt: "Logo WADAR",
+  },
   fonts: {
     sans: "Inter, system-ui, sans-serif",
     mono: "JetBrains Mono, ui-monospace, monospace",
