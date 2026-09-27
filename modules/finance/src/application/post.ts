@@ -55,6 +55,7 @@ export async function postAndEmit(tx: Tx, entry: PostingEntry, options: PostOpti
       reversalOfOccurredAt: options.reversalOf?.occurredAt.toISOString() ?? null,
       lines: entry.lines.map((line) => ({
         accountId: line.accountId,
+        accountCode: options.ledger.accountById.get(line.accountId)!.code,
         kind: options.ledger.accountById.get(line.accountId)!.kind,
         walletId: walletByAccount.get(line.accountId) ?? null,
         debit: line.debit,

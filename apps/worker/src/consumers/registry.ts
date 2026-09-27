@@ -1,6 +1,7 @@
 import type { INestApplicationContext } from "@nestjs/common";
 import { registerFinanceConsumers } from "@wadar/finance";
-import { registerInventoryConsumers } from "@wadar/inventory";
+import { registerInsightsConsumers, registerInsightsJobs } from "@wadar/insights";
+import { registerForecastConsumer, registerInventoryConsumers, registerInventoryJobs } from "@wadar/inventory";
 import { registerNotificationConsumers } from "@wadar/notification";
 import { createPaymentProvider, paymentsOptionsFromEnv, registerPaymentsJobs } from "@wadar/payments";
 import { PLATFORM_REALTIME, type EventBus, type RealtimeBroker, type ScheduledJobRegistry } from "@wadar/platform";
@@ -13,6 +14,8 @@ import { registerDummyConsumer } from "./dummy.consumer.js";
 export function registerAllConsumers(app: INestApplicationContext, eventBus: EventBus, logger: Logger): void {
   registerDummyConsumer(eventBus, logger);
   registerInventoryConsumers(eventBus);
+  registerForecastConsumer(eventBus);
+  registerInsightsConsumers(eventBus);
   registerSalesConsumers(eventBus);
   registerFinanceConsumers(eventBus);
   registerNotificationConsumers(eventBus, app.get<RealtimeBroker>(PLATFORM_REALTIME));
@@ -24,4 +27,6 @@ export function registerAllScheduledJobs(
   env: WorkerEnv,
 ): void {
   registerPaymentsJobs(scheduler, createPaymentProvider(paymentsOptionsFromEnv(env)));
+  registerInventoryJobs(scheduler);
+  registerInsightsJobs(scheduler);
 }

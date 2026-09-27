@@ -133,6 +133,8 @@ export const FinanceEntryPostedV1 = z.object({
   lines: z.array(
     z.object({
       accountId: z.uuid(),
+      /** Stable account code ("revenue", "exp_rent", "wallet:<id>") — lets insights group expenses by category. */
+      accountCode: z.string(),
       /** Account classification used by insights to build cards without querying the ledger. */
       kind: z.enum(["wallet", "receivable", "inventory", "payable", "equity", "revenue", "contra_revenue", "cogs", "commission", "expense", "other_income"]),
       walletId: z.uuid().nullable(),

@@ -14,7 +14,8 @@
     "./events": "./src/events/payloads.ts",
     "./sales": "./src/sales/schemas.ts",
     "./finance": "./src/finance/schemas.ts",
-    "./payments": "./src/payments/schemas.ts"
+    "./payments": "./src/payments/schemas.ts",
+    "./insights": "./src/insights/schemas.ts"
   },
   "scripts": {
     "lint": "eslint .",

@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Tailwind only auto-scans the consuming app's own folder; classes used solely
+   inside this package's components (e.g. chart fills) must be scanned too. */
+@source ".";
+
 /*
  * Tailwind v4 CSS-first theme (no tailwind.config.ts) — CLAUDE.md aturan #10:
  * brand tokens come from @wadar/brand ONLY. The hex values below MUST match

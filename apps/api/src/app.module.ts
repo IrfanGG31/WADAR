@@ -1,6 +1,7 @@
 import { CatalogModule } from "@wadar/catalog";
 import { FinanceModule } from "@wadar/finance";
 import { IdentityModule } from "@wadar/identity";
+import { InsightsModule } from "@wadar/insights";
 import { InventoryModule } from "@wadar/inventory";
 import { NotificationModule } from "@wadar/notification";
 import { PaymentsModule, paymentsOptionsFromEnv } from "@wadar/payments";
@@ -34,6 +35,7 @@ export class AppModule {
         FinanceModule.forRoot(),
         PaymentsModule.forRoot(paymentsOptionsFromEnv(env)),
         NotificationModule.forRoot(),
+        InsightsModule.forRoot(),
         SalesModule.forRoot({
           receiptSecret:
             env.RECEIPT_SIGNING_SECRET ??

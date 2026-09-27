@@ -1,40 +1,89 @@
-import * as React from "react"
+export interface TrendPoint {
+  label: string;
+  /** Bar value (e.g. money in / sales). */
+  value: number;
+  /** Optional line value (e.g. profit), may be negative. */
+  line?: number;
+}
 
-export function FakeChart() {
+/**
+ * Dependency-free SVG bar + line chart (keeps the Beranda bundle small for
+ * the p75 ≤ 1,5 s target). Values are passed pre-scaled; `format` renders
+ * the accessible table and tooltips.
+ */
+export function TrendChart({
+  points,
+  format,
+  barLabel,
+  lineLabel,
+  height = 180,
+}: {
+  points: TrendPoint[];
+  format: (value: number) => string;
+  barLabel: string;
+  lineLabel?: string;
+  height?: number;
+}) {
+  const width = 100 * points.length;
+  const values = points.flatMap((p) => [p.value, p.line ?? 0]);
+  const max = Math.max(1, ...values);
+  const min = Math.min(0, ...values);
+  const span = max - min;
+  const y = (v: number) => ((max - v) / span) * (height - 8) + 4;
+  const zero = y(0);
+  const hasLine = points.some((p) => p.line !== undefined);
+
   return (
-    <div className="flex h-[200px] w-full items-end gap-2 text-primary pt-4 pb-2 relative">
-      <div className="absolute top-0 left-0 text-[10px] text-muted-foreground flex flex-col justify-between h-full py-2">
-        <span>8 jt</span>
-        <span>6 jt</span>
-        <span>4 jt</span>
-        <span>2 jt</span>
-        <span>0</span>
+    <figure className="w-full">
+      {/* Stretched to the container (preserveAspectRatio="none") so bars fill a phone
+          screen; labels live in HTML below so they stay readable at any width. */}
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        className="h-40 w-full"
+        role="img"
+        aria-label={`${barLabel}${hasLine && lineLabel ? ` dan ${lineLabel}` : ""} per hari`}
+      >
+        <line x1={0} x2={width} y1={zero} y2={zero} className="stroke-border" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        {points.map((p, i) => {
+          const top = y(Math.max(p.value, 0));
+          return (
+            <rect key={p.label} x={i * 100 + 18} width={64} y={top} height={Math.max(zero - top, p.value > 0 ? 2 : 0)} rx={4} className="fill-primary/80">
+              <title>{`${p.label}: ${format(p.value)}`}</title>
+            </rect>
+          );
+        })}
+        {hasLine && (
+          <polyline
+            fill="none"
+            className="stroke-emerald-500"
+            strokeWidth={3}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+            points={points.map((p, i) => `${i * 100 + 50},${y(p.line ?? 0)}`).join(" ")}
+          />
+        )}
+      </svg>
+      <div className="mt-1 grid text-center text-xs text-muted-foreground" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+        {points.map((p) => (
+          <span key={p.label} className="truncate">{p.label}</span>
+        ))}
       </div>
-      <div className="absolute inset-0 left-6 right-2 bottom-6 border-b border-l border-border/50 border-dashed">
-         <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-           <path d="M0,80 L15,85 L30,70 L45,65 L60,50 L75,40 L90,10 L100,5" fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke"/>
-           <path d="M0,100 L0,80 L15,85 L30,70 L45,65 L60,50 L75,40 L90,10 L100,5 L100,100 Z" fill="currentColor" fillOpacity="0.1" vectorEffect="non-scaling-stroke"/>
-           <circle cx="0" cy="80" r="2" fill="currentColor" />
-           <circle cx="15" cy="85" r="2" fill="currentColor" />
-           <circle cx="30" cy="70" r="2" fill="currentColor" />
-           <circle cx="45" cy="65" r="2" fill="currentColor" />
-           <circle cx="60" cy="50" r="2" fill="currentColor" />
-           <circle cx="75" cy="40" r="2" fill="currentColor" />
-           <circle cx="90" cy="10" r="2" fill="currentColor" />
-         </svg>
-         <div className="absolute top-[10%] right-[10%] bg-white px-2 py-1 rounded shadow-sm border border-border text-xs font-semibold">
-           Rp 5.320.000
-         </div>
-      </div>
-      <div className="absolute bottom-0 left-6 right-2 flex justify-between text-[10px] text-muted-foreground">
-        <span>12 Jun</span>
-        <span>13 Jun</span>
-        <span>14 Jun</span>
-        <span>15 Jun</span>
-        <span>16 Jun</span>
-        <span>17 Jun</span>
-        <span>18 Jun</span>
-      </div>
-    </div>
-  )
+      <figcaption className="mt-2 flex gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-primary/80" /> {barLabel}</span>
+        {hasLine && lineLabel && <span className="flex items-center gap-1"><span className="h-0.5 w-3 bg-emerald-500" /> {lineLabel}</span>}
+      </figcaption>
+      <table className="sr-only">
+        <thead>
+          <tr><th>Hari</th><th>{barLabel}</th>{hasLine && <th>{lineLabel}</th>}</tr>
+        </thead>
+        <tbody>
+          {points.map((p) => (
+            <tr key={p.label}><td>{p.label}</td><td>{format(p.value)}</td>{hasLine && <td>{format(p.line ?? 0)}</td>}</tr>
+          ))}
+        </tbody>
+      </table>
+    </figure>
+  );
 }

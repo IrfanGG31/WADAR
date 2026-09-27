@@ -22,6 +22,7 @@
     "@wadar/contracts": "workspace:*",
     "@wadar/finance": "workspace:*",
     "@wadar/identity": "workspace:*",
+    "@wadar/insights": "workspace:*",
     "@wadar/inventory": "workspace:*",
     "@wadar/notification": "workspace:*",
     "@wadar/payments": "workspace:*",

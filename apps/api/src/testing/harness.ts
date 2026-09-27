@@ -18,7 +18,7 @@ import { AppModule } from "../app.module.js";
 import type { ApiEnv } from "../env.js";
 import { configureApp } from "../configure-app.js";
 
-export const ALL_MODULES = ["identity", "catalog", "inventory", "sales", "finance", "payments"];
+export const ALL_MODULES = ["identity", "catalog", "inventory", "sales", "finance", "payments", "insights"];
 
 export interface Actor {
   userId: string;
