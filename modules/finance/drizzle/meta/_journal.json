@@ -15,6 +15,13 @@
       "when": 1790453248577,
       "tag": "0001_ledger_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790486854529,
+      "tag": "0002_function_search_path",
+      "breakpoints": true
     }
   ]
 }
