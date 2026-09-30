@@ -7,6 +7,12 @@ export async function getActiveTenantIdServer(): Promise<string | undefined> {
   return store.get(TENANT_COOKIE_NAME)?.value;
 }
 
+/** The outlet last chosen in the header, unverified — only a hint for starting requests early. */
+export async function getOutletIdHint(): Promise<string | undefined> {
+  const store = await cookies();
+  return store.get(OUTLET_COOKIE_NAME)?.value;
+}
+
 export interface OutletSummary {
   id: string;
   name: string;

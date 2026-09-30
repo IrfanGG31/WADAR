@@ -4,6 +4,7 @@ import { uuidv7 } from "uuidv7";
 import type { SystemRole } from "../domain/role.js";
 import { getMembershipById, updateMembershipRole } from "../infra/memberships.repository.js";
 import { getRoleByKey } from "../infra/roles.repository.js";
+import { membershipCache } from "./membership-cache.js";
 
 export class MembershipNotFoundError extends Error {
   constructor() {
@@ -73,4 +74,7 @@ export async function changeRole(db: Db, command: ChangeRoleCommand): Promise<vo
       payload: envelope.payload,
     });
   });
+  // The new role applies to this process's next request immediately; other
+  // API instances pick it up when their cached entry expires (seconds).
+  membershipCache.invalidateTenant(command.tenantId);
 }

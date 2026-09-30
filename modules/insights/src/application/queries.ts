@@ -41,9 +41,11 @@ function sumTotals(values: Iterable<CashflowTotals>): CashflowTotals {
 
 const EMPTY: CashflowTotals = sumTotals([]);
 
-async function buildFeed(tx: Tx, tenantId: string, outletId: string | undefined): Promise<FeedItem[]> {
+function catalogAndStockFeed(
+  quality: Awaited<ReturnType<typeof getCatalogQualitySummary>>,
+  stockAlerts: Awaited<ReturnType<typeof listStockAlerts>>,
+): FeedItem[] {
   const feed: FeedItem[] = [];
-  const quality = await getCatalogQualitySummary(tx, tenantId);
   if (quality.activeProducts === 0) {
     feed.push({
       id: "getting-started",
@@ -55,23 +57,21 @@ async function buildFeed(tx: Tx, tenantId: string, outletId: string | undefined)
       actionLabel: "Tambah produk",
     });
   }
-  if (outletId) {
-    for (const item of (await listStockAlerts(tx, tenantId, outletId)).slice(0, 5)) {
-      feed.push({
-        id: `stock:${item.variantId}`,
-        kind: "stock",
-        severity: item.onHand <= 0 || (item.daysLeft ?? 99) <= 3 ? "critical" : "warning",
-        title: stockAlertTitle(item.name, item.onHand, item.daysLeft),
-        body:
-          item.onHand < 0
-            ? "Stok di sistem minus — cek stok fisik lalu sesuaikan."
-            : item.reorderQty > 0
-              ? `Sisa ${item.onHand}. Saran pesan ulang ±${item.reorderQty} supaya cukup 2 minggu.`
-              : `Sisa ${item.onHand}.`,
-        href: `/stok/${item.productId}`,
-        actionLabel: "Lihat stok",
-      });
-    }
+  for (const item of stockAlerts.slice(0, 5)) {
+    feed.push({
+      id: `stock:${item.variantId}`,
+      kind: "stock",
+      severity: item.onHand <= 0 || (item.daysLeft ?? 99) <= 3 ? "critical" : "warning",
+      title: stockAlertTitle(item.name, item.onHand, item.daysLeft),
+      body:
+        item.onHand < 0
+          ? "Stok di sistem minus — cek stok fisik lalu sesuaikan."
+          : item.reorderQty > 0
+            ? `Sisa ${item.onHand}. Saran pesan ulang ±${item.reorderQty} supaya cukup 2 minggu.`
+            : `Sisa ${item.onHand}.`,
+      href: `/stok/${item.productId}`,
+      actionLabel: "Lihat stok",
+    });
   }
   if (quality.missing.cost > 0) {
     feed.push({
@@ -106,57 +106,82 @@ async function buildFeed(tx: Tx, tenantId: string, outletId: string | undefined)
       actionLabel: "Tambah foto",
     });
   }
+  return feed;
+}
+
+async function reconciliationFeed(tx: Tx, tenantId: string): Promise<FeedItem[]> {
   const openReconciliation = await tx
     .select()
     .from(alerts)
     .where(and(eq(alerts.tenantId, tenantId), eq(alerts.type, "reconciliation"), isNull(alerts.resolvedAt)))
     .orderBy(desc(alerts.createdAt))
     .limit(1);
-  for (const alert of openReconciliation) {
-    feed.push({ id: alert.id, kind: "reconciliation", severity: "critical", title: alert.title, body: alert.body, href: "/keuangan", actionLabel: "Cek keuangan" });
-  }
-  return feed.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  return openReconciliation.map((alert) => ({
+    id: alert.id,
+    kind: "reconciliation" as const,
+    severity: "critical" as const,
+    title: alert.title,
+    body: alert.body,
+    href: "/keuangan",
+    actionLabel: "Cek keuangan",
+  }));
 }
 
-/** Beranda (PRD §8.2, F3.1, F3.8): feed first, then 3 cards, then a 7-day chart. One round trip. */
+/**
+ * Beranda (PRD §8.2, F3.1, F3.8): feed first, then 3 cards, then a 7-day chart.
+ *
+ * The reads are independent, so they run as four short transactions in
+ * parallel on separate pooled connections instead of one after another on a
+ * single connection (queries inside one transaction are serialized — every
+ * one is a full DB round trip). Each group still runs under the tenant's RLS
+ * context; slightly different snapshots are fine for a dashboard.
+ */
 export async function getHome(db: Db, tenantId: string, outletId: string | undefined, now = new Date()): Promise<HomeView> {
-  return withTenantContext(db, tenantId, async (tx) => {
-    const timezone = await getTenantTimezone(tx, tenantId);
-    const today = localDateKey(now, timezone);
-    const yesterday = addDays(today, -1);
-    const firstChartDay = addDays(today, -6);
-    const [byDay, balances, feed] = await Promise.all([
-      cashflowByDay(tx, tenantId, firstChartDay, today),
-      tx.select().from(walletBalances).where(eq(walletBalances.tenantId, tenantId)),
-      buildFeed(tx, tenantId, outletId),
-    ]);
-    const t = byDay.get(today) ?? EMPTY;
-    const y = byDay.get(yesterday) ?? EMPTY;
-    const profitToday = profitOf(t);
-    const profitYesterday = profitOf(y);
-    const total = balances.reduce((s, b) => s + b.balance, 0);
-    const funded = balances.filter((b) => b.balance !== 0).length;
-    return {
-      asOf: now.toISOString(),
-      today,
-      feed,
-      cards: {
-        moneyIn: { today: t.moneyIn, yesterday: y.moneyIn, sentence: moneyInSentence(t.moneyIn, y.moneyIn), trend: trendOf(t.moneyIn, y.moneyIn) },
-        profit: {
-          today: profitToday,
-          yesterday: profitYesterday,
-          sentence: profitSentence(profitToday, t.sales - t.discounts, t.cogs, t.expenses),
-          trend: trendOf(profitToday, profitYesterday),
-        },
-        balance: { total, walletCount: funded, sentence: balanceSentence(total, funded) },
+  const [chartData, [balances, reconciliation], quality, stockAlerts] = await Promise.all([
+    withTenantContext(db, tenantId, async (tx) => {
+      const timezone = await getTenantTimezone(tx, tenantId);
+      const today = localDateKey(now, timezone);
+      return { today, byDay: await cashflowByDay(tx, tenantId, addDays(today, -6), today) };
+    }),
+    withTenantContext(db, tenantId, async (tx) =>
+      Promise.all([tx.select().from(walletBalances).where(eq(walletBalances.tenantId, tenantId)), reconciliationFeed(tx, tenantId)]),
+    ),
+    withTenantContext(db, tenantId, (tx) => getCatalogQualitySummary(tx, tenantId)),
+    outletId ? withTenantContext(db, tenantId, (tx) => listStockAlerts(tx, tenantId, outletId)) : Promise.resolve([]),
+  ]);
+  // Same order as a single pass (catalog/stock items, then reconciliation), then by severity — a stable sort.
+  const feed = [...catalogAndStockFeed(quality, stockAlerts), ...reconciliation].sort(
+    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
+  );
+  const { today, byDay } = chartData;
+  const yesterday = addDays(today, -1);
+  const firstChartDay = addDays(today, -6);
+  const t = byDay.get(today) ?? EMPTY;
+  const y = byDay.get(yesterday) ?? EMPTY;
+  const profitToday = profitOf(t);
+  const profitYesterday = profitOf(y);
+  const total = balances.reduce((s, b) => s + b.balance, 0);
+  const funded = balances.filter((b) => b.balance !== 0).length;
+  return {
+    asOf: now.toISOString(),
+    today,
+    feed,
+    cards: {
+      moneyIn: { today: t.moneyIn, yesterday: y.moneyIn, sentence: moneyInSentence(t.moneyIn, y.moneyIn), trend: trendOf(t.moneyIn, y.moneyIn) },
+      profit: {
+        today: profitToday,
+        yesterday: profitYesterday,
+        sentence: profitSentence(profitToday, t.sales - t.discounts, t.cogs, t.expenses),
+        trend: trendOf(profitToday, profitYesterday),
       },
-      chart: Array.from({ length: 7 }, (_, i) => {
-        const day = addDays(firstChartDay, i);
-        const d = byDay.get(day) ?? EMPTY;
-        return { day, moneyIn: d.moneyIn, netSales: d.sales - d.discounts, profit: profitOf(d) };
-      }),
-    };
-  });
+      balance: { total, walletCount: funded, sentence: balanceSentence(total, funded) },
+    },
+    chart: Array.from({ length: 7 }, (_, i) => {
+      const day = addDays(firstChartDay, i);
+      const d = byDay.get(day) ?? EMPTY;
+      return { day, moneyIn: d.moneyIn, netSales: d.sales - d.discounts, profit: profitOf(d) };
+    }),
+  };
 }
 
 /** Keuangan › Ringkasan from aggregates (never the raw ledger — ARCHITECTURE §5.4). Dates are inclusive local days. */

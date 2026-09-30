@@ -13,9 +13,9 @@ import {
 } from "@wadar/ui-web";
 import { Check, ChevronDown, KeyRound, LogOut, Search, Store } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "../../../lib/supabase/client";
-import { clearActiveTenantId, setActiveOutletId } from "../../../lib/tenant-cookie";
+import { clearActiveTenantId, getActiveOutletIdClient, setActiveOutletId } from "../../../lib/tenant-cookie";
 import { RealtimeToasts } from "./realtime-toasts";
 
 interface Outlet {
@@ -40,6 +40,13 @@ export function AppHeader({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? outlets[0];
+
+  // Pages start their data requests with the outlet from this cookie, in
+  // parallel with loading the shop context (lib/app-context.ts#getAppContextWith);
+  // remember the resolved outlet so that fast path works from the next tap on.
+  useEffect(() => {
+    if (activeOutlet && getActiveOutletIdClient() !== activeOutlet.id) setActiveOutletId(activeOutlet.id);
+  }, [activeOutlet]);
 
   async function handleLogout() {
     const supabase = createClient();

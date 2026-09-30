@@ -1,14 +1,16 @@
 import type { StockItemView } from "@wadar/contracts/inventory";
 import { redirect } from "next/navigation";
 import { apiFetchServer } from "../../../lib/api-client-server";
-import { getAppContext } from "../../../lib/app-context";
+import { getAppContextWith } from "../../../lib/app-context";
 import { Kasir } from "./kasir";
 
 export default async function KasirPage() {
-  const { activeOutlet, can, tenant } = await getAppContext();
+  const { activeOutlet, can, tenant, data } = await getAppContextWith((outletId) =>
+    apiFetchServer<StockItemView[]>(`/v1/stock?outletId=${outletId}`),
+  );
   if (!can("cashier:operate")) redirect("/beranda");
   if (!activeOutlet) return <p className="p-6 text-sm text-muted-foreground">Belum ada outlet.</p>;
-  const products = await apiFetchServer<StockItemView[]>(`/v1/stock?outletId=${activeOutlet.id}`);
+  const products = await data;
   return (
     <Kasir
       products={products}

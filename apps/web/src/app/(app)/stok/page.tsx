@@ -4,7 +4,7 @@ import { Badge, Card, CardContent } from "@wadar/ui-web";
 import { AlertTriangle, FileSpreadsheet, Package, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { apiFetchServer } from "../../../lib/api-client-server";
-import { getAppContext } from "../../../lib/app-context";
+import { getAppContextWith } from "../../../lib/app-context";
 import { StatusBadge, MissingBadges } from "./stock-badges";
 
 type Filter = "semua" | "perhatian" | "belum-lengkap";
@@ -28,14 +28,15 @@ export default async function StokPage({
 }) {
   const { search, filter: rawFilter } = await searchParams;
   const filter: Filter = rawFilter === "perhatian" || rawFilter === "belum-lengkap" ? rawFilter : "semua";
-  const { activeOutlet, can } = await getAppContext();
+  const { activeOutlet, can, data } = await getAppContextWith((outletId) => {
+    const query = new URLSearchParams({ outletId: outletId ?? "" });
+    if (search) query.set("search", search);
+    return apiFetchServer<Array<StockItemView>>(`/v1/stock?${query}`);
+  });
   if (!activeOutlet) {
     return <p className="p-6 text-sm text-muted-foreground">Belum ada outlet. Tambah outlet dulu di Pengaturan Toko.</p>;
   }
-
-  const query = new URLSearchParams({ outletId: activeOutlet.id });
-  if (search) query.set("search", search);
-  const items = await apiFetchServer<Array<StockItemView>>(`/v1/stock?${query}`);
+  const items = await data;
 
   const attention = items.filter((i) => i.status !== "aman");
   const incomplete = items.filter((i) => i.missing.length > 0);

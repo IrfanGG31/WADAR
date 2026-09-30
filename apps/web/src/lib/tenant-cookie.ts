@@ -13,6 +13,12 @@ export function getActiveTenantIdClient(): string | undefined {
   return value !== undefined ? decodeURIComponent(value) : undefined;
 }
 
+export function getActiveOutletIdClient(): string | undefined {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${OUTLET_COOKIE_NAME}=([^;]*)`));
+  const value = match?.[1];
+  return value !== undefined ? decodeURIComponent(value) : undefined;
+}
+
 export function clearActiveTenantId(): void {
   document.cookie = `${TENANT_COOKIE_NAME}=; path=/; max-age=0`;
   document.cookie = `${OUTLET_COOKIE_NAME}=; path=/; max-age=0`;

@@ -5,7 +5,7 @@ import { Card, CardContent, TrendChart } from "@wadar/ui-web";
 import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Info, Minus, PackagePlus, ShoppingCart, Wallet } from "lucide-react";
 import Link from "next/link";
 import { apiFetchServer } from "../../../lib/api-client-server";
-import { getAppContext } from "../../../lib/app-context";
+import { getAppContextWith } from "../../../lib/app-context";
 import { LiveRefresh } from "./live-refresh";
 
 const SEVERITY_STYLE: Record<FeedItem["severity"], { box: string; icon: typeof AlertTriangle }> = {
@@ -26,10 +26,10 @@ function TrendIcon({ trend }: { trend: MetricCard["trend"] }) {
  * API call to insights read models (ARCHITECTURE §5.4) — no raw ledger reads.
  */
 export default async function BerandaPage() {
-  const { activeOutlet, can, tenant } = await getAppContext();
-  const home = await apiFetchServer<HomeView>(
-    `/v1/insights/home${activeOutlet ? `?outletId=${activeOutlet.id}` : ""}`,
+  const { can, tenant, data } = await getAppContextWith((outletId) =>
+    apiFetchServer<HomeView>(`/v1/insights/home${outletId ? `?outletId=${outletId}` : ""}`),
   );
+  const home = await data;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
