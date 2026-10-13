@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./.env*)",
+      "Read(./supabase/.temp/**)",
+      "Read(./**/*.lock)",
+      "Read(./pnpm-lock.yaml)"
+    ]
+  }
+}

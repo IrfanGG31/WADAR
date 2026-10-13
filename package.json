@@ -1,38 +1,42 @@
 {
   "name": "wadar",
+  "version": "0.1.0",
   "private": true,
-  "version": "0.0.0",
-  "description": "WADAR \u2014 asisten bisnis AI untuk UMKM Indonesia (monorepo)",
-  "engines": {
-    "node": ">=22.22.0"
-  },
-  "packageManager": "pnpm@12.4.2",
   "scripts": {
-    "dev": "turbo run dev",
-    "dev:up": "bash scripts/dev-up.sh",
-    "dev:down": "docker compose -f infra/docker-compose.yml down",
-    "dev:logs": "docker compose -f infra/docker-compose.yml logs -f",
-    "dev:health": "bash scripts/dev-health.sh",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "test:unit": "turbo run test:unit",
-    "test:integration": "turbo run test:integration",
-    "depcruise": "depcruise --config .dependency-cruiser.cjs --ts-pre-compilation-deps apps modules packages",
-    "db:generate": "for f in modules/*/drizzle.config.ts; do [ -f \"$(dirname \"$f\")/src/db/schema.ts\" ] || continue; pnpm exec drizzle-kit generate --config=\"$f\" || exit 1; done",
-    "db:migrate": "for f in modules/*/drizzle.config.ts; do [ -f \"$(dirname \"$f\")/drizzle/meta/_journal.json\" ] || continue; pnpm exec drizzle-kit migrate --config=\"$f\" || exit 1; done",
-    "db:push": "for f in modules/*/drizzle.config.ts; do pnpm exec drizzle-kit push --config=\"$f\" --force || exit 1; done",
-    "db:grant": "docker compose -f infra/docker-compose.yml exec -T postgres psql -U wadar -d wadar -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/02-grant-and-force-rls.sql",
-    "evals": "echo \"no evals yet \u2014 mulai M8 (lihat docs/BUILD-PLAN.md)\" && exit 0",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.3",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.56.0",
+    "next": "16.4.0",
+    "radix-ui": "1.8.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "dependency-cruiser": "18.3.1",
-    "drizzle-kit": "^0.31.0",
-    "prettier": "3.9.8",
-    "turbo": "2.11.2",
-    "typescript": "^6.0.0"
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "5.0.4"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22.22.0"
   }
 }

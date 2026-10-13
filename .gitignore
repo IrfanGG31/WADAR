@@ -1,44 +1,44 @@
 # Dependencies
-node_modules/
+/node_modules
 .pnpm-store/
+/.pnp
+.pnp.*
 
-# Build outputs
-dist/
-.next/
-.turbo/
+# Next.js / build
+/.next/
+/out/
+/build
 *.tsbuildinfo
+next-env.d.ts
 
-# Env
-.env
-.env.local
-.env.*.local
+# Env (commit only .env.example)
+.env*
+!.env.example
+
+# Vercel
+.vercel
 
 # Supabase local
 supabase/.branches/
 supabase/.temp/
 
-# Logs
+# Testing
+/coverage
+test-results/
+playwright-report/
+
+# Logs / debug
 *.log
 npm-debug.log*
-pnpm-debug.log*
+.pnpm-debug.log*
 
-# OS
+# OS / IDE
 .DS_Store
 Thumbs.db
-
-# IDE
+*.pem
 .vscode/*
 !.vscode/extensions.json
 .idea/
 
-# Claude Code local runtime state (not portable across machines/sessions)
+# Claude Code local runtime state
 .claude/scheduled_tasks.lock
-
-# Test artifacts
-coverage/
-test-results/
-playwright-report/
-.lighthouseci/
-
-# Local redis-server snapshots (when run outside Docker from the repo root)
-dump.rdb

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 CSS-first theme. Brand colors MUST equal src/brand.ts —
+ * src/brand.test.ts fails if they drift apart.
+ */
+@theme {
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #f59e0b;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+
+  --color-border: #e2e8f0;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #fef2f2;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+
+  /* --font-inter is set by next/font on <html> (src/app/layout.tsx). */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  /* NFR-A11Y: body text ≥ 16px. */
+  font-size: 16px;
+}

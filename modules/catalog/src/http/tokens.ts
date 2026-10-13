@@ -1,1 +1,0 @@
-export const CATALOG_PHOTO_STORAGE = Symbol("CATALOG_PHOTO_STORAGE");

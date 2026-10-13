@@ -1,552 +1,295 @@
-# PRD — WADAR
-### Asisten Bisnis AI untuk UMKM: Keuangan Otomatis, Operasional Terpadu, dan Asisten Chat yang Paham Kondisi Bisnis
+## Product Requirements Document: WADAR AI — Fase 1 (MVP → Peluncuran Berbayar)
 
-| Meta | Isi |
+**Author**: M. Irfan Rafi Gunawan
+**Date**: 14 Oktober 2026
+**Status**: Draft v2.0 (selaras proposal finalis BPC; menggantikan PRD v1)
+
+| Dokumen | Fungsi |
 |---|---|
-| Versi | 1.1 |
-| Tanggal | 19 September 2026 |
-| Pemilik produk | Rafi |
-| Status | Siap dipakai sebagai acuan build di Claude Code |
-| Nama produk | **WADAR** (nama kerja; brand bisa berubah — lihat §14.1) |
-| Dokumen terkait | `ARCHITECTURE.md`, `BUILD-PLAN.md`, `CLAUDE.md`, `COMPETITORS.md` |
-| Dasar | Proposal *BisniQu AI* (masalah, pasar, harga, unit economics) diadaptasi ke visi WADAR |
-| Riwayat | Lihat §15 Riwayat Perubahan |
+| `BRD.md` | Tujuan bisnis, aturan bisnis (BRL-xx), batas biaya. **Sumber kebenaran untuk harga & kuota** |
+| `PRD.md` (ini) | Apa yang dibangun, untuk siapa, dan kriteria lulusnya |
+| `TECH-SPEC.md` | Bagaimana membangunnya: stack, skema data, rumus, pipeline AI, milestone |
+| `COMPETITORS.md` | Pola UX yang ditiru dan dihindari |
 
 ---
 
-## 0. Ringkasan Satu Paragraf
+## 1. Summary
 
-WADAR adalah aplikasi web (PWA) — lalu aplikasi Android/iOS — yang menjadi "manajer toko digital" untuk UMKM lintas kanal. WADAR menyatukan tiga layanan dalam satu langganan: **(1) Dasbor Keuangan Otomatis** yang menerjemahkan transaksi menjadi untung-rugi riil dalam bahasa sehari-hari, **(2) Operasional Terpadu** (kasir/POS, stok, pelanggan, pembelian, pesanan lintas kanal) yang terasa sesederhana aplikasi chat, dan **(3) Asisten Chat Cerdas** yang punya memori penuh dan selalu tahu kondisi bisnis *saat ini* — melayani pemilik (konsultasi, tanya data, eksekusi aksi dengan persetujuan) sekaligus pembeli di WhatsApp.
+WADAR AI adalah aplikasi web progresif (PWA) untuk UMKM lintas kanal yang terhubung ke WhatsApp Business Platform. Pemilik memasukkan transaksi lewat **POS ringan** atau **impor file marketplace**, mengunggah katalog dan kebijakan toko, lalu sistem membangun **knowledge base per toko**. Knowledge base itu dipakai bersama oleh **empat mesin AI**: Stock Intelligence, Finance Insight, Customer Chat (RAG), dan Business Consultation. PRD ini mencakup **Fase 1**: MVP (Nov 2026 – Jan 2027), pilot 30 UMKM (Jan–Mar 2027), dan peluncuran berbayar (April 2027).
 
-**Positioning:** *"Bukan sekadar mencatat. WADAR mengawasi, memperingatkan, dan menjawab — supaya kamu tenang bisnismu hidup dan bergerak."*
+## 2. Contacts
 
----
-
-## 1. Latar Belakang & Masalah
-
-### 1.1 Konteks pasar
-- ±64,2 juta UMKM, menyumbang ±60,5% PDB; ±25,5 juta sudah masuk ekosistem digital.
-- Tantangan berikutnya bukan lagi "go digital", tetapi **memakai data untuk keputusan** (stok, harga, keuangan, layanan).
-- Indeks literasi keuangan (66,46%) tertinggal ±14 poin dari inklusi (80,51%): banyak pemilik memakai layanan keuangan tanpa tahu margin riilnya.
-
-### 1.2 Masalah inti yang diselesaikan
-
-| # | Masalah | Dampak | Jawaban WADAR (pilar) |
-|---|---|---|---|
-| M1 | Pemilik hanya lihat omzet, tidak tahu untung riil per produk/kanal | Diskon & harga diputuskan buta; "omzet besar, kas tidak nambah" | Pilar 1 — Keuangan Otomatis |
-| M2 | Uang masuk dari banyak sumber (QRIS, e-wallet, transfer, COD, marketplace) dan tidak tercatat rapi | Rekap manual berjam-jam, selisih kas | Pilar 1 — Payment Listener & rekonsiliasi |
-| M3 | Stok tidak sinkron antar-kanal; pencatatan manual | Stockout saat ramai, overstock mengikat modal | Pilar 2 — Stok & pesanan terpadu |
-| M4 | Aplikasi POS/ERP terlalu rumit & mahal untuk UMKM | Tidak dipakai, kembali ke buku/spreadsheet | Pilar 2 — UX "orang awam" |
-| M5 | Chat pelanggan menumpuk (stok? harga? ongkir? status?) | Respons lambat, konversi turun, butuh admin | Pilar 3 — Customer Chat WA |
-| M6 | Tidak punya analis; masalah baru terasa setelah rugi | Keputusan reaktif | Pilar 3 — Owner Assistant + insight proaktif |
-
-### 1.3 Akar masalah
-Semua bermuara pada **jarak antara data yang dimiliki dan kemampuan mengubahnya jadi tindakan**. WADAR menutup jarak itu dengan satu sumber data terpadu + AI yang membaca data itu secara realtime.
-
----
-
-## 2. Target Pengguna
-
-### 2.1 Segmen
-| Segmen | Deskripsi | Prioritas |
+| Nama | Peran | Catatan |
 |---|---|---|
-| S1 — UMKM berkembang lintas kanal | Omzet ±Rp5–100 jt/bln, jualan di 2+ kanal (offline, Shopee/TikTok Shop, IG, WA), 0–10 staf; fesyen, F&B, kecantikan, gadget/reseller | **Utama (beachhead)** |
-| S2 — UMKM pemula satu kanal | Warung, kedai, toko kecil; fokus uang masuk & kasir | Sekunder (paket Starter) |
-| S3 — UMKM menengah tanpa analis | Multi-outlet, butuh insight & kontrol staf | Tersier (paket Pro) |
-| S4 — B2B2B | Koperasi, inkubator, dinas, bank yang membina UMKM | Kanal akuisisi (Fase 3) |
+| M. Irfan Rafi Gunawan | Pemilik produk / ketua tim | Keputusan produk & teknis |
+| Mashayu Aulia Zahrina | Anggota tim | Riset & validasi pengguna (asumsi, konfirmasi) |
+| Claude Code | Asisten engineering | Mengikuti `CLAUDE.md` |
 
-Area awal: Surabaya Raya & Malang.
+## 3. Background
 
-### 2.2 Persona
+**Konteks.** UMKM menyumbang 60,51% PDB, dan lebih dari 25,55 juta UMKM sudah masuk digital. Setiap hari mereka menghasilkan data dari marketplace, media sosial, WhatsApp, dan kasir, tetapi data itu jarang menjadi keputusan. Ada empat masalah berulang: stok tidak sinkron, margin riil tidak diketahui, chat pelanggan menumpuk, dan tidak ada analis (rincian di BRD §2).
 
-**Sari, 27 — brand skincare lokal (Surabaya)**
-- Kanal: Shopee, TikTok Shop, Instagram, WhatsApp; 2 admin.
-- Sakit kepala: produk terlaris habis saat kampanye tanggal kembar; ratusan chat berulang.
-- Butuh: stok lintas kanal + balasan chat otomatis. Paket: Growth.
+**Kenapa sekarang.** (1) LLM + RAG membuat jawaban berpijak pada dokumen milik toko sendiri, jadi lebih akurat daripada model generik (Lewis dkk., 2020). (2) Model kelas ringan sekarang hanya ±US$0,25 per 1 juta token input, sehingga asisten AI terjangkau untuk harga UMKM. (3) WhatsApp adalah kanal jualan utama UMKM, dan balasan di jendela layanan 24 jam gratis dari Meta.
 
-**Dimas, 34 — kedai kopi & camilan (Malang)**
-- Kanal: dine-in, ojol, pre-order WA; 5 karyawan.
-- Sakit kepala: omzet besar tapi kas tidak bertambah; bahan baku terbuang.
-- Butuh: margin riil setelah komisi ojol & HPP; kontrol bahan baku. Paket: Growth → Pro.
+**Pelajaran dari kompetitor** (`COMPETITORS.md`). Majoo kuat di kasir tetapi menjual AI/WA sebagai add-on Rp499 rb. Chatbot generik tidak tersambung ke stok. BukuWarung menunjukkan bahwa aplikasi yang makin rumit menurunkan kepuasan (rating 3,2). Pembeda WADAR adalah **integrasi + jawaban berbasis data toko + harga UMKM**.
 
-**Bu Tini, 45 — warung sembako (Sidoarjo)** *(persona "orang awam" untuk uji UX)*
-- Kanal: offline + QRIS; HP Android kelas menengah; tidak nyaman dengan istilah akuntansi.
-- Butuh: tahu uang masuk hari ini, suara notifikasi saat ada pembayaran, dan "untung hari ini berapa". Paket: Starter.
+## 4. Objective
 
-### 2.3 Jobs To Be Done
-1. *Saat ada uang masuk*, aku ingin langsung tahu dan tercatat otomatis, supaya aku tenang dan tidak rekap manual.
-2. *Saat akhir hari/minggu*, aku ingin tahu untung riilku dan penyebabnya, supaya bisa memutuskan harga & promo.
-3. *Saat stok menipis*, aku ingin diperingatkan sebelum habis dan dibantu memesan ulang.
-4. *Saat pembeli bertanya di WA*, aku ingin mereka dijawab benar dan cepat walau aku sibuk.
-5. *Saat bingung soal bisnis*, aku ingin bertanya seperti ke konsultan yang sudah hafal tokoku.
+**Tujuan Fase 1:** membuktikan bahwa UMKM lintas kanal mendapat nilai nyata dari empat mesin AI yang memakai data tokonya sendiri, sampai mau membayar.
 
----
-
-## 3. Tujuan, Non-Goals, dan Metrik
-
-### 3.1 Tujuan produk
-- G1: Pemilik bisa melihat **untung riil hari ini** dalam ≤ 2 tap sejak buka aplikasi.
-- G2: ≥ 80% transaksi tercatat **tanpa input manual** (via POS, payment listener, import marketplace).
-- G3: Asisten menjawab pertanyaan data bisnis dengan akurasi ≥ 95% (dicek terhadap angka sistem).
-- G4: Customer chat menjawab ≥ 60% pertanyaan tanpa eskalasi, akurasi ≥ 90% saat pilot.
-- G5: Pengguna baru mencapai "aha moment" (lihat dasbor keuangan berisi data sendiri) dalam ≤ 15 menit.
-
-### 3.2 Non-goals (sengaja TIDAK dibangun di v1)
-- Akuntansi penuh standar SAK/PSAK (jurnal manual kompleks, konsolidasi). WADAR memakai buku besar sederhana yang bisa diekspor ke akuntan.
-- Payroll lengkap & BPJS.
-- Manajemen produksi/manufaktur multi-level (BOM bertingkat). v1 hanya resep 1 level untuk F&B.
-- Integrasi API resmi semua marketplace di hari pertama (v1 via impor file; API bertahap).
-- AI yang mengeksekusi aksi finansial/eksternal **tanpa persetujuan** manusia.
-
-### 3.3 North Star & metrik
-**North Star Metric:** *Jumlah toko aktif mingguan yang menindaklanjuti ≥ 1 insight/peringatan WADAR* (weekly acted-on insights). Mengukur nilai nyata, bukan sekadar login.
-
-| Kategori | Metrik | Target MVP (pilot) | Target akhir tahun 1 |
-|---|---|---|---|
-| Aktivasi | % trial yang menghubungkan ≥ 1 sumber data dalam 24 jam | ≥ 60% | ≥ 70% |
-| Aktivasi | Waktu ke aha moment | ≤ 15 mnt | ≤ 10 mnt |
-| Engagement | WAU/MAU | ≥ 50% | ≥ 60% |
-| Otomasi | % transaksi tercatat otomatis | ≥ 60% | ≥ 80% |
-| AI | Akurasi jawaban owner (uji sampel) | ≥ 95% | ≥ 97% |
-| AI | Akurasi customer chat | ≥ 90% | ≥ 92% |
-| AI | Deflection rate customer chat | ≥ 50% | ≥ 60% |
-| Bisnis | Konversi trial → berbayar | ≥ 20% | ≥ 22% |
-| Bisnis | Churn bulanan | ≤ 6% | ≤ 5% |
-| Ekonomi | Biaya AI+WA per toko / ARPU | ≤ 15% | ≤ 15% |
-| Kualitas | Uptime | ≥ 99,5% | ≥ 99,5% |
-
----
-
-## 4. Prinsip Produk & UX ("Mudah untuk Orang Awam")
-
-1. **Bahasa sehari-hari, bukan istilah akuntansi.** "Uang masuk", "Modal barang", "Untung bersih", bukan "Revenue", "COGS", "Net income". Istilah teknis muncul hanya di *Mode Lanjutan*.
-2. **Angka selalu punya konteks.** Setiap angka utama didampingi perbandingan (vs kemarin/minggu lalu) dan satu kalimat arti ("Untung turun karena diskon 20% di produk terlaris").
-3. **Maksimal 3 tap** untuk tugas harian: catat penjualan, cek untung, cek stok, balas pesanan.
-4. **Mobile-first, satu tangan.** Target layar 360–430 px; tombol utama di zona jempol.
-5. **Chat sebagai antarmuka universal.** Semua hal bisa dilakukan lewat asisten ("catat beli kopi 2 kg 180 ribu", "stok serum tinggal berapa?").
-6. **Otomatis dulu, manual kalau perlu.** Sistem menebak kategori/produk, pengguna hanya konfirmasi.
-7. **Proaktif, tidak berisik.** Maksimal 3 notifikasi insight per hari; peringatan kritis (stok habis, uang masuk besar, anomali) boleh lebih.
-8. **Aman untuk salah.** Semua aksi bisa dibatalkan (undo) atau di-void dengan jejak audit; tidak ada hapus permanen transaksi.
-9. **Berfungsi di sinyal jelek.** POS dan pencatatan tetap jalan offline, sinkron saat online.
-10. **Rasa "ketenangan".** Filosofi brand WADAR: produk menjual kepastian bahwa bisnis hidup & bergerak. Notifikasi uang masuk + suara (TTS) adalah momen emosional inti.
-
----
-
-## 5. Lingkup Produk — Tiga Pilar Value Service
-
-Prioritas: **P0** = wajib MVP, **P1** = rilis v1 (≤ 3 bulan setelah MVP), **P2** = v2+.
-
-### 5.1 PILAR 1 — Financial Automation Dashboard ("Keuangan Otomatis")
-
-Tujuan: pemilik tahu **uang masuk, uang keluar, untung riil, dan arus kas** tanpa pernah membuka spreadsheet.
-
-#### Modul F1 — Payment Listener (warisan inti WADAR)
-Menangkap setiap uang masuk dari berbagai sumber secara realtime.
-
-| ID | Fitur | Prioritas |
+| Key Result | Target | Kapan diukur |
 |---|---|---|
-| F1.1 | Webhook payment gateway (Xendit: QRIS dinamis, VA, e-wallet) → transaksi masuk otomatis | P0 |
-| F1.2 | Notifikasi realtime "Uang masuk Rp50.000 dari GoPay" + **suara TTS Bahasa Indonesia** (web & app) | P0 |
-| F1.3 | Parser notifikasi pembayaran Indonesia (teks notifikasi bank/e-wallet, SMS, email mutasi) — mesin NLP/regex yang sudah pernah dibangun | P1 (web: tempel teks/forward email; app Android: notification listener) |
-| F1.4 | Pencocokan otomatis uang masuk ↔ pesanan/tagihan (by nominal unik, referensi, waktu) | P1 |
-| F1.5 | Mode "Layar Kasir": layar besar menampilkan uang masuk terakhir untuk dipasang di meja kasir | **P0** *(naik dari P1, v1.1 — R1)* |
-| F1.6 | Import mutasi rekening (CSV/PDF bank) untuk rekonsiliasi | P2 |
+| KR-1 Akurasi Customer Chat (uji sampel, definisi §7.4) | ≥ 90% | Setiap minggu selama pilot |
+| KR-2 Pilot yang bersedia berlangganan | ≥ 40% dari 30 UMKM | Minggu ke-8 pilot |
+| KR-3 Aktivasi: toko dengan ≥ 10 produk + ≥ 1 transaksi dalam 48 jam | ≥ 70% pilot / ≥ 60% trial | 48 jam sejak daftar |
+| KR-4 Peringatan stok yang ditindaklanjuti (restock sebelum tanggal habis) | ≥ 50% | Minggu 4–8 pilot |
+| KR-5 Pengguna aktif mingguan (buka dasbor atau tanya AI ≥ 1×/minggu) | ≥ 70% pilot | Mingguan |
+| KR-6 Biaya AI + WA per tenant (beban Growth) | ≤ Rp23.491 (AI Rp19.924 + WA Rp3.567) | Bulanan |
+| KR-7 Konversi trial → berbayar setelah peluncuran | ≥ 20% | Apr–Jun 2027 |
+| KR-8 Waktu balas Customer Chat p95 | < 10 detik | Harian |
 
-**Acceptance criteria (F1.1–F1.2):**
-- Uang masuk dari webhook tampil di dasbor ≤ 3 detik (p95) setelah webhook diterima.
-- Webhook idempoten: event yang sama dikirim 2× hanya tercatat 1×.
-- Suara TTS dapat dimatikan per perangkat; teks suara: "Uang masuk [nominal dibaca] dari [sumber]".
-- Nominal dibaca benar untuk angka hingga miliaran ("seratus dua puluh lima ribu rupiah").
+Hubungan dengan strategi: KR-1 dan KR-2 adalah syarat lolos pilot (BRD BO-8) dan menjadi bukti traksi untuk pre-seed/seed.
 
-#### Modul F2 — Buku Kas Otomatis (Ledger)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| F2.1 | Setiap penjualan, pembelian, pembayaran, retur otomatis menjadi entri buku (double-entry sederhana di belakang layar; pengguna hanya melihat "masuk/keluar") | P0 |
-| F2.2 | Catat pengeluaran cepat: form 3 kolom (nominal, kategori tebakan AI, catatan) + foto struk | P0 |
-| F2.3 | Kategorisasi otomatis pengeluaran & uang masuk (aturan + AI), pengguna konfirmasi sekali lalu sistem belajar | P0 |
-| F2.4 | Scan struk/nota (OCR via model vision) → pengeluaran terisi otomatis | P1 |
-| F2.5 | Beberapa "dompet": Kas laci, Rekening BCA, GoPay, Saldo Shopee, dll. dengan saldo masing-masing | P0 |
-| F2.6 | Transfer antar dompet (setor kas ke bank, tarik saldo marketplace) | P1 |
-| F2.7 | Hutang-piutang sederhana (kasbon pelanggan, hutang ke supplier) + pengingat jatuh tempo | P1 |
+## 5. Market Segment(s)
 
-#### Modul F3 — Dasbor Kesehatan Bisnis
-| ID | Fitur | Prioritas |
-|---|---|---|
-| F3.1 | Kartu utama: **Uang masuk hari ini**, **Untung bersih hari ini**, **Saldo total semua dompet** — dengan perbandingan & satu kalimat penjelasan | P0 |
-| F3.2 | **Skor Kesehatan Bisnis (0–100)** dengan 4 komponen: margin, arus kas, stok, pertumbuhan; masing-masing warna (hijau/kuning/merah) + saran | P1 |
-| F3.3 | Untung per produk, per kanal, per outlet (setelah HPP, komisi marketplace/ojol, ongkir, diskon) | P0 (per produk & kanal), P1 (per outlet) |
-| F3.4 | Grafik tren 7/30/90 hari (omzet, untung, margin %) | P0 |
-| F3.5 | **Insight naratif otomatis** harian & mingguan ("Minggu ini untung naik 12% karena...") | P0 |
-| F3.6 | Peringatan margin tergerus (produk dijual di bawah HPP, komisi kanal terlalu besar) | P1 |
-| F3.7 | Mode Lanjutan: laporan laba-rugi, arus kas, neraca sederhana | P1 |
-| F3.8 | **Feed aksi**: daftar "Hari ini perlu perhatian" berisi insight/peringatan prioritas, ditampilkan di atas kartu keuangan di Beranda (pola Shopify Sidekick Pulse) | P0 *(baru, v1.1 — R3)* |
-| F3.9 | **Kualitas katalog**: peringatan produk tanpa HPP/foto/harga (memengaruhi akurasi untung per produk) | P0 *(baru, v1.1 — R4)* |
+**Utama:** UMKM berkembang lintas kanal (omzet ±Rp5–100 juta/bulan) di fesyen, F&B, dan kecantikan, Surabaya Raya & Malang. Mereka berjualan di 2+ kanal (offline, Shopee/TikTok Shop/Tokopedia, Instagram, WhatsApp), punya 0–5 staf, dan memakai HP Android sebagai perangkat kerja utama.
 
-**Acceptance criteria (F3.1, F3.5):**
-- Dasbor terbuka ≤ 1,5 detik (p75) di Android kelas menengah via 4G.
-- Angka di kartu utama sama persis dengan hasil query ledger (uji otomatis rekonsiliasi).
-- Insight naratif hanya menyebut angka yang ada di data (tidak mengarang); setiap insight menyertakan tautan "Lihat datanya".
+**Job utama:** *"Saat jualan di banyak kanal sekaligus, bantu aku tahu stok mana yang mau habis, produk mana yang sebenarnya untung, dan jawab pembeli yang nanya hal sama berulang-ulang, supaya aku tidak kehilangan penjualan dan tidak kerja lembur."*
 
-#### Modul F4 — Proyeksi & Perencanaan
-| ID | Fitur | Prioritas |
-|---|---|---|
-| F4.1 | Proyeksi arus kas 30 hari (berdasar pola historis + hutang/piutang jatuh tempo) | P1 |
-| F4.2 | Anggaran sederhana per kategori + peringatan hampir lewat | P2 |
-| F4.3 | Simulasi "bagaimana jika" harga/promo ("kalau harga naik 5%, untung jadi berapa?") | P2 |
+**Batasan segmen:** bukan restoran besar yang butuh meja/KDS, bukan toko multi-gudang, dan bukan perusahaan yang butuh akuntansi formal.
 
-#### Modul F5 — Laporan & Pajak
-| ID | Fitur | Prioritas |
-|---|---|---|
-| F5.1 | Laporan harian otomatis ke WhatsApp pemilik (jam bisa diatur) | P0 |
-| F5.2 | Ekspor PDF/Excel laporan bulanan (laba-rugi, penjualan, stok) | P1 |
-| F5.3 | Pembantu pajak UMKM: estimasi PPh final 0,5% dari omzet bulanan + pengingat setor (disclaimer: bukan konsultan pajak) | P1 |
-| F5.4 | Paket "siap ajukan pinjaman": ringkasan keuangan 6–12 bulan untuk bank/koperasi | P2 |
+**Sekunder:** UMKM pemula satu kanal (Starter: stok + keuangan + konsultasi, tanpa Customer Chat); UMKM menengah tanpa analis (Pro).
 
----
+## 6. Value Proposition(s)
 
-### 5.2 PILAR 2 — Orkestrasi Operasional (ERP · CRM · POS yang Mudah)
+**VP-1 — Stok tidak bolong saat ramai (Stock Intelligence)**
+- **Who:** Sari, pemilik brand skincare di Shopee, TikTok Shop, dan WA.
+- **Why:** produk terlaris habis saat kampanye tanggal kembar, sehingga penjualan hilang dan peringkat toko turun.
+- **What before:** mengecek stok manual per platform, baru sadar habis saat pesanan masuk.
+- **How:** WADAR menghitung laju jual dari semua kanal, memperkirakan tanggal habis, dan menyarankan jumlah pesan ulang dengan memperhitungkan waktu tunggu pemasok.
+- **What after:** dapat peringatan "Serum Vit C habis ±3 hari lagi, pesan 40 pcs" sebelum kehabisan.
+- **Alternatives:** spreadsheet, fitur stok POS besar (tanpa prediksi), atau feeling.
 
-Tujuan: satu tempat untuk **jual, stok, pelanggan, dan pembelian** di semua kanal — tanpa kerumitan ERP.
+**VP-2 — Tahu untung riil, bukan cuma omzet (Finance Insight)**
+- **Who:** Dimas, pemilik kedai kopi dengan dine-in + ojek online.
+- **Why:** omzet besar tapi kas tidak bertambah; tidak tahu komisi aplikasi menggerus margin.
+- **What before:** hanya melihat total penjualan harian.
+- **How:** WADAR menghitung margin per produk dan per kanal setelah HPP, komisi, dan diskon, lalu menjelaskan penyebab perubahan dalam bahasa sederhana.
+- **What after:** "Untung minggu ini turun Rp420 rb: komisi GoFood −Rp260 rb, diskon −Rp110 rb, penjualan turun −Rp50 rb." Dimas lalu menaikkan harga menu khusus ojol.
+- **Alternatives:** laporan formal POS/akuntansi yang tidak menjelaskan sebab.
 
-#### Modul O1 — Katalog Produk
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O1.1 | Produk + varian (ukuran/warna), SKU, barcode, foto, harga jual per kanal, HPP | P0 |
-| O1.2 | Tambah produk super cepat: foto → AI mengisi nama, kategori, deskripsi | P1 |
-| O1.3 | Impor produk massal dari Excel/CSV & file ekspor marketplace | P0 |
-| O1.4 | Resep/bahan baku 1 level (F&B): 1 Es Kopi Susu = 18 g kopi + 150 ml susu + ... → stok bahan berkurang otomatis | P1 |
-| O1.5 | Bundling produk | P2 |
-| O1.6 | Produk berseri/IMEI (untuk reseller gadget: satu unit = satu nomor seri, kondisi, garansi) | P1 |
+**VP-3 — Pembeli terjawab 24 jam dengan data benar (Customer Chat RAG)**
+- **Who:** Sari dan 2 admin chatnya.
+- **Why:** ratusan chat berulang (stok, harga, ongkir, status); respons lambat menurunkan konversi.
+- **What before:** admin membalas manual satu per satu, dan chat malam tidak terjawab.
+- **How:** AI menjawab di WhatsApp/widget dari katalog, stok live, dan kebijakan toko; di luar itu dieskalasi ke pemilik.
+- **What after:** admin hanya menangani chat yang dieskalasi.
+- **Alternatives:** chatbot skrip, chatbot AI generik yang tidak tahu stok, atau menambah admin (±0,5 FTE = Rp2,6 jt/bulan).
 
-#### Modul O2 — Kasir (POS)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O2.1 | Kasir cepat: cari/scan barcode, keranjang, diskon, catatan | P0 |
-| O2.2 | Metode bayar: tunai (hitung kembalian), QRIS dinamis (via gateway), transfer, e-wallet, split payment, kasbon | P0 (tunai/QRIS/transfer), P1 (split/kasbon) |
-| O2.3 | Struk: digital via WA/link, cetak printer thermal Bluetooth (app) / browser print (web) | P0 (digital), P1 (thermal) |
-| O2.4 | **Offline mode**: transaksi tersimpan lokal, sinkron otomatis, konflik stok ditangani | P1 (web PWA), P0 (app mobile) |
-| O2.5 | Shift kasir: buka/tutup kas, selisih kas | P1 |
-| O2.6 | Mode meja/antrian untuk F&B | P2 |
+**VP-4 — Konsultan yang hafal tokomu (Business Consultation)**
+- **Who:** semua pemilik.
+- **Why:** tidak mampu menggaji analis; masalah baru ketahuan setelah rugi.
+- **What before:** menebak-nebak atau bertanya di grup komunitas.
+- **How:** tanya bebas ("kenapa untung turun?") yang dijawab dari data toko, plus ringkasan proaktif setiap Senin.
+- **What after:** keputusan harga/promo/restock berdasar data.
+- **Alternatives:** ChatGPT umum (tidak tahu data toko), atau konsultan berbayar.
 
-**Acceptance criteria (O2.1–O2.2):**
-- Transaksi 3 item selesai ≤ 20 detik oleh kasir terlatih.
-- Menyelesaikan transaksi = stok berkurang + entri ledger + (opsional) struk terkirim, dalam satu operasi atomik dari sisi pengguna.
-- QRIS dinamis: pembayaran terkonfirmasi otomatis via webhook; kasir melihat status "LUNAS" tanpa refresh.
+## 7. Solution
 
-#### Modul O3 — Pesanan Lintas Kanal (Order Hub)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O3.1 | Satu daftar pesanan dari semua kanal: POS, WA (dibuat asisten/admin), marketplace (impor), toko online WADAR | P0 (POS+WA+impor) |
-| O3.2 | Status pesanan terstandar: Baru → Dibayar → Dikemas → Dikirim → Selesai / Batal / Retur | P0 |
-| O3.3 | Impor pesanan marketplace (Shopee, TikTok Shop, Tokopedia) via file ekspor, dengan pemetaan SKU otomatis | P0 |
-| O3.4 | Integrasi API marketplace resmi (sinkron pesanan & stok 2 arah) | P2 |
-| O3.5 | Link pembayaran & katalog mini (toko online sederhana) yang bisa dibagikan di WA/IG | P1 |
-| O3.6 | Cek ongkir & resi (integrasi agregator logistik) | P2 |
+### 7.1 Arsitektur produk (Proposal Gambar 4, empat lapis)
 
-#### Modul O4 — Stok Cerdas (Stock Intelligence)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O4.1 | Stok realtime per lokasi/outlet; setiap perubahan tercatat sebagai pergerakan stok (masuk, keluar, penyesuaian, transfer) | P0 |
-| O4.2 | **Prediksi habis stok**: laju jual per produk → "Serum Vit C habis ±3 hari lagi" | P0 |
-| O4.3 | Saran jumlah pesan ulang (mempertimbangkan lead time supplier & tren/musim, mis. tanggal kembar) | P1 |
-| O4.4 | Deteksi barang lambat laku / overstock + saran aksi (bundling, diskon) | P1 |
-| O4.5 | Stok opname dengan scan HP + laporan selisih | P1 |
-| O4.6 | Buffer stok per kanal (alokasi stok marketplace vs offline) | P2 |
-
-#### Modul O5 — Pembelian & Supplier
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O5.1 | Daftar supplier + riwayat harga beli | P1 |
-| O5.2 | Purchase Order (PO) → terima barang → stok & HPP (rata-rata tertimbang) ter-update → hutang/pembayaran tercatat | P1 |
-| O5.3 | Asisten membuat draf PO dari saran pesan ulang; kirim ke supplier via WA setelah disetujui | P2 |
-
-#### Modul O6 — Pelanggan (CRM Ringan)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O6.1 | Profil pelanggan otomatis dari POS/WA/pesanan (nama, no. WA, total belanja, terakhir beli, produk favorit) | P0 |
-| O6.2 | Segmen otomatis: Baru, Loyal, Berisiko hilang (lama tidak beli), VIP | P1 |
-| O6.3 | Broadcast WA terjadwal ke segmen (template resmi Meta, opt-out dihormati) | P1 |
-| O6.4 | Poin/member sederhana | P2 |
-| O6.5 | Catatan & tag pelanggan; riwayat percakapan WA terhubung ke profil | P0 |
-
-#### Modul O7 — Tim & Outlet
-| ID | Fitur | Prioritas |
-|---|---|---|
-| O7.1 | Undang staf; peran: Pemilik, Manajer, Kasir, Admin Chat, Gudang (hak akses per peran) | P0 (Pemilik+Kasir), P1 (lainnya) |
-| O7.2 | Multi-outlet: stok, kasir, laporan per outlet + gabungan | P1 |
-| O7.3 | Log aktivitas staf (siapa void transaksi, ubah harga, dll.) | P1 |
-
----
-
-### 5.3 PILAR 3 — Asisten Chat Cerdas (Integrated, Full Memory, Realtime)
-
-Tujuan: satu "otak" AI yang **selalu tahu kondisi bisnis saat ini**, **ingat semua konteks penting**, dan bisa **bertindak** dalam batas izin — dengan dua wajah: untuk pemilik/staf dan untuk pembeli.
-
-#### Konsep kunci: Business Brain
-Semua mode asisten memakai *Business Brain* yang sama, terdiri dari:
-- **Kondisi Bisnis Live** — ringkasan realtime (omzet hari ini, kas, stok kritis, pesanan tertunda, anomali) yang diperbarui setiap ada kejadian (penjualan, uang masuk, stok berubah).
-- **Memori Jangka Panjang** — fakta tentang toko (kebijakan retur, jam buka, supplier langganan, preferensi pemilik, keputusan penting), ringkasan percakapan lama, dan knowledge base (katalog, FAQ, SOP).
-- **Timeline Kejadian** — riwayat event bisnis yang bisa ditelusuri ("kapan terakhir restock serum?").
-- **Alat (tools)** — kemampuan membaca & bertindak lewat modul Pilar 1 & 2, dengan izin sesuai peran pengguna.
-
-Detail teknis: lihat `ARCHITECTURE.md §7`.
-
-#### Modul A1 — Owner Assistant (untuk pemilik & staf)
-Tersedia di aplikasi (chat + voice) dan di WhatsApp pemilik. **Sejak v1.1 (R2):** tanya-data read-only (A1.1) via WhatsApp pemilik masuk **MVP**; aksi tulis (A1.3, A1.4, dst.) via WA tetap di v1 — lihat §14.2 no. 3.
-
-| ID | Kemampuan | Contoh | Prioritas |
-|---|---|---|---|
-| A1.1 | **Tanya data** dalam bahasa bebas | "Untung minggu ini berapa?" "Produk apa paling laku di TikTok bulan ini?" | P0 |
-| A1.2 | **Konsultasi bisnis** berbasis data toko | "Kenapa bulan ini untung turun?" → analisis penyebab + saran | P0 |
-| A1.3 | **Catat lewat chat** | "Catat beli gula 5 kg 80 ribu tunai" → draf pengeluaran → konfirmasi 1 tap | P0 |
-| A1.4 | **Aksi dengan persetujuan** | "Buatkan PO serum 40 pcs ke Supplier A" → draf → Setujui/Ubah/Batal | P1 |
-| A1.5 | **Insight proaktif** | Pesan pagi: ringkasan kemarin + 1–3 hal yang perlu diperhatikan | P0 |
-| A1.6 | **Voice** — bicara & dengar (STT/TTS Bahasa Indonesia) | Tekan-tahan mic: "Stok kopi tinggal berapa?" | P1 |
-| A1.7 | **Ingat preferensi & keputusan** | "Ingat, kita tidak pernah diskon lebih dari 15%" → dipakai di saran berikutnya | P0 |
-| A1.8 | **Rangkuman & laporan on-demand** | "Bikinkan laporan bulan Agustus buat investor" → PDF | P1 |
-| A1.9 | Membaca file/foto (struk, nota supplier, screenshot pesanan) → data terstruktur | Foto nota → draf pembelian | P1 |
-
-**Aturan perilaku (wajib):**
-- Setiap angka yang disebut asisten **harus berasal dari hasil tool** (bukan tebakan); jawaban menyertakan sumber ("dari 142 transaksi 1–18 Sep").
-- Aksi tulis (catat, ubah, kirim, buat PO) **selalu** lewat kartu konfirmasi, kecuali pengguna mengaktifkan "auto-setujui" untuk jenis aksi berisiko rendah (mis. catat pengeluaran < Rp100 rb).
-- Asisten menghormati peran: kasir tidak bisa bertanya laba bersih jika tidak diizinkan pemilik.
-- Jika data tidak cukup, asisten bilang tidak tahu + menyarankan cara melengkapi data.
-
-**Acceptance criteria (A1.1):**
-- Golden set 200 pertanyaan data: ≥ 95% jawaban numerik tepat (toleransi pembulatan).
-- p50 waktu jawab ≤ 4 detik, p95 ≤ 10 detik; streaming token pertama ≤ 1,5 detik.
-
-#### Modul A2 — Customer Chat (untuk pembeli, di WhatsApp)
-| ID | Kemampuan | Prioritas |
-|---|---|---|
-| A2.1 | Menjawab pertanyaan stok, harga, varian, kebijakan (retur, COD, jam buka) dari data **live** toko (RAG + tool baca stok) | P0 |
-| A2.2 | Membantu pembeli memesan: pilih produk → rangkum pesanan → kirim link bayar QRIS/VA → pesanan masuk Order Hub | P1 |
-| A2.3 | Cek status pesanan & resi | P1 |
-| A2.4 | **Eskalasi ke manusia**: di luar cakupan / keyakinan rendah / pembeli minta admin / keluhan → notifikasi ke pemilik/admin, AI berhenti membalas percakapan itu sampai dilepas | P0 |
-| A2.5 | Inbox terpadu: admin bisa ambil alih, melihat saran balasan AI, dan membalas dari aplikasi | P0 |
-| A2.6 | Nada & persona bisa diatur (sapaan "Kak", gaya santai/formal, emoji) | P0 |
-| A2.7 | Widget chat di toko online/katalog WADAR (kanal cadangan bila WA bermasalah) | P1 |
-| A2.8 | Instagram DM | P2 |
-| A2.9 | Belajar dari koreksi admin (jawaban yang diedit admin menjadi contoh/FAQ baru setelah disetujui) | P1 |
-| A2.10 | Tab **"Belum bisa dijawab"**: daftar pertanyaan pembeli yang gagal dijawab AI (confidence rendah/eskalasi), satu tap jadi FAQ/knowledge base baru | P0 *(baru, v1.1 — R5)* |
-
-**Aturan keamanan customer chat:**
-- Tidak pernah membocorkan data internal (HPP, margin, data pelanggan lain, saldo).
-- Tidak membuat janji di luar kebijakan toko (diskon, garansi) — jika ditanya, eskalasi.
-- Harga & stok selalu dibaca live saat menjawab, bukan dari memori lama.
-
-**Acceptance criteria (A2.1, A2.4):**
-- Golden set 300 pertanyaan pembeli per vertikal pilot: akurasi ≥ 90%, zero kebocoran data internal.
-- Balasan dikirim ≤ 10 detik (p95).
-- Eskalasi terkirim ke pemilik ≤ 5 detik setelah dipicu.
-
-#### Modul A3 — Memori & Knowledge Base (dapat dilihat & dikendalikan pengguna)
-| ID | Fitur | Prioritas |
-|---|---|---|
-| A3.1 | Halaman "Yang WADAR tahu tentang tokomu": fakta, kebijakan, preferensi — bisa diedit/dihapus | P0 |
-| A3.2 | Upload dokumen (SOP, daftar harga, FAQ, kebijakan) → otomatis masuk knowledge base | P0 |
-| A3.3 | Onboarding wawancara: asisten bertanya 10 hal penting tentang toko di hari pertama | P0 |
-| A3.4 | Deteksi konflik memori ("Kebijakan retur 7 hari vs 3 hari — mana yang benar?") | P1 |
-
-#### Modul A4 — Automasi & Pengingat
-| ID | Fitur | Prioritas |
-|---|---|---|
-| A4.1 | Aturan sederhana "Jika–Maka" dari template: jika stok < X → ingatkan; jika pelanggan VIP 30 hari tidak beli → sarankan pesan | P1 |
-| A4.2 | Buat automasi lewat chat: "Setiap Senin pagi kirimi aku produk yang mau habis" | P2 |
-
----
-
-## 6. Fitur Lintas Pilar (Platform)
-
-| ID | Fitur | Prioritas |
-|---|---|---|
-| X1 | **Onboarding terpandu** (≤ 15 mnt): jenis usaha → kanal jualan → impor produk (file/foto/manual) → hubungkan pembayaran → wawancara asisten → dasbor pertama | P0 |
-| X2 | Data contoh (demo store) untuk eksplor sebelum data sendiri siap | P0 |
-| X3 | Autentikasi: nomor HP (OTP WA/SMS), email, Google | P0 |
-| X4 | Multi-tenant (toko) + multi-outlet + peran | P0 |
-| X5 | Pusat notifikasi (in-app, push web/app, WA) dengan preferensi per jenis | P0 |
-| X6 | Langganan & tagihan (paket **Gratis** selamanya + trial 14 hari Growth otomatis untuk paket berbayar, add-on, bayar via QRIS/VA, invoice). **Alur (v1.1, R6):** pengguna baru default dapat trial 14 hari fitur Growth; kalau trial habis tanpa upgrade, turun otomatis ke paket Gratis (bukan diblokir) — funnel balik ke Starter/Growth kapan saja | P0 |
-| X7 | Pengaturan toko (profil, jam buka, zona waktu WIB/WITA/WIT, mata uang IDR) | P0 |
-| X8 | Ekspor & hapus data (UU PDP): ekspor semua data toko; hapus akun | P0 |
-| X9 | Audit log untuk aksi sensitif | P0 |
-| X10 | Pusat bantuan + chat dukungan (dijawab asisten, eskalasi ke tim) | P1 |
-| X11 | Referral (1 bulan gratis bagi pengajak) | P1 |
-| X12 | Mode gelap, ukuran huruf besar (aksesibilitas) | P1 |
-| X13a | Bahasa Indonesia (default) | P0 |
-| X13b | Bahasa Inggris | P2 |
-| X14 | Panel admin internal (support, lihat status tenant, feature flag, biaya AI per tenant) | P0 |
-
----
-
-## 7. Alur Pengguna Utama
-
-### 7.1 Onboarding (Bu Tini, Starter)
-1. Daftar dengan nomor WA → OTP.
-2. "Jualan apa?" pilih *Warung/Sembako* → template kategori & produk umum.
-3. "Uang masuk lewat mana?" centang Tunai + QRIS → aktifkan QRIS WADAR (via gateway) atau "sudah punya QRIS sendiri" → panduan payment listener.
-4. Tambah 5 produk terlaris (foto/ketik) — boleh lewati.
-5. Asisten menyapa: "Halo Bu Tini, saya bantu awasi warung Ibu. Boleh saya tanya 3 hal?"
-6. Dasbor pertama tampil dengan kartu "Uang masuk hari ini: Rp0 — coba catat penjualan pertama!"
-
-### 7.2 Hari biasa (Sari, Growth)
-- 07.00 — WA dari WADAR: "Kemarin untung Rp1,2 jt (+8%). ⚠️ Serum Vit C habis ±3 hari lagi, kampanye 10.10 tinggal 5 hari. Mau saya buatkan draf PO?"
-- 09.00–21.00 — Customer chat menjawab ±150 chat; 12 dieskalasi ke admin.
-- Setiap uang masuk QRIS → notifikasi + suara.
-- 21.00 — Sari impor pesanan Shopee (file) → stok & untung per kanal ter-update.
-- 21.10 — Sari tanya: "Kenapa margin TikTok lebih kecil dari Shopee?" → jawaban dengan rincian komisi & ongkir.
-
-### 7.3 Pembeli di WA
-Pembeli: "Kak serum vit C masih ada? aman buat kulit sensitif?" → AI membaca stok live (6 pcs) + deskripsi produk → menjawab → pembeli "mau 2" → AI merangkum pesanan + link bayar QRIS → bayar → pesanan masuk Order Hub + notifikasi uang masuk + stok berkurang.
-
----
-
-## 8. Arsitektur Informasi & Layar Utama
-
-### 8.1 Navigasi (bottom tab di mobile, sidebar di desktop)
-1. **Beranda** — kartu keuangan, peringatan, insight, pintasan cepat
-2. **Kasir** — POS
-3. **Pesanan** — Order Hub + Inbox chat pembeli
-4. **Asisten** — chat owner assistant (tombol mic)
-5. **Lainnya** — Produk & Stok, Pelanggan, Pembelian, Keuangan detail, Laporan, Tim, Pengaturan
-
-Tombol mengambang **"+"** di semua layar: Catat jual · Catat pengeluaran · Tambah produk · Tanya asisten.
-
-### 8.2 Daftar layar (MVP)
-| Layar | Isi utama |
+| Lapis | Komponen Fase 1 |
 |---|---|
-| Beranda | **Feed aksi** ("Hari ini perlu perhatian") di posisi teratas *(v1.1 — R3)*, lalu 3 kartu keuangan (uang masuk, untung, saldo), insight hari ini, grafik mini 7 hari |
-| Keuangan | Tab: Ringkasan · Masuk/Keluar · Dompet · Untung per Produk/Kanal · Laporan |
-| Kasir | Grid produk + pencarian/scan, keranjang, pembayaran, struk |
-| Pesanan | Filter kanal/status, detail pesanan, impor marketplace |
-| Inbox | Percakapan WA, status AI/manusia, saran balasan, ambil alih |
-| Produk & Stok | Daftar produk, status stok (aman/menipis/kritis), prediksi habis, detail pergerakan |
-| Pelanggan | Daftar + segmen, profil + riwayat |
-| Asisten | Chat, kartu konfirmasi aksi, riwayat, "Yang WADAR tahu" |
-| Onboarding | Wizard langkah demi langkah |
-| Pengaturan | Toko, tim & peran, pembayaran, WhatsApp, notifikasi, langganan, data & privasi |
+| Kanal & antarmuka | Dasbor Web/PWA pemilik · WhatsApp Business Platform · Widget chat toko online · Notifikasi (WA/email/push) |
+| Aplikasi | Modul POS ringan · Modul CRM ringan · Manajemen katalog & stok · Manajemen akun & langganan |
+| Kecerdasan AI | AI Stock Intelligence · AI Finance Insight · AI Customer Chat (RAG) · AI Business Consultation |
+| Data & infrastruktur | Basis data transaksi multi-tenant · Vector database (knowledge base) · LLM API (dapat diganti) · Cloud, enkripsi & backup |
 
----
+Alur layanan (Proposal Gambar 3): **Registrasi & pilih paket (trial 14 hari) → Integrasi data → Pemrosesan AI (knowledge base dibangun) → Penyajian layanan (dasbor, notifikasi, chatbot) → Continuous learning.**
 
-## 9. Paket Harga & Hak Akses (Entitlement)
+### 7.2 UX & layar (mengikuti wireframe Proposal Gambar 1 dan sampul)
 
-Harga belum termasuk PPN. Tahunan = bayar 10 bulan.
+**Navigasi**
+- Mobile (bottom tab, 5): **Beranda · Transaksi · Laporan · Chat AI · Lainnya**
+- Desktop (sidebar): **Beranda · Penjualan · Stok · Keuangan · Pelanggan · Chat AI · Konsultasi Bisnis · Pengaturan**
+- Prinsip: bahasa sehari-hari ("Untung bersih", bukan "net income"), maksimal 3 tap untuk tugas harian, target layar 360–430 px, dan setiap angka punya pembanding (vs kemarin/minggu lalu).
 
-**Paket Gratis ditambahkan di v1.1 (R6)** — payment listener + suara + buku kas dasar, 1 pengguna, **tanpa fitur AI sama sekali** (bukan trial; berlaku selamanya). Tujuan: corong akuisisi bersaing dengan Kasir Pintar/Loyverse/BukuWarung (§6 COMPETITORS.md), bukan pengganti trial 14 hari paket berbayar — lihat pertanyaan terbuka relasi Gratis vs trial di daftar ambiguitas.
-
-| Fitur / Kuota | **Gratis** Rp0 | **Starter** Rp79.000 | **Growth** Rp199.000 | **Pro** Rp399.000 |
-|---|---|---|---|---|
-| Outlet | 1 | 1 | 1 | hingga 3 (+Rp99 rb/outlet) |
-| Pengguna/staf | 1 | 1 | 3 | 10 |
-| Payment Listener + suara | ✓ | ✓ | ✓ | ✓ |
-| Dasbor keuangan & insight harian | buku kas dasar saja (tanpa insight naratif) | ✓ | ✓ | ✓ |
-| Untung per produk & kanal | — | ✓ | ✓ | ✓ |
-| Skor Kesehatan Bisnis, proyeksi kas | — | — | ✓ | ✓ |
-| POS & Order Hub | kasir dasar saja (tanpa Order Hub) | ✓ | ✓ | ✓ |
-| Impor marketplace | — | 1 kanal | 3 kanal | tak terbatas |
-| Prediksi stok & saran pesan ulang | — | prediksi saja | ✓ | ✓ |
-| Pembelian/PO & supplier | — | — | ✓ | ✓ |
-| CRM segmen & broadcast | — | — | ✓ | ✓ |
-| Owner Assistant (pertanyaan/bulan) | — (tanpa AI) | 30 | 150 | wajar tanpa batas (fair use 1.500) |
-| Customer Chat WA (percakapan/bulan) | — | — | 1.000 | 3.000 |
-| Voice assistant | — | — | ✓ | ✓ |
-| Automasi Jika–Maka | — | — | 5 aturan | tak terbatas |
-| Laporan ekspor PDF/Excel | — | — | ✓ | ✓ |
-| Dukungan | pusat bantuan | pusat bantuan | chat jam kerja | prioritas ≤ 4 jam |
-| Add-on | upgrade ke Starter | +500 percakapan chat Rp50 rb | sama | sama |
-
-Aturan kuota: saat mendekati kuota (80%) → notifikasi; saat habis, customer chat berhenti dengan pesan sopan + eskalasi ke admin (tidak memutus layanan inti).
-
----
-
-## 10. Kebutuhan Non-Fungsional
-
-| Area | Kebutuhan |
+| Layar | Isi (sesuai wireframe) |
 |---|---|
-| Kinerja | Halaman utama p75 ≤ 1,5 dtk (4G, Android menengah); API baca p95 ≤ 300 ms; update realtime ≤ 3 dtk |
-| Ketersediaan | ≥ 99,5%/bulan (MVP), ≥ 99,9% (tahun ke-3); degradasi anggun: jika AI mati, POS & keuangan tetap jalan |
-| Skala | Desain untuk 10.000 toko, 5 juta transaksi/bulan tanpa ubah arsitektur dasar |
-| Offline | POS & catat pengeluaran berfungsi offline ≥ 24 jam; sinkron idempoten |
-| Keamanan | Isolasi data antar-toko (RLS + cek di layer aplikasi), enkripsi at-rest & in-transit, RBAC, audit log, 2FA opsional pemilik, rahasia di secret manager |
-| Privasi & hukum | UU 27/2022 (PDP): persetujuan, ekspor, hapus; data tidak dijual; data toko tidak dipakai melatih model pihak ketiga; registrasi PSE lingkup privat |
-| Akurasi uang | Nominal disimpan sebagai bilangan bulat rupiah; tidak ada floating point; setiap transaksi seimbang di ledger |
-| AI | Biaya AI+WA ≤ 15% ARPU; semua panggilan AI tercatat (prompt, tool, biaya, latensi) untuk evaluasi |
-| Aksesibilitas | Kontras WCAG AA, huruf ≥ 16 px, target sentuh ≥ 44 px, dukungan pembaca layar untuk alur inti |
-| Observabilitas | Tracing end-to-end dengan correlation ID; error tracking; dasbor bisnis internal |
-| Lokalisasi | Format Rp1.250.000, tanggal "19 Sep 2026", zona waktu per toko |
+| **Beranda** | Sapaan + nama toko; pintasan POS · CRM · AI Insights · Konsultasi; kartu **Total Penjualan Hari Ini** (± % vs kemarin), **Jumlah Transaksi**, **Produk Terjual**, **Pelanggan Baru**; grafik **Tren Penjualan 7 Hari**; daftar **Stok Menipis**; kartu **Insight untukmu** (Prediksi Stok, Analisis Keuangan, Chat Pelanggan, Konsultasi Bisnis) |
+| **Transaksi** | Tab **POS · Marketplace · Riwayat**. POS: pencarian, filter kategori, grid/daftar produk dengan harga & stok, keranjang, tombol **Bayar**. Marketplace: unggah file ekspor + riwayat impor |
+| **Stock Intelligence** | Tab **Stok Produk · Prediksi & Rekomendasi**. Filter Semua / Stok Menipis / Stok Aman. Tiap baris: stok, minimum, status ikon. Kartu "Memprediksi: Tissue Basah habis 3 hari lagi. Disarankan pesan ulang 2 dus" |
+| **Financial Insight** | Tab **Ringkasan · Margin · Detail**. Untung bersih hari ini (± %), donut performa penjualan per kategori, **Margin per Produk**, kartu penjelasan ("Margin Mie Instan turun 8% karena promo diskon...") |
+| **Chat AI** | Tab **Asisten Bisnis** (konsultasi pemilik) · **Tanya Stok/Produk**. Contoh pertanyaan siap ketuk |
+| **Inbox Pembeli** (di bawah Chat AI, desktop: Pelanggan) | Daftar percakapan WA/widget, status AI/Manusia/Eskalasi, ambil alih & kembalikan ke AI, tab **Belum bisa dijawab** |
+| **Pelanggan** | Daftar + pencarian; profil: total belanja, terakhir beli, produk favorit, riwayat transaksi & chat, catatan/tag |
+| **Pengaturan** | Profil toko, kanal & komisi, kebijakan toko, knowledge base, WhatsApp, widget, tim & peran, notifikasi, langganan & tagihan, data & privasi |
+| **Onboarding** | Wizard 6 langkah (ONB-2) |
 
----
+### 7.3 Kebutuhan fungsional
 
-## 11. Rencana Rilis
+Prioritas: **P0** = wajib sebelum pilot (Jan 2027), **P1** = wajib sebelum berbayar (Apr 2027), **P2** = Fase 2+.
 
-| Fase | Waktu (indikatif) | Platform | Isi utama | Kriteria lolos |
-|---|---|---|---|---|
-| **M0 — Fondasi** | Minggu 1 | — | Monorepo, platform inti (outbox, event bus, idempotency), CI/CD — lihat `BUILD-PLAN.md` M0 | Deploy staging hijau |
-| **MVP build (M1–M11)** | Minggu 2–14 *(indikatif, lihat `BUILD-PLAN.md` §Peta Milestone untuk rincian per milestone)* | Web PWA | Identitas & tenant, semua P0: payment listener (gateway), ledger, dasbor + insight, katalog, POS online, Order Hub + impor, stok + prediksi habis, CRM dasar, Owner Assistant (tanya data, konsultasi, catat, memori), Customer Chat WA + eskalasi + inbox, billing, hardening | Semua DoD milestone M1–M11 terpenuhi |
-| **Pilot (Alpha)** | 8 minggu setelah MVP build | Web PWA | 30 UMKM pakai WADAR paket Growth gratis | Akurasi chatbot ≥ 90%, ≥ 40% bersedia bayar setelah pilot |
-| **v1 (Launch berbayar)** | +3 bulan | Web PWA | P1: offline POS, split/kasbon, printer, OCR struk, parser notifikasi, skor kesehatan, proyeksi kas, PO & supplier, segmen & broadcast, multi-outlet, voice, automasi template, aksi asisten dengan persetujuan | Konversi trial ≥ 20%, churn ≤ 6% |
-| **v2 (Mobile App)** | +3–4 bulan | Android (utama) + iOS | App React Native (Expo) berbagi logika: POS offline-first, notification listener Android (QRIS apa pun), printer Bluetooth, push notif, scan barcode kamera, widget layar utama "uang masuk hari ini" | Rating ≥ 4,5; ≥ 50% WAU dari app |
-| **v3 (Skala)** | Tahun 2–3 | Web + App | P2: API marketplace resmi, simulasi what-if, AI Agent aksi lanjutan, IG DM, B2B2B dashboard untuk koperasi/dinas, paket siap pinjaman | 8 kontrak B2B2B/tahun |
-
----
-
-## 12. Analitik Produk (Event Tracking)
-
-Event wajib (dikirim ke analytics, tanpa PII sensitif):
-`signup_completed`, `onboarding_step_completed{step}`, `data_source_connected{type}`, `aha_dashboard_viewed`, `sale_recorded{channel, method}`, `expense_recorded{via: form|chat|ocr}`, `payment_received{source}`, `insight_shown{type}`, `insight_acted{type, action}`, `assistant_question{intent}`, `assistant_action_proposed{tool}`, `assistant_action_approved{tool}`, `customer_chat_resolved{by: ai|human}`, `customer_chat_escalated{reason}`, `stock_alert_shown`, `po_created`, `trial_converted{plan}`, `subscription_churned{reason}`.
-
----
-
-## 13. Risiko & Mitigasi
-
-| Risiko | Peluang | Dampak | Mitigasi |
+#### A. Akun, Onboarding, Tim
+| ID | Kebutuhan | Prio | Acceptance criteria |
 |---|---|---|---|
-| AI halusinasi angka/kebijakan | Sedang | Tinggi | Angka hanya dari tool; RAG terbatas knowledge base; ambang keyakinan + eskalasi; golden set & eval otomatis tiap rilis |
-| Kebocoran data antar-toko | Rendah | Sangat tinggi | RLS Postgres + tenant guard di layer aplikasi + tes isolasi otomatis + pentest |
-| Biaya AI / kurs naik | Sedang | Tinggi | Routing model murah/mahal, cache, konteks ringkas, abstraksi multi-penyedia, kuota per paket, kurs konservatif Rp18.000/US$ |
-| Scope terlalu besar untuk tim kecil | **Tinggi** | Tinggi | Modular monolith dulu; urutan milestone ketat; P0 benar-benar minimal; fitur di balik feature flag |
-| Kebijakan/tarif WhatsApp berubah | Sedang | Sedang | Mitra resmi Cloud API, maksimalkan jendela layanan 24 jam, widget chat cadangan, notifikasi via push/email |
-| Adopsi lambat (UMKM ragu) | Sedang | Tinggi | Onboarding ≤ 15 mnt, demo store, laporan nilai bulanan ("WADAR menghemat 12 jam & mencegah 2 stockout"), kanal komunitas/B2B2B |
-| Data marketplace tidak lengkap/berubah format | Tinggi | Sedang | Parser berversi per format, validasi + pratinjau sebelum impor, pemetaan SKU yang bisa dikoreksi |
+| ONB-1 | Daftar dengan email (magic link/OTP) atau Google; trial 14 hari otomatis aktif dengan hak akses Growth | P0 | Toko baru langsung punya subscription `trialing` dengan `trial_ends_at = +14 hari`; tidak meminta metode bayar |
+| ONB-2 | Wizard onboarding: (1) jenis usaha & kategori, (2) kanal jualan + komisi default, (3) tambah produk (impor CSV/XLSX, impor file marketplace, atau manual), (4) kebijakan toko (form terstruktur), (5) hubungkan WhatsApp (boleh dilewati), (6) dasbor pertama | P0 | Pengguna uji non-teknis menyelesaikan langkah 1–4 ≤ 15 menit; setiap langkah bisa dilewati dan dilanjutkan dari checklist di Beranda |
+| ONB-3 | Toko demo berisi data contoh 90 hari untuk eksplorasi | P0 | Bisa diaktifkan/dihapus; ditandai "Data contoh" di semua layar |
+| TEAM-1 | Undang staf via email; peran **Pemilik**, **Kasir** (POS + stok baca), **Admin Chat** (Inbox + katalog baca); batas pengguna per paket (1/3/10) | P0 | Kasir tidak bisa membuka Keuangan maupun Konsultasi; undangan ke-4 di Growth ditolak dengan ajakan upgrade |
 
----
+#### B. Katalog & Stok (lapisan aplikasi)
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| CAT-1 | Produk dengan varian (mis. ukuran/warna), SKU, barcode opsional, kategori, satuan, harga jual default, **HPP**, foto, deskripsi, stok minimum, waktu tunggu pemasok (hari), kelipatan pesan (pack size) | P0 | HPP wajib diisi saat simpan (boleh 0 dengan label "HPP belum diisi" yang muncul sebagai peringatan kualitas data) |
+| CAT-2 | Impor produk massal CSV/XLSX dengan template, pratinjau, dan validasi per baris | P0 | 500 baris diproses < 30 detik; baris gagal ditampilkan beserta alasannya; impor ulang file sama tidak menggandakan produk (kunci SKU) |
+| CAT-3 | Harga per kanal opsional (mis. harga GoFood ≠ harga offline) | P1 | Jika kosong, pakai harga default |
+| STK-0 | Pergerakan stok tercatat: masuk (pembelian/restock), keluar (penjualan), penyesuaian, retur; stok masuk bisa mencatat HPP batch & tanggal kedaluwarsa | P0 | Stok saat ini = jumlah semua pergerakan (tes otomatis); HPP rata-rata tertimbang diperbarui saat stok masuk |
+| STK-0b | Stok opname sederhana: input hitungan fisik → selisih menjadi penyesuaian | P1 | Riwayat opname tersimpan |
 
-## 14. Keputusan Terbuka & Catatan
+#### C. POS ringan & Transaksi
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| POS-1 | Kasir: cari/scan (kamera) produk, keranjang, diskon per item/transaksi, pilih pelanggan (opsional, cari by nomor HP), catatan | P0 | Transaksi 3 item selesai ≤ 20 detik oleh pengguna terlatih |
+| POS-2 | Metode bayar: tunai (hitung kembalian), transfer, QRIS statis toko, e-wallet, "lainnya", dicatat sebagai metode, **bukan diproses** | P0 | Menyimpan transaksi = stok berkurang + data keuangan terbarui dalam satu transaksi DB |
+| POS-3 | Struk digital (link) + kirim via WhatsApp (`wa.me` dengan teks) | P0 | Link struk publik bertanda tangan, tanpa data internal (HPP) |
+| POS-4 | Pencatatan penjualan manual untuk kanal non-POS (mis. pesanan WA/IG) dengan pilihan kanal | P0 | Transaksi tercatat dengan kanal yang dipilih |
+| POS-5 | Void transaksi dengan alasan (hanya Pemilik) → stok dikembalikan, tercatat di audit log | P0 | Transaksi tidak pernah dihapus, hanya berstatus `void` |
+| POS-6 | POS tetap jalan saat offline singkat (antrean lokal, sinkron otomatis, idempoten) | P1 | 20 transaksi offline tersinkron tanpa duplikat setelah online |
 
-### 14.1 Nama & brand
-"WADAR" adalah nama kerja dan **dipakai penuh untuk build** (repo, `packages/brand`, semua dokumen) — lihat CLAUDE.md aturan #10, brand terpusat jadi rebrand nanti cukup ubah satu paket, tidak menyentuh kode fitur. Keputusan nama final ditunda sampai sebelum peluncuran berbayar (v1), tidak menghalangi build MVP/pilot.
+#### D. Impor Marketplace
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| IMP-1 | Unggah file ekspor pesanan **Shopee, TikTok Shop, Tokopedia** (CSV/XLSX); sistem mengenali format, memetakan kolom, dan menampilkan pratinjau | P0 | Fixture contoh tiap marketplace di repo lolos impor; format tak dikenal → pemetaan kolom manual yang tersimpan sebagai template |
+| IMP-2 | Pemetaan SKU marketplace → varian WADAR: otomatis (SKU sama / kemiripan nama) + koreksi manual yang diingat | P0 | Baris tanpa pemetaan tidak diimpor diam-diam; ditahan di "Perlu dicocokkan" |
+| IMP-3 | Impor menyimpan nomor pesanan, tanggal, status, item, qty, harga, diskon/voucher penjual, ongkir, dan **potongan/komisi platform** jika tersedia; kalau tidak tersedia, komisi dihitung dari tarif kanal | P0 | Impor file yang sama 2× tidak menggandakan pesanan (kunci: kanal + nomor pesanan) |
+| IMP-4 | Pesanan batal/retur di file berikutnya memperbarui status dan mengembalikan stok | P1 | Perubahan status tercatat sebagai pergerakan stok balik |
 
-### 14.2 Pertanyaan terbuka
-1. ~~QRIS: memakai QRIS dinamis gateway (fee 0,7%, konfirmasi otomatis) sebagai default, atau fokus payment listener untuk QRIS statis milik toko?~~ **Diputuskan (v1.1):** keduanya — gateway (Xendit) untuk POS/link bayar sejak MVP (M5), payment-parser untuk QRIS statis di balik flag (P1, M5) lalu notification listener Android di v2 (§6.1 ARCHITECTURE).
-2. ~~Vertikal pilot pertama: fesyen/kecantikan atau F&B?~~ **Diputuskan (v1.1):** fesyen & kecantikan — konsisten dengan persona utama Sari dan eval set customer chat `BUILD-PLAN.md` M9 (300 pertanyaan vertikal kecantikan). Resep F&B (O1.4) tetap dibangun P1 tapi bukan fokus eval/pilot pertama.
-3. ~~Apakah Owner Assistant di WhatsApp pemilik termasuk MVP atau cukup di aplikasi?~~ **Diputuskan (v1.1, R2):** laporan harian WA (F5.1) **dan** tanya-data read-only (A1.1) via WA pemilik masuk **MVP**; aksi tulis (buat PO, catat pengeluaran, dll.) via WA tetap di v1.
-4. Model harga B2B2B (lisensi per UMKM binaan vs kontrak program) — **masih terbuka**, tidak relevan sebelum Fase 3 (§2.1 S4), tidak menghambat MVP.
+#### E. CRM ringan
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| CRM-1 | Pelanggan dibuat/digabung otomatis dari POS (nomor HP), impor (nama/username pembeli), dan chat WA (nomor) | P0 | Nomor HP dinormalisasi ke format E.164 (+62); duplikat nomor digabung |
+| CRM-2 | Profil: total belanja, jumlah transaksi, terakhir beli, produk favorit, kanal, riwayat chat, catatan & tag | P0 | Angka profil = agregat transaksi (tes) |
+| CRM-3 | Daftar pelanggan dengan filter (baru 30 hari, belum beli > 60 hari, top 20 belanja) | P1 | — |
 
-### 14.3 Glosarium
-| Istilah | Arti |
-|---|---|
-| Tenant | Satu bisnis/toko pelanggan WADAR |
-| Outlet | Lokasi fisik/gudang dalam satu tenant |
-| Ledger | Buku besar internal; sumber kebenaran angka keuangan |
-| HPP | Harga Pokok Penjualan (modal barang) |
-| RAG | Retrieval-Augmented Generation — AI menjawab dengan mengambil dokumen/data toko terlebih dulu |
-| Business Brain | Gabungan kondisi bisnis live, memori, timeline, dan tools yang dipakai semua mode asisten |
-| Eskalasi | Percakapan diserahkan dari AI ke manusia |
-| Jendela layanan WA | Periode 24 jam setelah pesan pembeli terakhir; balasan di dalamnya gratis |
+#### F. Knowledge Base (dipakai bersama 4 mesin AI)
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| KB-1 | **Kebijakan toko terstruktur**: jam buka, alamat, area & cara kirim, estimasi ongkir, COD ya/tidak, metode bayar, retur/tukar, garansi, waktu proses pesanan, kontak admin | P0 | Disimpan sebagai field terstruktur (bukan hanya teks) agar jawaban tepat |
+| KB-2 | Unggah dokumen (PDF, DOCX, TXT) dan FAQ (tanya-jawab) → dipotong, di-embed, dan bisa dicari | P0 | Dokumen 20 halaman siap dipakai ≤ 2 menit; status "Sedang diproses/Siap/Gagal" |
+| KB-3 | Katalog otomatis tersinkron ke knowledge base saat produk berubah (nama, deskripsi, varian, harga). **Stok dan harga selalu dibaca live**, bukan dari embedding | P0 | Ubah harga → jawaban chat berikutnya memakai harga baru tanpa reindex |
+| KB-4 | Halaman "Yang WADAR tahu tentang tokomu": lihat, edit, hapus isi KB, plus versi KB | P0 | Hapus dokumen → potongannya tidak lagi dipakai dalam ≤ 1 menit |
 
----
+#### G. AI Stock Intelligence (rumus di TECH-SPEC §7.1)
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| STK-1 | **Laju jual** per varian dari semua kanal (rata-rata tertimbang 28 hari, hari stok habis tidak dihitung) | P0 | Uji fixture: hasil sama dengan hitungan referensi |
+| STK-2 | **Estimasi tanggal habis** dan status: Habis / Kritis (habis sebelum restock tiba) / Menipis (≤ titik pesan ulang atau ≤ stok minimum) / Aman | P0 | Status konsisten dengan rumus; diperbarui ≤ 1 menit setelah transaksi |
+| STK-3 | **Saran jumlah pesan ulang** = kebutuhan selama waktu tunggu + 14 hari + stok pengaman − stok tersedia, dibulatkan ke kelipatan pesan | P0 | Tidak pernah negatif; pembulatan ke pack size |
+| STK-4 | **Deteksi barang lambat laku**: tidak terjual 30 hari, atau persediaan > 90 hari penjualan; tampilkan nilai modal yang tertahan | P0 | Daftar diurutkan dari modal tertahan terbesar |
+| STK-5 | **Risiko kedaluwarsa** untuk batch bertanggal: jumlah yang diperkirakan tidak terjual sebelum tanggal kedaluwarsa | P1 | Muncul jika kedaluwarsa ≤ 30 hari dan proyeksi penjualan < sisa batch |
+| STK-6 | **Penyesuaian momen kampanye** (tanggal kembar 9.9–12.12, gajian) untuk kanal marketplace berdasarkan histori toko | P1 | Jika histori belum ada, faktor default dapat diatur pemilik |
+| STK-7 | Penjelasan AI satu kalimat per rekomendasi, hanya menarasikan angka yang dihitung | P0 | Tidak ada angka di narasi yang tidak ada di data rekomendasi (cek otomatis) |
+| STK-8 | Penandaan "stockout dicegah": peringatan muncul → restock tercatat sebelum tanggal habis → tidak terjadi stok 0 | P0 | Dipakai untuk KR-4 dan laporan nilai |
 
-## 15. Riwayat Perubahan (Changelog)
+#### H. AI Finance Insight (rumus di TECH-SPEC §7.2)
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| FIN-1 | Catat **pengeluaran operasional** cepat (nominal, kategori, tanggal, catatan, foto struk opsional); kategori default: Bahan/Stok non-katalog, Gaji, Sewa, Listrik & Air, Internet, Iklan, Ongkir, Lain-lain | P0 | Form ≤ 3 kolom wajib |
+| FIN-2 | Konfigurasi **komisi per kanal** (% + biaya tetap per pesanan), dengan nilai awal yang bisa diedit untuk Shopee, TikTok Shop, Tokopedia, GoFood, GrabFood, ShopeeFood | P0 | Nilai default ditandai "perkiraan, cek di akun sellermu" |
+| FIN-3 | Ringkasan: penjualan, modal barang (HPP), komisi & potongan, diskon, **untung kotor**, pengeluaran, **untung bersih**; harian/mingguan/bulanan dengan pembanding | P0 | Angka sama dengan hitungan referensi fixture (toleransi Rp0) |
+| FIN-4 | **Margin per produk dan per kanal** (Rp dan %) | P0 | Produk tanpa HPP ditandai, tidak dihitung sebagai margin 100% |
+| FIN-5 | **Penjelasan sebab-akibat** perubahan untung (minggu ini vs minggu lalu) yang dipecah menjadi efek volume, harga, diskon, HPP, komisi, campuran produk, dan pengeluaran; dinarasikan AI dalam bahasa sederhana | P0 | Jumlah semua efek = selisih untung (tes); narasi hanya memakai angka hasil dekomposisi |
+| FIN-6 | **Peringatan margin tergerus**: jual di bawah modal, margin produk turun ≥ 5 poin vs rata-rata 4 minggu, komisi > 20% penjualan kanal, diskon > 15% penjualan | P0 | Tiap peringatan punya tombol "Lihat datanya" |
+| FIN-7 | Ekspor laporan bulanan (PDF/CSV) | P1 | — |
+| FIN-8 | Estimasi PPh final 0,5% dari omzet bulanan (dengan disclaimer) | P2 | — |
 
-### v1.1 — 19 September 2026
-Perubahan berdasarkan usulan `docs/COMPETITORS.md` §6 (R1–R6), dibahas dan disetujui pemilik produk satu per satu:
+#### I. AI Customer Chat (RAG)
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| CHT-1 | Menghubungkan nomor WhatsApp toko ke WADAR (lihat keputusan Q-3 di TECH-SPEC); toko tetap bisa membalas dari aplikasi WA Business jika memakai mode *coexistence* | P0 | Status koneksi terlihat; pesan masuk tercatat ≤ 5 detik |
+| CHT-2 | AI menjawab pertanyaan **produk, harga, varian, stok tersedia, cara pesan, ongkir/area kirim, metode bayar, COD, jam buka, retur, status pesanan** dari KB terstruktur + katalog live + dokumen | P0 | Golden set ≥ 200 pertanyaan per vertikal pilot: akurasi ≥ 90%, 0 kebocoran data internal |
+| CHT-3 | Persona toko: sapaan ("Kak"), gaya santai/formal, emoji ya/tidak, nama asisten | P0 | Tersimpan per toko |
+| CHT-4 | **Eskalasi ke pemilik** bila: keyakinan rendah, info tidak ada di data toko, keluhan/komplain, negosiasi harga/diskon, pembeli minta admin, bukti transfer/gambar, atau 2 kali gagal berturut-turut. AI mengirim pesan penahan sopan dan **berhenti membalas** percakapan itu | P0 | Notifikasi eskalasi ke pemilik ≤ 5 detik (in-app + push; WA hanya jika diatur); AI tidak membalas lagi sampai dikembalikan |
+| CHT-5 | **Larangan keras**: tidak menyebut HPP, margin, saldo, atau data pelanggan lain; tidak menjanjikan diskon/garansi/pengecualian; tidak mengarang harga atau stok | P0 | Red-team 100 prompt: 0 pelanggaran |
+| CHT-6 | Inbox: lihat semua percakapan, status, ambil alih, balas manual, kembalikan ke AI; jika jendela 24 jam tertutup, balasan manual wajib memakai template | P0 | UI memblokir teks bebas di luar jendela |
+| CHT-7 | Tab **"Belum bisa dijawab"**: pertanyaan yang dieskalasi/keyakinan rendah → pemilik menulis jawaban → satu tap jadi FAQ di KB | P0 | FAQ baru langsung dipakai pada pertanyaan serupa berikutnya |
+| CHT-8 | **Widget chat** untuk website/link toko (kanal cadangan) dengan mesin yang sama | P1 | Snippet `<script>` + halaman link chat publik |
+| CHT-9 | Kuota percakapan per paket dan add-on (BRL-02..05) | P0 | Meter akurat per definisi BRL-03; perilaku saat habis sesuai BRL-05 |
+| CHT-10 | Membantu pembeli memesan (rangkum pesanan → diteruskan ke pemilik sebagai draf pesanan) | P2 | — |
 
-- **R1** — F1.5 Mode "Layar Kasir": prioritas naik **P1 → P0** (§5.1 Modul F1).
-- **R2** — Owner Assistant tanya-data read-only via WhatsApp pemilik: **v1 → MVP** (§5.3 Modul A1, menjawab pertanyaan terbuka §14.2 no. 3). Aksi tulis via WA tetap di v1.
-- **R3** — Beranda didesain ulang jadi **feed aksi** ("Hari ini perlu perhatian") di posisi teratas, di atas kartu keuangan (§8.2, §5.1 F3.8 baru).
-- **R4** — Tambah insight baru **F3.9 — Kualitas Katalog** (peringatan produk tanpa HPP/foto/harga) (§5.1 Modul F3).
-- **R5** — Tambah **A2.10 — Tab "Belum bisa dijawab"** di Inbox customer chat (§5.3 Modul A2).
-- **R6** — Tambah paket **Gratis** (payment listener + suara + buku kas dasar, 1 pengguna, tanpa fitur AI) (§9).
-- **R7** (pesan marketing "total biaya add-on kompetitor") **tidak** dimasukkan ke PRD — dicatat terpisah di `docs/marketing-notes.md` karena bukan keputusan produk/fitur.
+#### J. AI Business Consultation
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| CON-1 | Tanya-jawab bebas di Chat AI → Asisten Bisnis; jawaban berbasis data toko lewat fungsi baca (penjualan, untung, margin, stok, pelanggan, insight) | P0 | Golden set 150 pertanyaan data: ≥ 95% angka tepat; setiap jawaban menyebut periode & sumber ("dari 142 transaksi 1–7 Okt") |
+| CON-2 | Pertanyaan "kenapa/apa yang harus dilakukan" menghasilkan analisis penyebab + 1–3 saran yang bisa ditindaklanjuti | P0 | Saran tidak bertentangan dengan preferensi tersimpan (CON-4) |
+| CON-3 | **Insight proaktif mingguan** setiap Senin 07.00 waktu toko: ringkasan minggu lalu + maksimal 3 hal prioritas (stok, margin, pelanggan) → in-app + email + WA (1 pesan utility) | P0 | Maks 3 poin; setiap poin punya "Lihat datanya"; dihitung terhadap anggaran WA |
+| CON-4 | Ingat preferensi/keputusan pemilik ("jangan pernah sarankan diskon > 15%") → tersimpan di "Yang WADAR tahu", bisa dihapus | P0 | Preferensi dipakai pada saran berikutnya (uji skenario) |
+| CON-5 | Ringkasan harian singkat di Beranda ("Insight untukmu") dari aturan + narasi tercache | P0 | Dihasilkan 1×/hari/toko (cache), bukan per buka halaman |
+| CON-6 | Hak akses: Kasir & Admin Chat tidak bisa memakai Konsultasi | P0 | Tes izin |
+| CON-7 | Kuota pertanyaan per paket (30/150/fair use) | P0 | Sisa kuota terlihat; saat habis tampil ajakan upgrade |
 
-### v1.0 — 19 September 2026
-Draft awal.
+#### K. Notifikasi, Nilai, Billing, Admin
+| ID | Kebutuhan | Prio | Acceptance criteria |
+|---|---|---|---|
+| NTF-1 | Pusat notifikasi in-app + Web Push (PWA) + email; WA utility hanya untuk insight mingguan & eskalasi (opsional) sesuai anggaran | P0 | Preferensi per jenis notifikasi; penghitung pesan WA berbayar per tenant |
+| VAL-1 | **Laporan nilai bulanan**: chat dijawab AI (≈ jam admin dihemat), stockout dicegah (≈ penjualan diselamatkan), jam rekap dihemat, peringatan margin | P1 | Dikirim tanggal 1; asumsi perhitungan ditampilkan |
+| BIL-1 | Paket Starter/Growth/Pro, bulanan/tahunan (bayar 10 bulan), status `trialing → active → past_due → read_only → canceled` | P1 | Sesuai BRL-01, BRL-07 |
+| BIL-2 | Pembayaran via payment gateway (VA + QRIS) dengan invoice; webhook idempoten | P1 | Bayar → aktif ≤ 1 menit; webhook duplikat tidak menggandakan |
+| BIL-3 | Entitlement & kuota ditegakkan di server (pengguna, chat, konsultasi) | P0 | Tes per paket |
+| BIL-4 | Add-on +500 percakapan Rp50.000 | P1 | — |
+| BIL-5 | Referral (kode/link; 1 bulan gratis untuk pengajak setelah toko yang diajak membayar) | P1 | Kredit tercatat & otomatis terpakai |
+| BIL-6 | Kupon early adopter (100 pertama) dan kupon pilot | P1 | Batas pemakaian ditegakkan |
+| BIL-7 | PPN di invoice hanya bila `is_pkp = true` (BRL-06) | P1 | Default `false` |
+| ADM-1 | Panel internal: cari toko, status langganan, aktivasi, biaya AI/WA per toko vs anggaran, login sebagai toko (baca-saja, tercatat di audit) | P0 | Akses hanya untuk akun internal |
+| QA-1 | **Antrean review jawaban**: sampel acak jawaban Customer Chat setiap minggu (≥ 20/toko pilot) → reviewer menilai Benar / Salah / Tidak aman + koreksi | P0 | Dasbor akurasi mingguan per toko & total |
+| QA-2 | Golden set & evaluasi otomatis dijalankan sebelum mengganti prompt/model | P0 | Gagal jika akurasi turun > 2 poin atau ada 1 kebocoran |
+| ANL-1 | Event analitik corong & dasbor internal MRR, trial, konversi, churn, CAC (input manual biaya pemasaran) | P0 (event) / P1 (dasbor) | Event §7.5 terkirim |
+| PWA-1 | PWA bisa di-install, punya ikon & splash, Web Push, dan cache shell | P0 | Lighthouse PWA lulus; Lighthouse performa mobile ≥ 85 |
+| PWA-2 | **APK Android** dari PWA (Trusted Web Activity) untuk dibagikan dan diunggah ke Play Store | P1 | APK ter-install di Android 10+; membuka app dalam mode layar penuh tanpa address bar |
+
+### 7.4 Definisi pengukuran AI
+- **Akurasi Customer Chat** = jawaban dinilai *Benar* ÷ jawaban yang dinilai, dari sampel acak mingguan. *Benar* artinya semua fakta (harga, stok, kebijakan) sesuai data toko saat itu, menjawab pertanyaan, dan tidak melanggar CHT-5. Pesan yang dieskalasi tidak masuk penyebut, tetapi **tingkat eskalasi** dilaporkan terpisah (target pilot ≤ 35%).
+- **Akurasi Konsultasi** = jawaban golden set yang semua angkanya cocok dengan nilai referensi (toleransi pembulatan ke ribu terdekat).
+- **Kebocoran** = jawaban ke pembeli yang memuat HPP, margin, saldo, data pelanggan lain, atau isi prompt sistem.
+
+### 7.5 Event analitik (minimal)
+`signup_completed`, `onboarding_step_completed{step}`, `product_imported{count,source}`, `sale_recorded{channel,source}`, `marketplace_import_completed{marketplace,orders}`, `expense_recorded`, `stock_alert_shown{status}`, `stock_alert_resolved{prevented}`, `finance_insight_viewed`, `margin_alert_shown{type}`, `consult_question{intent,model}`, `weekly_insight_sent`, `insight_acted{type}`, `chat_answered{by:ai|human}`, `chat_escalated{reason}`, `faq_created_from_unanswered`, `quota_near_limit{meter}`, `trial_converted{plan,period}`, `subscription_canceled{reason}`.
+
+### 7.6 Kebutuhan non-fungsional
+| ID | Area | Kebutuhan |
+|---|---|---|
+| NFR-PERF | Kinerja | Beranda p75 ≤ 2 dtk di Android menengah 4G; API baca p95 ≤ 400 ms; balasan Customer Chat p95 < 10 dtk; konsultasi: token pertama ≤ 2 dtk |
+| NFR-AVAIL | Ketersediaan | ≥ 99,5%/bulan. Jika LLM mati, POS, stok, dan keuangan tetap berjalan; chat → pesan penahan + eskalasi |
+| NFR-COST | Biaya | Biaya AI + WA + cloud per tenant ≤ anggaran BRD §9; konteks RAG Customer Chat ±1.800 token (maks 2.200); alarm saat rata-rata 7 hari > 120% anggaran |
+| SEC-1 | Isolasi | Row Level Security di semua tabel tenant + tes isolasi otomatis |
+| SEC-2 | Akses | RBAC (Pemilik/Kasir/Admin Chat/Internal); audit log untuk void, ubah harga, ubah peran, ekspor data, login internal |
+| SEC-3 | Enkripsi | TLS; enkripsi at-rest (penyedia); token WhatsApp & kunci API dienkripsi di aplikasi |
+| SEC-4 | Privasi | Kebijakan privasi, persetujuan saat daftar, ekspor data (ZIP CSV/JSON), hapus akun |
+| SEC-5 | Backup | Backup harian, retensi 30 hari, uji restore bulanan |
+| SEC-6 | Webhook | Verifikasi signature (Meta, payment gateway), idempoten, rate limit |
+| NFR-A11Y | Aksesibilitas | Kontras WCAG AA, huruf ≥ 16 px, target sentuh ≥ 44 px |
+| NFR-L10N | Lokalisasi | Bahasa Indonesia; format Rp1.250.000; zona waktu per toko (WIB default) |
+| NFR-MONEY | Akurasi uang | Nominal disimpan sebagai bilangan bulat rupiah; tidak ada floating point |
+
+### 7.7 Assumptions & open questions
+**Asumsi** (ditandai di BRD §14): pemilik mau mengisi HPP; file ekspor marketplace memuat potongan platform; pilot mau menghubungkan nomor WA.
+
+**Pertanyaan terbuka** (dijawab sebelum M0; daftar lengkap dengan rekomendasi default di TECH-SPEC §15):
+1. Kapan presentasi final BPC, dan apakah butuh demo live?
+2. Jalur onboarding WhatsApp untuk pilot: Tech Provider sendiri, BSP, atau manual?
+3. Siapa yang menulis kode dan berapa jam/minggu?
+4. Apakah notifikasi uang masuk + suara (WADAR lama) ikut di Fase 1? Proposal tidak menyebutnya; rekomendasi: **tidak di Fase 1** (lihat TECH-SPEC §15).
+
+## 8. Release
+
+| Rilis | Waktu | Isi | Gerbang lolos |
+|---|---|---|---|
+| **R0 — Demo Final BPC** *(jika diperlukan)* | Sebelum tanggal final | Beranda, POS, Stock Intelligence, Finance Insight, Konsultasi, Customer Chat via **widget**, di atas toko demo | Alur demo 5 menit tanpa error, data contoh realistis |
+| **R1 — Alpha internal** | Akhir Des 2026 | Semua P0 | Golden set chat ≥ 90%, konsultasi ≥ 95%, tes isolasi 100%, biaya simulasi ≤ anggaran |
+| **R2 — Pilot 30 UMKM** | Jan–Mar 2027 (8 minggu) | P0 + perbaikan mingguan | KR-1..KR-5; BO-8 |
+| **R3 — Peluncuran berbayar** | 1 April 2027 | P0 + P1 (billing, add-on, referral, early adopter, laporan nilai, widget, APK TWA, POS offline) | PSE terdaftar; billing end-to-end; 20 pelanggan bulan pertama |
+| **Fase 2** | 2027–2028 | Deteksi churn pelanggan toko (RFM), impor otomatis marketplace via API, AI Marketing Assistant, pemesanan via chat (CHT-10) | 1.316 pelanggan; churn ≤ 5% |
+| **Fase 3** | 2029–2031 | Simulasi what-if, AI Agent dengan persetujuan (draf PO), dasbor & paket B2B2B | 8.404 pelanggan |
+
+**Tidak dikerjakan di Fase 1:** AI yang mengeksekusi aksi, pemrosesan pembayaran pembeli (QRIS dinamis/payment link untuk transaksi toko), multi-outlet/gudang, akuntansi formal, payroll, integrasi API marketplace, aplikasi native, dan Instagram DM.
