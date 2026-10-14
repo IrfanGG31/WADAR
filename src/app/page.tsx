@@ -2,6 +2,7 @@ import { Radar } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { brand } from "@/brand";
+import { DemoButtons } from "@/components/demo-buttons";
 import { Button } from "@/components/ui/button";
 
 /** Public landing page; signed-in visitors are redirected to their shop by src/proxy.ts. */
@@ -16,9 +17,12 @@ export default function LandingPage() {
         </h1>
         <p className="text-muted-foreground">{brand.tagline}</p>
       </div>
-      <Button asChild size="lg" className="w-full max-w-xs">
-        <Link href="/masuk">Masuk / Daftar</Link>
-      </Button>
+      <div className="flex w-full max-w-md flex-col gap-3">
+        <DemoButtons />
+        <Button asChild variant="ghost" size="lg">
+          <Link href="/masuk">Sudah punya toko? Masuk</Link>
+        </Button>
+      </div>
     </main>
   );
 }

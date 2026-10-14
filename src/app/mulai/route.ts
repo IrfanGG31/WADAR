@@ -3,7 +3,7 @@ import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Post-sign-in landing: opens the user's shop (oldest membership first), or
+ * Post-sign-in landing: opens the user's newest shop (a fresh demo or reset lands there), or
  * the create-shop form when they have none yet. A route handler, not a page,
  * so it can redirect straight away without rendering anything.
  */
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .from("memberships")
     .select("created_at, tenants(slug)")
     .eq("user_id", claims.claims.sub)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 

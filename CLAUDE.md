@@ -29,5 +29,5 @@ Migrasi: tulis di `supabase/migrations/`, uji `pnpm test:db`, terapkan ke hosted
 - Sebelum push: `git fetch` + `git merge-base --is-ancestor <commit-kita> origin/<branch>` (branch pernah di-force-push dari Antigravity); kalau hilang, merge — jangan force-push.
 
 ## Status
-Hari: D1 selesai (skema inti + RLS teruji lokal & hosted, auth, onboarding, shell) · URL: Vercel (Root Directory harus `/`, lihat catatan) · Kode v1 (monorepo NestJS) di commit `59e2c54`.
+Hari: D2 selesai (D1 + katalog/stok masuk `save_product`/`stock_in`, toko demo 90 hari `pnpm seed:demo --reset` / tombol "Coba demo") · URL: Vercel (Root Directory harus `/`, lihat catatan) · Kode v1 (monorepo NestJS) di commit `59e2c54`.
 Catatan infra: Railway v1 dimatikan 13 Okt (api/worker 0 replika, Redis sleep). Supabase hosted masih berisi schema v1 (`identity`, `catalog`, …) — tidak dipakai, boleh dihapus. Login produksi: OTP email hanya sampai ke email pemilik akun Resend (mode uji); Google belum aktif; ada login kata sandi.

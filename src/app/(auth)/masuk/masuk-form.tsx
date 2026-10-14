@@ -17,6 +17,8 @@ const LINK_ERROR_MESSAGES: Record<string, string> = {
   otp_expired: "Link masuk ini sudah kedaluwarsa atau sudah dipakai. Kirim ulang, lalu klik link-nya secepatnya.",
   access_denied: "Link masuk ini tidak valid lagi. Coba kirim ulang.",
   auth_callback_failed: "Gagal memverifikasi link masuk. Coba kirim ulang.",
+  demo_unavailable: "Mode demo sedang tidak tersedia. Coba lagi beberapa menit lagi.",
+  demo_failed: "Toko contoh gagal disiapkan. Coba sekali lagi.",
 };
 
 /** Email OTP (code or magic link) + Google (hidden until it is enabled in Supabase). */
