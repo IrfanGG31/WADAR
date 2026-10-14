@@ -1,0 +1,46 @@
+"use server";
+
+import { normalizePhone } from "@/core/phone";
+import { SaleInput } from "@/core/sale-schema";
+import { getShop } from "@/db/shop";
+import { createClient } from "@/lib/supabase/server";
+
+export interface RecordSaleResult {
+  error?: string;
+  saleId?: string;
+  total?: number;
+  duplicate?: boolean;
+}
+
+/** Bayar (POS-1): one atomic, idempotent public.record_sale call. */
+export async function recordSale(slug: string, input: unknown): Promise<RecordSaleResult> {
+  const parsed = SaleInput.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Data transaksi belum lengkap." };
+  const sale = parsed.data;
+
+  let phone: string | null = null;
+  if (sale.customer_phone) {
+    phone = normalizePhone(sale.customer_phone);
+    if (!phone) return { error: "Nomor HP pelanggan belum benar. Contoh: 0812-3456-7890." };
+  }
+
+  const shop = await getShop(slug);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_sale", {
+    p_tenant_id: shop.id,
+    p_channel_id: sale.channel_id,
+    p_items: sale.items,
+    p_idempotency_key: sale.idempotency_key,
+    p_order_discount: sale.order_discount,
+    p_payment_method: sale.payment_method,
+    p_customer_phone: phone,
+    p_customer_name: sale.customer_name || null,
+  });
+  if (error) {
+    // Business rule messages from the function are written for the cashier ("Stok Serum tinggal 2").
+    if (error.code === "P0001" || error.code === "22023" || error.code === "P0002") return { error: error.message };
+    return { error: "Transaksi belum tersimpan. Coba tekan Bayar lagi; tidak akan tercatat dobel." };
+  }
+  const result = data as { sale_id: string; total: number; duplicate: boolean };
+  return { saleId: result.sale_id, total: Number(result.total), duplicate: result.duplicate };
+}

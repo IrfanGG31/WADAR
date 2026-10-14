@@ -1,0 +1,79 @@
+import { Receipt } from "lucide-react";
+import { Suspense } from "react";
+import { formatRupiah } from "@/core/money";
+import { formatPhone } from "@/core/phone";
+import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
+import { listRecentSales } from "@/db/sales";
+import { getShop } from "@/db/shop";
+import { formatDay, formatTime } from "@/lib/format-date";
+import { KasirTabs } from "../kasir-tabs";
+
+export const metadata = { title: "Riwayat transaksi" };
+
+type Params = PageProps<"/[slug]/kasir/riwayat">["params"];
+
+export default function RiwayatPage({ params }: PageProps<"/[slug]/kasir/riwayat">) {
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-2xl font-semibold tracking-tight">Transaksi</h1>
+      <Suspense fallback={<div className="h-96 rounded-xl border border-border" />}>
+        <History params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function History({ params }: { params: Params }) {
+  const { slug } = await params;
+  const shop = await getShop(slug);
+  const sales = await listRecentSales(shop.id, 40);
+
+  const days: { day: string; sales: typeof sales }[] = [];
+  for (const sale of sales) {
+    const day = formatDay(sale.occurred_at, shop.timezone);
+    if (days.at(-1)?.day !== day) days.push({ day, sales: [] });
+    days.at(-1)?.sales.push(sale);
+  }
+
+  return (
+    <>
+      <KasirTabs slug={slug} active="kasir/riwayat" />
+      {sales.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
+          <Receipt className="h-10 w-10 text-muted-foreground" />
+          <p className="text-muted-foreground">Belum ada transaksi.</p>
+        </div>
+      ) : (
+        days.map(({ day, sales: daySales }) => (
+          <section key={day} className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">{day}</h2>
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {daySales.map((sale) => {
+                const method = sale.payment_method as PaymentMethod | null;
+                const itemText = sale.items.map((i) => `${i.name_snapshot} ×${i.qty}`).join(", ");
+                return (
+                  <li key={sale.id} className="flex items-start gap-3 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate text-sm font-medium">{itemText}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(sale.occurred_at, shop.timezone)} · {sale.channel?.name ?? "-"}
+                        {method && PAYMENT_LABEL[method] ? ` · ${PAYMENT_LABEL[method]}` : ""}
+                        {sale.customer ? ` · ${sale.customer.name ?? formatPhone(sale.customer.phone_e164 ?? "")}` : ""}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end">
+                      <span className="font-semibold tabular-nums">{formatRupiah(Number(sale.total))}</span>
+                      {Number(sale.order_discount) > 0 && (
+                        <span className="text-xs text-muted-foreground tabular-nums">diskon {formatRupiah(Number(sale.order_discount))}</span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+      )}
+    </>
+  );
+}
