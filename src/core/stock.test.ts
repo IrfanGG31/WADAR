@@ -52,7 +52,7 @@ describe("forecastStock", () => {
   });
 
   it("skips sold-out days so velocity isn't biased down", () => {
-    const d: StockDailyRow[] = days(10, (i) => ({ opening: 0, sold: 0 }));
+    const d: StockDailyRow[] = days(10, () => ({ opening: 0, sold: 0 }));
     // Only valid day: index 9
     d[9] = { day: "2026-09-10", opening: 20, sold: 5 };
     const f = forecastStock({
