@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronRight, Package, Receipt, ShoppingBag, Sparkles, UserPlus, Wallet } from "lucide-react";
+import { AlertTriangle, ChevronRight, MessagesSquare, Package, Receipt, ShoppingBag, Sparkles, UserPlus, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -7,10 +7,9 @@ import { narrateProfitHeadline, profitInsight } from "@/core/finance-insight";
 import { weekOverWeek } from "@/core/period";
 import { narrateStockOverview, needsRestock, sortByUrgency, type ForecastRow } from "@/core/stock-insight";
 import { formatRupiah, formatRupiahCompact } from "@/core/money";
+import { getWeeklyInsights, loadConsultData } from "@/db/consult";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
-import { getFinanceData } from "@/db/finance";
 import { getShop } from "@/db/shop";
-import { listStockForecasts } from "@/db/stock";
 import { shopPath } from "@/lib/routes";
 import { shopToday } from "@/lib/shop-today";
 
@@ -166,33 +165,59 @@ function LowStockItem({ row }: { row: ForecastRow }) {
   );
 }
 
-/** "Insight untukmu" (PRD §7.2): one deterministic sentence each from Stock and Finance Insight — no LLM. */
+const INSIGHT_LINK = {
+  stock_critical: { icon: Package, page: "stok/prediksi" },
+  slow_mover: { icon: Package, page: "stok/prediksi" },
+  margin_warning: { icon: Wallet, page: "keuangan" },
+  profit_effect: { icon: Wallet, page: "keuangan" },
+  lapsed_customers: { icon: Users, page: "pelanggan" },
+} as const;
+
+/**
+ * "Insight untukmu" (PRD §7.2, CON-3): this week's top-3 — impact × urgency,
+ * deduped over 7 days (src/core/consult/insights.ts), template narration, no
+ * LLM on page load. When nothing qualifies it falls back to the one-line
+ * Stock and Finance sentences (D5).
+ */
 async function InsightSection({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const { current, previous } = weekOverWeek(await shopToday(shop.timezone));
-  const [stock, finance] = await Promise.all([
-    listStockForecasts(shop.id),
-    getFinanceData(shop.id, { from: previous.from, to: current.to }),
-  ]);
-  const urgent = sortByUrgency(stock).find(needsRestock);
-  const items = [
-    {
-      title: "Prediksi Stok",
-      icon: Package,
-      text: urgent ? urgent.narrative : narrateStockOverview(stock),
-      href: shopPath(slug, "stok/prediksi"),
-    },
-    {
-      title: "Analisis Keuangan",
-      icon: Wallet,
-      text:
-        finance.lines.length > 0 || finance.expenses.length > 0
-          ? narrateProfitHeadline(profitInsight(finance.lines, finance.expenses, current, previous))
-          : "Belum ada penjualan 14 hari terakhir.",
-      href: shopPath(slug, "keuangan"),
-    },
-  ];
+  const today = await shopToday(shop.timezone);
+  const { current, previous } = weekOverWeek(today);
+  const data = await loadConsultData(shop, today, { historyDays: 14 });
+  const weekly = await getWeeklyInsights(shop, data, { persist: false });
+
+  const items =
+    weekly.selected.length > 0
+      ? weekly.selected.map((c) => ({
+          key: c.dedupe_key,
+          title: c.title,
+          icon: INSIGHT_LINK[c.type]?.icon ?? Sparkles,
+          text: c.text,
+          href: shopPath(slug, INSIGHT_LINK[c.type]?.page ?? "konsultasi"),
+        }))
+      : (() => {
+          const urgent = sortByUrgency(data.stock).find(needsRestock);
+          return [
+            {
+              key: "stok",
+              title: "Prediksi Stok",
+              icon: Package,
+              text: urgent ? urgent.narrative : narrateStockOverview(data.stock),
+              href: shopPath(slug, "stok/prediksi"),
+            },
+            {
+              key: "keuangan",
+              title: "Analisis Keuangan",
+              icon: Wallet,
+              text:
+                data.lines.length > 0 || data.expenses.length > 0
+                  ? narrateProfitHeadline(profitInsight(data.lines, data.expenses, current, previous))
+                  : "Belum ada penjualan 14 hari terakhir.",
+              href: shopPath(slug, "keuangan"),
+            },
+          ];
+        })();
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="insight-untukmu">
       <h2 id="insight-untukmu" className="mb-2 flex items-center gap-2 text-sm font-semibold">
@@ -200,8 +225,8 @@ async function InsightSection({ params }: { params: Params }) {
         Insight untukmu
       </h2>
       <ul className="divide-y divide-border">
-        {items.map(({ title, icon: Icon, text, href }) => (
-          <li key={title}>
+        {items.map(({ key, title, icon: Icon, text, href }) => (
+          <li key={key}>
             <Link href={href} className="flex min-h-14 items-start gap-3 py-3 hover:bg-muted/50">
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -213,6 +238,10 @@ async function InsightSection({ params }: { params: Params }) {
           </li>
         ))}
       </ul>
+      <Link href={shopPath(slug, "konsultasi")} className="mt-1 flex min-h-11 items-center gap-2 text-sm font-medium text-primary">
+        <MessagesSquare className="h-4 w-4" />
+        Tanya konsultan tentang tokomu
+      </Link>
     </section>
   );
 }
