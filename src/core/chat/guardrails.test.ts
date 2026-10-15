@@ -170,3 +170,78 @@ describe("isSafeOutgoing", () => {
     expect(isSafeOutgoing("HPP kami rahasia")).toBe(false);
   });
 });
+
+describe("audit hardening (D6 T1–T6)", () => {
+  const both = glowContext("serum vit c 20ml dan hair mist 100ml");
+  const [a, b] = [both.cards.find((c) => c.name === "Serum Vit C 20ml")!, both.cards.find((c) => c.name === "Hair Mist 100ml")!];
+  const two = (overA: Partial<typeof a>, overB: Partial<typeof b>) => ({
+    ...ctx,
+    cards: [
+      { ...a, ...overA },
+      { ...b, ...overB },
+    ],
+  });
+  const stockReply = (text: string): ChatReply =>
+    reply({ reply: text, sources: [{ type: "product", id: a.variant_id }, { type: "product", id: b.variant_id }] });
+  const stockViolations = (text: string, c: ReturnType<typeof two>) =>
+    checkReply(stockReply(text), c, 1).violations.filter((v) => v.rule === "stock");
+
+  describe("T1 stock number is bound to the product it sits next to", () => {
+    const c = two({ qty_hint: 2, availability: "sisa_sedikit" }, { qty_hint: 5, availability: "sisa_sedikit" });
+    it("rejects B's allowance applied to A", () => {
+      expect(stockViolations("Serum Vit C 20ml stok 5, Hair Mist 100ml stok 5.", c)).toHaveLength(1);
+      expect(stockViolations("Serum Vit C 20ml stok 5, Hair Mist 100ml stok 5.", c)[0].detail).toContain("Serum Vit C 20ml");
+    });
+    it("accepts each number within its own product's hint", () => {
+      expect(stockViolations("Serum Vit C 20ml sisa 2, Hair Mist 100ml sisa 5.", c)).toEqual([]);
+    });
+    it("binds a number that comes before the name to the following product", () => {
+      expect(stockViolations("Sisa 5 untuk Serum Vit C 20ml ya Kak.", c)).toHaveLength(1);
+    });
+  });
+
+  describe("T4 availability words are checked per product", () => {
+    it("rejects 'A ready, B habis' when A is habis and B is available", () => {
+      const c = two({ availability: "habis", qty_hint: 0 }, { availability: "tersedia", qty_hint: 5 });
+      expect(stockViolations("Serum Vit C 20ml masih ready, Hair Mist 100ml sudah habis.", c)).toHaveLength(2);
+    });
+    it("accepts the matching statement", () => {
+      const c = two({ availability: "habis", qty_hint: 0 }, { availability: "tersedia", qty_hint: 5 });
+      expect(stockViolations("Serum Vit C 20ml sudah habis, tapi Hair Mist 100ml masih ready.", c)).toEqual([]);
+    });
+    it("lets 'A dan B ready' share one claim", () => {
+      const c = two({ availability: "habis", qty_hint: 0 }, { availability: "tersedia", qty_hint: 5 });
+      expect(stockViolations("Serum Vit C 20ml dan Hair Mist 100ml ready Kak.", c)).toHaveLength(1);
+    });
+  });
+
+  describe("T6 wider stock phrasings", () => {
+    const c = two({ qty_hint: 2, availability: "sisa_sedikit" }, { qty_hint: 2, availability: "sisa_sedikit" });
+    it.each(["Serum Vit C 20ml stok: 5", "Serum Vit C 20ml cuma 5 pcs", "Serum Vit C 20ml 5 pcs saja", "Serum Vit C 20ml sisa lima", "Serum Vit C 20ml tinggal dua belas"])(
+      "catches %s",
+      (text) => {
+        expect(stockViolations(text, c)).toHaveLength(1);
+      },
+    );
+    it("does not read sizes as stock", () => {
+      expect(stockViolations("Serum Vit C 20ml stok 2, ukuran 30 ml ya.", c)).toEqual([]);
+    });
+  });
+
+  describe("T5 promises are checked per claim", () => {
+    it("treats 'ongkir gratis' as the 'gratis ongkir' claim", () => {
+      const noPromises = { ...ctx, policies: { ...ctx.policies, promo: "", warranty: "" }, kb: [] };
+      const r = checkReply(reply({ reply: "Ongkir gratis ke seluruh Jawa Kak." }), noPromises, 0);
+      expect(r).toMatchObject({ verdict: "escalate", cause: "policy_exception" });
+    });
+    it("rejects a bigger number than the policy states", () => {
+      const withPromo = { ...ctx, policies: { ...ctx.policies, promo: "Diskon 10% untuk member." } };
+      expect(checkReply(reply({ reply: "Ada diskon 50% Kak." }), withPromo, 0)).toMatchObject({ cause: "policy_exception" });
+      expect(checkReply(reply({ reply: "Ada diskon 10% untuk member Kak." }), withPromo, 0).verdict).toBe("pass");
+    });
+    it("a word elsewhere in the policy does not back a different claim", () => {
+      const p = { ...ctx, policies: { ...ctx.policies, promo: "Bonus sticker untuk pembelian pertama.", warranty: "" }, kb: [] };
+      expect(checkReply(reply({ reply: "Ada bonus 3 voucher Kak." }), p, 0)).toMatchObject({ cause: "policy_exception" });
+    });
+  });
+});

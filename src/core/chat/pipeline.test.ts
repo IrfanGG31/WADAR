@@ -92,3 +92,15 @@ describe("runTurn", () => {
     if (outcome.action === "escalate") expect(outcome.text).toBe(DEFAULT_HOLDING_MESSAGE);
   });
 });
+
+describe("runTurn — a throwing generator (D6 T8)", () => {
+  it("ends in the holding message, never an unguarded reply", async () => {
+    const generate: Generate = async () => {
+      throw new Error("boom");
+    };
+    const out = await runTurn({ text: question, mode: "ai", context: ctx }, generate);
+    expect(out).toMatchObject({ action: "escalate", cause: "other", unsafe: false });
+    expect(out.action === "escalate" && out.text).toBe(ctx.persona.holding_message || DEFAULT_HOLDING_MESSAGE);
+    expect(out.attempts[0]).toMatchObject({ reply: null, error: "boom" });
+  });
+});

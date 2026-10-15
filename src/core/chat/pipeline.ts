@@ -90,7 +90,15 @@ export async function runTurn(input: TurnInput, generate: Generate): Promise<Tur
   let feedback: string | undefined;
   let unsafe = false;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const result = await generate({ question: input.text, context: input.context, feedback, attempt });
+    // A throwing generator must end in the holding message, never in an unguarded reply.
+    const result = await generate({ question: input.text, context: input.context, feedback, attempt }).catch(
+      (err: unknown): GenerateResult => ({
+        reply: null,
+        engine: "offline",
+        model: "error",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
     const log: AttemptLog = {
       engine: result.engine,
       model: result.model,

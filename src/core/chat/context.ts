@@ -88,7 +88,10 @@ export function renderStoreData(ctx: ChatContext): string {
   ].join("\n");
 }
 
-/** Rupiah amounts a reply may quote: card prices + amounts written in the policies (ongkir, promo minimums). */
+/**
+ * Rupiah amounts a reply may quote: card prices + amounts written in the policies (ongkir, promo
+ * minimums) and in the retrieved KB chunks — exactly what the prompt contains, nothing else.
+ */
 export function allowedAmounts(ctx: ChatContext): Set<number> {
   const out = new Set<number>(ctx.cards.map((c) => c.price));
   for (const e of ctx.policies.shipping_estimates) {
@@ -100,9 +103,9 @@ export function allowedAmounts(ctx: ChatContext): Set<number> {
   return out;
 }
 
-/** Policy values + KB text: the only place a promise word (diskon, garansi, …) may come from. */
-export function promiseSourceText(ctx: ChatContext): string {
-  return [...policyFacts(ctx.policies).map((f) => f.text), ...ctx.kb.map((k) => k.content)].join("\n");
+/** Policy values and KB chunks, one string each: the only places a promise word (diskon, garansi, …) may come from. */
+export function promiseSources(ctx: ChatContext): string[] {
+  return [...policyFacts(ctx.policies).map((f) => f.text), ...ctx.kb.map((k) => k.content)];
 }
 
 /** Every source id a reply may cite. */

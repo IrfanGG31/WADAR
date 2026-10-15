@@ -69,3 +69,33 @@ describe("findPhoneNumbers", () => {
     expect(findPhoneNumbers("Rp89.000 dan Rp1.250.000")).toEqual([]);
   });
 });
+
+describe("audit hardening (D6 T2, T3, T9)", () => {
+  it.each(["+62-812-2700-3456", "+62 812-2700-3456", "+62.812.2700.3456", "0812 2700 3456", "6281227003456", "08122700 3456"])(
+    "finds the phone number %s",
+    (n) => {
+      expect(findPhoneNumbers(`Hubungi ${n} ya`)).toHaveLength(1);
+    },
+  );
+
+  it("does not swallow digits that follow the number", () => {
+    expect(findPhoneNumbers("WA 0812-2700-3456, 20 pcs ready")).toEqual(["0812-2700-3456"]);
+  });
+
+  it("reads dotted thousands with a unit as thousands", () => {
+    expect(extractAmounts("harganya 1.500 rb")).toEqual([1_500_000]);
+    expect(extractAmounts("10.000 ribu")).toEqual([10_000_000]);
+    expect(extractAmounts("Rp 1.250 rb")).toEqual([1_250_000]);
+    expect(extractAmounts("1.5 jt, 1,2 jt, 89 ribu")).toEqual([1_500_000, 1_200_000, 89_000]);
+  });
+
+  it("treats a bare dotted-thousands number as an amount", () => {
+    expect(extractAmounts("cuma 85.000 aja")).toEqual([85_000]);
+    expect(extractAmounts("jam 09.00 sampai 20.00, 20ml, SPF50")).toEqual([]);
+  });
+
+  it("matches forbidden terms as whole words", () => {
+    expect(findForbiddenTerms("modalitas pembayaran, beruntung banget")).toEqual([]);
+    expect(findForbiddenTerms("modalnya 50rb, margin-nya tipis, labanya kecil")).toEqual(["modal", "margin", "laba"]);
+  });
+});

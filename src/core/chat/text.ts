@@ -102,10 +102,12 @@ export function hasAnyPhrase(normalized: string, phrases: readonly string[]): bo
 
 /**
  * Internal-data words a customer reply must never contain (TECH-SPEC §7.3
- * "Larangan": HPP|modal|margin|untung|saldo|laba). Matched at a word start so
- * "modalnya", "keuntungan" and "margin-nya" count, "beruntung" does not.
+ * "Larangan": HPP|modal|margin|untung|saldo|laba). Matched as a whole word, with
+ * an optional possessive/particle suffix: "modalnya", "keuntungan" and
+ * "margin-nya" count; "beruntung" and "modalitas" do not.
  */
-const FORBIDDEN = /(?:^|[^a-z])(hpp|modal|margin|keuntungan|untung|saldo|laba|harga pokok|harga beli|kulakan|omzet|omset)/g;
+const FORBIDDEN =
+  /(?:^|[^a-z])(hpp|modal|margin|keuntungan|untung|saldo|laba|harga pokok|harga beli|kulakan|omzet|omset)(?:nya|ku|mu|lah|kah)?(?![a-z])/g;
 
 export function findForbiddenTerms(input: string): string[] {
   const lower = input.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -115,7 +117,7 @@ export function findForbiddenTerms(input: string): string[] {
 }
 
 /** Indonesian mobile numbers written in a text: "0812-2700-3456", "+62 812 2700 3456", "6281227003456". */
-const PHONE = /(?:\+?62|0)\s?8[\d\s.-]{7,15}\d/g;
+const PHONE = /(?:\+?62|0)[\s.-]?8\d{1,3}(?:[\s.-]?\d{3,4}){2,3}(?!\d)/g;
 
 export function findPhoneNumbers(input: string): string[] {
   return [...input.matchAll(PHONE)].map((m) => m[0]);
@@ -135,13 +137,20 @@ const UNIT_MULTIPLIER: Record<string, bigint> = {
  * without "Rp" or a unit ("20ml", "SPF50", "2 pcs") is not an amount.
  * Integer arithmetic only (decimal "1,2 jt" = 12 × 1.000.000 / 10).
  */
-const AMOUNT =
-  /(?:\b(?:rp|idr)\.?\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?(?:\s?(rb|ribu|k|jt|juta)\b)?)|(?:\b(\d+)(?:[.,](\d{1,2}))?\s?(rb|ribu|k|jt|juta)\b)/gi;
+const GROUPED = String.raw`\d{1,3}(?:\.\d{3})+`;
+const AMOUNT = new RegExp(
+  // 1: "Rp 89.000" / "Rp1,2 jt";  2: "89 ribu" / "1.500 rb" / "1,5 jt";  3: bare "85.000".
+  String.raw`(?:\b(?:rp|idr)\.?\s?(${GROUPED}|\d+)(?:,(\d{1,2}))?(?:\s?(rb|ribu|k|jt|juta)\b)?)` +
+    String.raw`|(?:\b(${GROUPED}|\d+)(?:[.,](\d{1,2})(?!\d))?\s?(rb|ribu|k|jt|juta)\b)` +
+    String.raw`|(?:(?<![\d.,])(${GROUPED})(?![\d.,]?\d))`,
+  "gi",
+);
 
 export function extractAmounts(input: string): number[] {
   const out: number[] = [];
   for (const m of input.matchAll(AMOUNT)) {
-    const [whole, frac, unit] = m[1] !== undefined ? [m[1], m[2], m[3]] : [m[4], m[5], m[6]];
+    const [whole, frac, unit] =
+      m[1] !== undefined ? [m[1], m[2], m[3]] : m[4] !== undefined ? [m[4], m[5], m[6]] : [m[7], undefined, undefined];
     const integer = BigInt(whole.replace(/\./g, ""));
     const multiplier = unit ? UNIT_MULTIPLIER[unit.toLowerCase()] : 1n;
     let value = integer * multiplier;
