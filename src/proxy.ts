@@ -6,9 +6,9 @@ import { AFTER_SIGN_IN_PATH } from "@/lib/routes";
 /**
  * Pages anyone may open. /auth/callback must stay public: it runs right after
  * the Google/email-link redirect, before the session cookie exists.
- * /w/<slug> is the shop's public customer-chat widget.
+ * /w/<slug> is the shop's public customer-chat widget; /api/widget/ is its anonymous API.
  */
-const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/"];
+const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/"];
 /** Pages a signed-in user has no reason to see. */
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
 
