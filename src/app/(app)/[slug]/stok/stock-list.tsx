@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { levelStatus, STOCK_STATUS_LABEL, type StockStatus } from "@/core/stock-level";
+import { STOCK_STATUS_LABEL, type StockStatus } from "@/core/stock-level";
+import { formatRate } from "@/core/stock-insight";
 import { shopPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,11 @@ export interface StockRow {
   onHand: number;
   minStock: number;
   costIsSet: boolean;
+  /** From forecastStock (src/core/stock.ts) — velocity-aware, not just on-hand vs minimum. */
+  status: StockStatus;
+  rate: number;
+  stockoutInDays: number | null;
+  reorderQty: number;
 }
 
 type Filter = "semua" | "menipis" | "aman";
@@ -38,7 +44,7 @@ const STATUS_BADGE: Record<StockStatus, "danger" | "warning" | "success"> = {
 
 const STATUS_ORDER: Record<StockStatus, number> = { habis: 0, kritis: 1, menipis: 2, aman: 3 };
 
-/** Stok Produk tab: every variant with its stock, minimum and status; filter and search on the client. */
+/** Stok Produk tab: every variant with its stock, minimum, forecast status and sell rate; filter and search on the client. */
 export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
   const [filter, setFilter] = useState<Filter>("semua");
   const [query, setQuery] = useState("");
@@ -46,7 +52,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
   const withStatus = useMemo(
     () =>
       rows
-        .map((row) => ({ ...row, status: levelStatus(row.onHand, row.minStock) }))
+        .slice()
         .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.name.localeCompare(b.name)),
     [rows],
   );
@@ -122,6 +128,15 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
                   <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                     <span>Min. {row.minStock} {row.unit}</span>
                     {row.category && <span>· {row.category}</span>}
+                    {row.rate > 0 && <span>· laku {formatRate(row.rate)}</span>}
+                    {(row.status === "kritis" || row.status === "menipis") && row.stockoutInDays !== null && (
+                      <span className="text-foreground">· habis ±{row.stockoutInDays} hari</span>
+                    )}
+                    {row.status !== "aman" && row.reorderQty > 0 && (
+                      <span className="text-foreground">
+                        · pesan {row.reorderQty} {row.unit}
+                      </span>
+                    )}
                     {!row.costIsSet && (
                       <span className="inline-flex items-center gap-1 text-warning">
                         <AlertTriangle className="h-3 w-3" />

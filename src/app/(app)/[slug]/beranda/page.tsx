@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABEL } from "@/core/stock-level";
-import { narrateForecast } from "@/core/stock";
+import type { ForecastRow } from "@/core/stock-insight";
 import { formatRupiah, formatRupiahCompact } from "@/core/money";
-import { getBerandaSummary, getLowStock, type BerandaSummary, type LowStockRow } from "@/db/dashboard";
+import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 
@@ -136,25 +136,20 @@ async function LowStockSection({ params }: { params: Params }) {
   );
 }
 
-function LowStockItem({ row }: { row: LowStockRow }) {
-  const title = row.option_label ? `${row.product_name} — ${row.option_label}` : row.product_name;
+function LowStockItem({ row }: { row: ForecastRow }) {
   const variant =
-    row.forecast.status === "habis" || row.forecast.status === "kritis"
-      ? "danger"
-      : row.forecast.status === "menipis"
-        ? "warning"
-        : "muted";
+    row.status === "habis" || row.status === "kritis" ? "danger" : row.status === "menipis" ? "warning" : "muted";
   return (
     <li className="flex items-start gap-3 py-3">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-medium">{title}</p>
-          <Badge variant={variant}>{STOCK_STATUS_LABEL[row.forecast.status]}</Badge>
+          <p className="truncate text-sm font-medium">{row.title}</p>
+          <Badge variant={variant}>{STOCK_STATUS_LABEL[row.status]}</Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{narrateForecast(title, row.forecast, row.unit)}</p>
+        <p className="text-xs text-muted-foreground">{row.narrative}</p>
         <p className="text-xs text-muted-foreground">
-          Stok {row.on_hand} {row.unit} · pesan ulang disarankan {row.forecast.reorder_qty} {row.unit}
+          Stok {row.on_hand} {row.unit} · pesan ulang disarankan {row.reorder_qty} {row.unit}
         </p>
       </div>
     </li>

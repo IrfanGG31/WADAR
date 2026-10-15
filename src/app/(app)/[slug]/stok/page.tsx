@@ -1,11 +1,13 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageTabsSkeleton } from "@/components/shell/page-tabs";
 import { Button } from "@/components/ui/button";
-import { listCatalog } from "@/db/catalog";
 import { getShop } from "@/db/shop";
+import { listStockForecasts } from "@/db/stock";
 import { shopPath } from "@/lib/routes";
 import { StockList, type StockRow } from "./stock-list";
+import { StokTabs, ToKeuanganLink } from "./stok-tabs";
 
 export const metadata = { title: "Stok" };
 
@@ -13,13 +15,16 @@ type Params = PageProps<"/[slug]/stok">["params"];
 
 export default function StokPage({ params }: PageProps<"/[slug]/stok">) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Stok</h1>
         <Suspense fallback={<div className="h-11 w-36 rounded-md bg-muted" />}>
           <AddProductButton params={params} />
         </Suspense>
       </div>
+      <Suspense fallback={<PageTabsSkeleton />}>
+        <Tabs params={params} />
+      </Suspense>
       <Suspense fallback={<ListSkeleton />}>
         <StockProducts params={params} />
       </Suspense>
@@ -30,32 +35,42 @@ export default function StokPage({ params }: PageProps<"/[slug]/stok">) {
 async function AddProductButton({ params }: { params: Params }) {
   const { slug } = await params;
   return (
-    <Button asChild>
-      <Link href={shopPath(slug, "stok/produk/baru")}>
-        <Plus className="h-4 w-4" />
-        Tambah produk
-      </Link>
-    </Button>
+    <div className="flex items-center gap-3">
+      <ToKeuanganLink slug={slug} />
+      <Button asChild>
+        <Link href={shopPath(slug, "stok/produk/baru")}>
+          <Plus className="h-4 w-4" />
+          Tambah produk
+        </Link>
+      </Button>
+    </div>
   );
+}
+
+async function Tabs({ params }: { params: Params }) {
+  const { slug } = await params;
+  return <StokTabs slug={slug} active="stok" />;
 }
 
 async function StockProducts({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const catalog = await listCatalog(shop.id);
-  const rows: StockRow[] = catalog.flatMap((product) =>
-    product.variants.map((variant) => ({
-      productId: product.id,
-      variantId: variant.id,
-      name: product.name,
-      option: variant.option_label,
-      category: product.category,
-      unit: product.unit,
-      onHand: variant.on_hand,
-      minStock: variant.min_stock,
-      costIsSet: variant.cost_is_set,
-    })),
-  );
+  const forecasts = await listStockForecasts(shop.id);
+  const rows: StockRow[] = forecasts.map((f) => ({
+    productId: f.product_id,
+    variantId: f.variant_id,
+    name: f.product_name,
+    option: f.option_label,
+    category: f.category,
+    unit: f.unit,
+    onHand: f.on_hand,
+    minStock: f.min_stock,
+    costIsSet: f.cost_is_set,
+    status: f.status,
+    rate: f.rate,
+    stockoutInDays: f.stockout_in_days,
+    reorderQty: f.reorder_qty,
+  }));
   return <StockList slug={slug} rows={rows} />;
 }
 
