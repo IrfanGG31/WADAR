@@ -1,4 +1,6 @@
+import { z } from "zod";
 import type { EscalationCause } from "./schema";
+import { findForbiddenTerms } from "./text";
 
 /** Inbox wording (CHT-6, CHT-7): status chips, escalation reasons, authors. */
 export type ConversationMode = "ai" | "human";
@@ -43,3 +45,19 @@ export const AUTHOR_LABEL: Record<MessageAuthor, string> = {
   human: "Admin",
   system: "Sistem",
 };
+
+
+/** An owner's manual reply (CHT-7): same length cap as an AI reply, and never internal-data words. */
+export const OwnerReplyInput = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(1, "Balasan masih kosong.")
+    .max(700, "Balasan maksimal 700 huruf.")
+    .refine((t) => findForbiddenTerms(t).length === 0, "Balasan menyebut data internal (modal, margin, untung, saldo). Hapus dulu ya."),
+});
+
+/** Which inbox tab a conversation belongs to: "belum" = waiting for the owner. */
+export function inboxTab(status: ConversationStatus): "belum" | "utama" {
+  return status === "escalated" ? "belum" : "utama";
+}
