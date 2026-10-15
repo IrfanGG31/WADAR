@@ -21,6 +21,18 @@ export interface GenerateRequest {
   attempt: number;
 }
 
+/** Usage and cost of one model call, as written to `ai_runs` (TECH-SPEC §6.3). */
+export interface RunMeter {
+  inputTokens: number;
+  cachedTokens: number;
+  outputTokens: number;
+  /** numeric(12,2) as a string, computed in whole sen — never a float. */
+  costIdr: string;
+  latencyMs: number;
+  /** Why the offline engine answered instead of the LLM (no_api_key, demo_safe, timeout, …). */
+  fallbackReason: string | null;
+}
+
 export interface GenerateResult {
   /** null when the model output could not be parsed into `ChatReply`. */
   reply: ChatReply | null;
@@ -29,6 +41,7 @@ export interface GenerateResult {
   /** `ai_runs.id` of this call, when it was logged. */
   runId?: string | null;
   error?: string | null;
+  meter?: RunMeter;
 }
 
 export type Generate = (request: GenerateRequest) => Promise<GenerateResult>;
@@ -40,6 +53,7 @@ export interface AttemptLog {
   reply: ChatReply | null;
   guard: GuardResult | null;
   error: string | null;
+  meter: RunMeter | null;
 }
 
 export interface TurnInput {
@@ -84,6 +98,7 @@ export async function runTurn(input: TurnInput, generate: Generate): Promise<Tur
       reply: result.reply,
       guard: null,
       error: result.error ?? null,
+      meter: result.meter ?? null,
     };
     attempts.push(log);
     if (!result.reply) {
