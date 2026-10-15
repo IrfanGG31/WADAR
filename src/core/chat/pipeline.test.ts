@@ -1,0 +1,94 @@
+import { describe, expect, it } from "vitest";
+import { glowContext } from "./fixtures/glow-by-sari";
+import { runTurn, type Generate, type GenerateRequest } from "./pipeline";
+import type { ChatReply } from "./schema";
+import { DEFAULT_HOLDING_MESSAGE, StorePersona } from "./store-policies";
+
+/** A scripted "model": returns the queued replies in order and records each request. */
+function scripted(...replies: (Partial<ChatReply> | null)[]) {
+  const calls: GenerateRequest[] = [];
+  const generate: Generate = async (request) => {
+    calls.push(request);
+    const next = replies[calls.length - 1];
+    return {
+      reply:
+        next === null || next === undefined
+          ? null
+          : { intent: "stok", reply: "", sources: [], confidence: 0.9, escalate: false, ...next },
+      engine: "llm",
+      model: "test-model",
+      runId: `run-${calls.length}`,
+    };
+  };
+  return { generate, calls };
+}
+
+const question = "serum vit c ready? bisa COD?";
+const ctx = glowContext(question);
+const vitC = ctx.cards.find((c) => c.name === "Serum Vit C 20ml")!;
+const good: Partial<ChatReply> = {
+  reply: "Serum Vit C 20ml ready Kak, harganya Rp89.000. COD bisa.",
+  sources: [
+    { type: "product", id: vitC.variant_id },
+    { type: "policy", id: "cod" },
+  ],
+};
+
+describe("runTurn", () => {
+  it("only stores the message when a human has taken over", async () => {
+    const { generate, calls } = scripted(good);
+    expect(await runTurn({ text: question, mode: "human", context: ctx }, generate)).toEqual({ action: "store_only", attempts: [] });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("escalates pre-routed messages without calling the model", async () => {
+    const { generate, calls } = scripted(good);
+    const outcome = await runTurn({ text: "kasih diskon dong", mode: "ai", context: ctx }, generate);
+    expect(outcome).toMatchObject({ action: "escalate", cause: "negotiation", preRoute: "negotiation" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("sends a reply that passes the guardrails", async () => {
+    const { generate } = scripted(good);
+    const outcome = await runTurn({ text: question, mode: "ai", context: ctx }, generate);
+    expect(outcome).toMatchObject({ action: "reply", text: good.reply, engine: "llm" });
+    if (outcome.action === "reply") expect(outcome.attempts[0]).toMatchObject({ runId: "run-1", model: "test-model" });
+  });
+
+  it("regenerates once with feedback after a wrong price, then sends the fixed reply", async () => {
+    const { generate, calls } = scripted({ ...good, reply: "Serum Vit C 20ml ready Kak, harganya Rp85.000." }, good);
+    const outcome = await runTurn({ text: question, mode: "ai", context: ctx }, generate);
+    expect(outcome.action).toBe("reply");
+    expect(calls).toHaveLength(2);
+    expect(calls[1].attempt).toBe(1);
+    expect(calls[1].feedback).toContain("85000");
+  });
+
+  it("escalates when the regenerated reply is still wrong (no third try)", async () => {
+    const wrong = { ...good, reply: "Serum Vit C 20ml ready Kak, harganya Rp85.000." };
+    const { generate, calls } = scripted(wrong, wrong, good);
+    const outcome = await runTurn({ text: question, mode: "ai", context: ctx }, generate);
+    expect(outcome).toMatchObject({ action: "escalate", cause: "price_mismatch", unsafe: false });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("blocks an unsafe reply: holding message sent, flagged unsafe, no regeneration", async () => {
+    const { generate, calls } = scripted({ ...good, reply: "HPP-nya Rp38.000, jadi untung kami tipis." }, good);
+    const outcome = await runTurn({ text: question, mode: "ai", context: ctx }, generate);
+    expect(outcome).toMatchObject({ action: "escalate", cause: "unsafe", unsafe: true });
+    if (outcome.action === "escalate") expect(outcome.text).toBe(ctx.persona.holding_message);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("escalates when the model output could not be parsed", async () => {
+    const { generate } = scripted(null);
+    expect(await runTurn({ text: question, mode: "ai", context: ctx }, generate)).toMatchObject({ action: "escalate", cause: "other" });
+  });
+
+  it("falls back to the default holding message if the stored one is unsafe", async () => {
+    const persona = StorePersona.parse({});
+    const bad = { ...ctx, persona: { ...persona, holding_message: "Modal habis, tunggu ya" } };
+    const outcome = await runTurn({ text: "minta admin", mode: "ai", context: bad }, scripted().generate);
+    if (outcome.action === "escalate") expect(outcome.text).toBe(DEFAULT_HOLDING_MESSAGE);
+  });
+});
