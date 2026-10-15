@@ -12,3 +12,5 @@ Dicatat saat menolak/menunda fitur selama sprint (CLAUDE.md "Cara kerja"). Sumbe
 - Insight mingguan terjadwal (CON-3) — sprint: tombol "generate sekarang".
 - Billing, kuota, APK TWA, panel admin, evals lengkap.
 - Rollup `stock_daily` / `fin_daily` + pg_cron (sprint: dihitung langsung dari transaksi).
+- Aturan FIN-6 sisanya: `MARGIN_DROP` (margin turun ≥ 5 poin vs 4 minggu) dan `MISSING_COST` (sprint: 3 aturan).
+- Pilihan periode Keuangan harian/bulanan + pembanding (FIN-3) — sprint: 7 hari vs 7 hari sebelumnya + detail 28 hari.
