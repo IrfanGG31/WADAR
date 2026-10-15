@@ -30,6 +30,23 @@ export interface SaleItemLine {
   alloc_order_discount: number;
   alloc_platform_fee: number;
   alloc_shipping_subsidy: number;
+  /**
+   * Pre-aggregated rows (the `fin_daily` view: day × variant × channel) carry
+   * exact rupiah totals; when set they replace `qty × unit_price` and
+   * `qty × unit_cost`, so no per-unit average (a fraction) is ever needed.
+   */
+  gross_total?: number;
+  cost_total?: number;
+}
+
+/** Σ qty × unit_price of a line (or its exact aggregated total). */
+export function lineGross(l: SaleItemLine): number {
+  return l.gross_total ?? l.qty * l.unit_price;
+}
+
+/** Σ qty × unit_cost of a line (or its exact aggregated total). */
+export function lineCost(l: SaleItemLine): number {
+  return l.cost_total ?? l.qty * l.unit_cost;
 }
 
 /** Totals for one slice (period, period × channel, period × product, …). */
@@ -76,26 +93,28 @@ function finalizeTotals(acc: typeof ZERO): FinanceTotals {
   };
 }
 
+function addLine(acc: typeof ZERO, l: SaleItemLine): void {
+  const gross = lineGross(l);
+  const rev = gross - l.line_discount - l.alloc_order_discount;
+  const cost = lineCost(l);
+  const gp = rev - cost - l.alloc_platform_fee - l.alloc_shipping_subsidy;
+  acc.q += l.qty;
+  acc.revenue_gross += gross;
+  acc.R += rev;
+  acc.C += cost;
+  acc.F += l.alloc_platform_fee;
+  acc.S += l.alloc_shipping_subsidy;
+  acc.GP += gp;
+  acc.discount += l.line_discount + l.alloc_order_discount;
+  if (l.cost_is_set) {
+    acc.cost_known_R += rev;
+    acc.cost_known_GP += gp;
+  }
+}
+
 export function totalsOverLines(lines: readonly SaleItemLine[]): FinanceTotals {
   const acc = { ...ZERO };
-  for (const l of lines) {
-    const gross = l.qty * l.unit_price;
-    const rev = gross - l.line_discount - l.alloc_order_discount;
-    const cost = l.qty * l.unit_cost;
-    const gp = rev - cost - l.alloc_platform_fee - l.alloc_shipping_subsidy;
-    acc.q += l.qty;
-    acc.revenue_gross += gross;
-    acc.R += rev;
-    acc.C += cost;
-    acc.F += l.alloc_platform_fee;
-    acc.S += l.alloc_shipping_subsidy;
-    acc.GP += gp;
-    acc.discount += l.line_discount + l.alloc_order_discount;
-    if (l.cost_is_set) {
-      acc.cost_known_R += rev;
-      acc.cost_known_GP += gp;
-    }
-  }
+  for (const l of lines) addLine(acc, l);
   return finalizeTotals(acc);
 }
 
@@ -113,22 +132,7 @@ function groupBy(
       b = { label: labelOf(l), acc: { ...ZERO } };
       buckets.set(key, b);
     }
-    const gross = l.qty * l.unit_price;
-    const rev = gross - l.line_discount - l.alloc_order_discount;
-    const cost = l.qty * l.unit_cost;
-    const gp = rev - cost - l.alloc_platform_fee - l.alloc_shipping_subsidy;
-    b.acc.q += l.qty;
-    b.acc.revenue_gross += gross;
-    b.acc.R += rev;
-    b.acc.C += cost;
-    b.acc.F += l.alloc_platform_fee;
-    b.acc.S += l.alloc_shipping_subsidy;
-    b.acc.GP += gp;
-    b.acc.discount += l.line_discount + l.alloc_order_discount;
-    if (l.cost_is_set) {
-      b.acc.cost_known_R += rev;
-      b.acc.cost_known_GP += gp;
-    }
+    addLine(b.acc, l);
   }
   return [...buckets.entries()]
     .map(([key, { label, acc }]) => ({ key, label, totals: finalizeTotals(acc) }))
@@ -325,9 +329,9 @@ export function sellBelowCostLines(lines: readonly SaleItemLine[]): MarginWarnin
   }>();
   for (const l of lines) {
     if (!l.cost_is_set) continue;
-    const rev = l.qty * l.unit_price - l.line_discount - l.alloc_order_discount;
+    const rev = lineGross(l) - l.line_discount - l.alloc_order_discount;
     const net = rev - l.alloc_platform_fee - l.alloc_shipping_subsidy;
-    const cost = l.qty * l.unit_cost;
+    const cost = lineCost(l);
     if (net < cost) {
       const b = perVariant.get(l.variant_id) ?? { label: l.product_name, net: 0, cost: 0, qty: 0, hits: 0 };
       b.net += net;
@@ -406,10 +410,10 @@ export function aggregateByProduct(lines: readonly SaleItemLine[]): ProductPerio
       by.set(l.variant_id, agg);
     }
     agg.qty += l.qty;
-    agg.revenue_gross += l.qty * l.unit_price;
+    agg.revenue_gross += lineGross(l);
     agg.line_discount += l.line_discount;
     agg.order_discount_alloc += l.alloc_order_discount;
-    agg.cost += l.qty * l.unit_cost;
+    agg.cost += lineCost(l);
     agg.platform_fee_alloc += l.alloc_platform_fee;
     agg.shipping_subsidy_alloc += l.alloc_shipping_subsidy;
   }

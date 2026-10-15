@@ -17,6 +17,16 @@ export function formatRupiah(amount: bigint | number): string {
   return `Rp${numberFormatter.format(value)}`;
 }
 
+/**
+ * Change amounts always carry a sign: "+Rp5.000", "−Rp5.000", "Rp0". The minus is
+ * U+2212, which (unlike "-") never lets a line break split it from the amount.
+ */
+export function formatSignedRupiah(amount: bigint | number): string {
+  const value = typeof amount === "number" ? BigInt(Math.trunc(amount)) : amount;
+  if (value === 0n) return formatRupiah(0n);
+  return `${value > 0n ? "+" : "\u2212"}${formatRupiah(value < 0n ? -value : value)}`;
+}
+
 /** Compact form for chart axes and tight cards: "Rp1,2 jt", "Rp850 rb". */
 export function formatRupiahCompact(amount: bigint | number): string {
   const value = Number(amount);

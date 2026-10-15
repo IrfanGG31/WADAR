@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocateLargestRemainder, formatRupiah, formatRupiahCompact } from "./money";
+import { allocateLargestRemainder, formatRupiah, formatRupiahCompact, formatSignedRupiah } from "./money";
 
 describe("formatRupiah", () => {
   it("formats zero", () => {
@@ -73,5 +73,13 @@ describe("allocateLargestRemainder", () => {
     expect(() => allocateLargestRemainder(10n, [0n, 0n])).toThrow(RangeError);
     expect(allocateLargestRemainder(0n, [0n, 0n])).toEqual([0n, 0n]);
     expect(allocateLargestRemainder(0n, [])).toEqual([]);
+  });
+});
+
+describe("formatSignedRupiah", () => {
+  it("always shows the sign of a change", () => {
+    expect(formatSignedRupiah(5_000)).toBe("+Rp5.000");
+    expect(formatSignedRupiah(-1_250_000n)).toBe("\u2212Rp1.250.000");
+    expect(formatSignedRupiah(0)).toBe("Rp0");
   });
 });

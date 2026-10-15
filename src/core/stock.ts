@@ -121,6 +121,8 @@ export function narrateForecast(name: string, f: StockForecast, unit = "pcs"): s
     return `${name} habis ±${f.stockout_in_days} hari lagi. Disarankan pesan ulang ${f.reorder_qty} ${unit}.`;
   }
   if (f.status === "menipis") {
+    // reorder_qty = 0 here means only the manual minimum tripped (no sales rate to size an order from).
+    if (f.reorder_qty === 0) return `${name} menipis, di bawah stok minimum. Tentukan jumlah pesan ulang sendiri.`;
     return `${name} menipis. Disarankan pesan ulang ${f.reorder_qty} ${unit}.`;
   }
   return `${name} aman.`;
