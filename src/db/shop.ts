@@ -28,3 +28,15 @@ export const getShop = cache(async (slug: string): Promise<Shop> => {
   if (!data) notFound();
   return data as Shop;
 });
+
+/** Like {@link getShop} but returns null for a non-member / unknown slug (API routes answer 404 themselves). */
+export async function findShop(slug: string): Promise<Shop | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id, name, slug, timezone, is_demo, business_type")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Shop | null) ?? null;
+}

@@ -10,7 +10,7 @@
  */
 export type Task = "chat_reply" | "intent" | "narrate" | "consult_fast" | "consult_deep" | "embed" | "judge";
 
-/** Tasks wired up in D6; the consult/narrate routes are D7. */
+/** Tasks the chat pipeline runs through `run()`. consult_fast / consult_deep / narrate run through `createConsult` (src/ai/consult.ts). */
 export type ChatTask = Extract<Task, "chat_reply" | "intent" | "embed" | "judge">;
 
 export type ModelRef = `google:${string}` | "offline:template-v1";
@@ -35,6 +35,9 @@ export const MAX_OUTPUT_TOKENS: Partial<Record<Task, number>> = {
   chat_reply: 300,
   intent: 20,
   judge: 200,
+  consult_fast: 400,
+  consult_deep: 700,
+  narrate: 150,
 };
 
 /** SPRINT-8D §5: an LLM slower than this is abandoned and the fallback answers. */
