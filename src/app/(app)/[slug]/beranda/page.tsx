@@ -1,13 +1,18 @@
-import { AlertTriangle, Package, Receipt, ShoppingBag, UserPlus } from "lucide-react";
+import { AlertTriangle, ChevronRight, Package, Receipt, ShoppingBag, Sparkles, UserPlus, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABEL } from "@/core/stock-level";
-import type { ForecastRow } from "@/core/stock-insight";
+import { narrateProfitHeadline, profitInsight } from "@/core/finance-insight";
+import { weekOverWeek } from "@/core/period";
+import { narrateStockOverview, needsRestock, sortByUrgency, type ForecastRow } from "@/core/stock-insight";
 import { formatRupiah, formatRupiahCompact } from "@/core/money";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
+import { getFinanceData } from "@/db/finance";
 import { getShop } from "@/db/shop";
+import { listStockForecasts } from "@/db/stock";
 import { shopPath } from "@/lib/routes";
+import { shopToday } from "@/lib/shop-today";
 
 export const metadata = { title: "Beranda" };
 
@@ -15,9 +20,11 @@ type Params = PageProps<"/[slug]/beranda">["params"];
 
 /**
  * Beranda (PRD §7.2): four KPI cards for today, a 7-day revenue trend, and the
- * most urgent low-stock items. All numbers come from `src/core/*` (money,
- * stock) or from pre-aggregated views (`fin_daily`, `beranda_summary`); the UI
- * never computes KPIs from raw transaction rows.
+ * most urgent low-stock items, and "Insight untukmu" (template narration of
+ * the stock forecast and the week's profit change). All numbers come from
+ * `src/core/*` (money, stock, finance) or from pre-aggregated views
+ * (`fin_daily`, `beranda_summary`); the UI never computes KPIs from raw
+ * transaction rows.
  */
 export default function BerandaPage({ params }: PageProps<"/[slug]/beranda">) {
   return (
@@ -35,6 +42,9 @@ export default function BerandaPage({ params }: PageProps<"/[slug]/beranda">) {
       </Suspense>
       <Suspense fallback={<LowStockSkeleton />}>
         <LowStockSection params={params} />
+      </Suspense>
+      <Suspense fallback={<InsightSkeleton />}>
+        <InsightSection params={params} />
       </Suspense>
     </div>
   );
@@ -156,6 +166,57 @@ function LowStockItem({ row }: { row: ForecastRow }) {
   );
 }
 
+/** "Insight untukmu" (PRD §7.2): one deterministic sentence each from Stock and Finance Insight — no LLM. */
+async function InsightSection({ params }: { params: Params }) {
+  const { slug } = await params;
+  const shop = await getShop(slug);
+  const { current, previous } = weekOverWeek(await shopToday(shop.timezone));
+  const [stock, finance] = await Promise.all([
+    listStockForecasts(shop.id),
+    getFinanceData(shop.id, { from: previous.from, to: current.to }),
+  ]);
+  const urgent = sortByUrgency(stock).find(needsRestock);
+  const items = [
+    {
+      title: "Prediksi Stok",
+      icon: Package,
+      text: urgent ? urgent.narrative : narrateStockOverview(stock),
+      href: shopPath(slug, "stok/prediksi"),
+    },
+    {
+      title: "Analisis Keuangan",
+      icon: Wallet,
+      text:
+        finance.lines.length > 0 || finance.expenses.length > 0
+          ? narrateProfitHeadline(profitInsight(finance.lines, finance.expenses, current, previous))
+          : "Belum ada penjualan 14 hari terakhir.",
+      href: shopPath(slug, "keuangan"),
+    },
+  ];
+  return (
+    <section className="rounded-xl border border-border p-4" aria-labelledby="insight-untukmu">
+      <h2 id="insight-untukmu" className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <Sparkles className="h-4 w-4 text-primary" />
+        Insight untukmu
+      </h2>
+      <ul className="divide-y divide-border">
+        {items.map(({ title, icon: Icon, text, href }) => (
+          <li key={title}>
+            <Link href={href} className="flex min-h-14 items-start gap-3 py-3 hover:bg-muted/50">
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium">{title}</span>
+                <span className="text-sm text-muted-foreground">{text}</span>
+              </span>
+              <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function KpiSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -170,4 +231,7 @@ function TrendSkeleton() {
 }
 function LowStockSkeleton() {
   return <div className="h-36 animate-pulse rounded-xl bg-muted" />;
+}
+function InsightSkeleton() {
+  return <div className="h-40 animate-pulse rounded-xl bg-muted" />;
 }
