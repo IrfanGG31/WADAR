@@ -116,3 +116,20 @@ export function formatShippingEstimate(e: ShippingEstimate): string {
     e.cost_min === e.cost_max ? formatRupiah(e.cost_min) : `${formatRupiah(e.cost_min)}–${formatRupiah(e.cost_max)}`;
   return `${e.area} ${cost}${e.eta ? ` (${e.eta})` : ""}`;
 }
+
+/** What the Pengaturan form submits. Policy text is shown to buyers, so internal-data words are rejected on save. */
+export const StoreProfileInput = z
+  .object({ policies: StorePolicies, persona: StorePersona })
+  .superRefine((value, ctx) => {
+    for (const fact of policyFacts(value.policies)) {
+      if (findForbiddenTerms(fact.text).length > 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["policies", fact.key],
+          message: `${fact.label}: jangan tulis HPP, modal, margin, untung, saldo, atau laba — teks ini dibaca pembeli.`,
+        });
+      }
+    }
+  });
+
+export type StoreProfileInput = z.infer<typeof StoreProfileInput>;

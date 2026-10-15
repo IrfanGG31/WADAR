@@ -27,3 +27,25 @@ describe("inbox helpers", () => {
     expect(OwnerReplyInput.safeParse({ text: "Modalnya cuma 38rb Kak" }).success).toBe(false);
   });
 });
+
+import { StoreProfileInput } from "./store-policies";
+
+describe("StoreProfileInput", () => {
+  const ok = { policies: { hours: "Setiap hari 09.00–20.00", cod: { available: true, note: "" } }, persona: { name: "Sari" } };
+
+  it("fills defaults for a minimal form", () => {
+    const r = StoreProfileInput.safeParse(ok);
+    expect(r.success && r.data.policies.shipping_estimates).toEqual([]);
+    expect(r.success && r.data.persona.salutation).toBe("Kak");
+  });
+
+  it("rejects internal-data words in buyer-facing text", () => {
+    const r = StoreProfileInput.safeParse({ ...ok, policies: { ...ok.policies, promo: "Diskon besar, margin tipis" } });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects a shipping estimate whose max is below its min", () => {
+    const r = StoreProfileInput.safeParse({ ...ok, policies: { shipping_estimates: [{ area: "Jawa", cost_min: 20000, cost_max: 10000 }] } });
+    expect(r.success).toBe(false);
+  });
+});
