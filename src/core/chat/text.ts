@@ -176,9 +176,10 @@ function parseNumberWords(tokens: readonly string[]): number | null {
     else if (t === "sepuluh") small += 10;
     else if (t === "sebelas") small += 11;
     else if (t === "seratus") small += 100;
-    else if (t === "belas") (small += 10 + pending), (pending = 0);
-    else if (t === "puluh") (small += pending * 10), (pending = 0);
-    else if (t === "ratus") (small += pending * 100), (pending = 0);
+    else if (t === "belas" || t === "puluh" || t === "ratus") {
+      small += t === "belas" ? 10 + pending : pending * (t === "puluh" ? 10 : 100);
+      pending = 0;
+    }
     else if (t === "seribu") total += 1_000;
     else if (t === "sejuta") total += 1_000_000;
     else if (t === "ribu" || t === "juta") {
