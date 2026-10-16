@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { glowContext } from "./fixtures/glow-by-sari";
-import { checkReply, isSafeOutgoing } from "./guardrails";
+import { checkReply, evidenceConfidence, groundedConfidence, isSafeOutgoing } from "./guardrails";
 import type { ChatReply } from "./schema";
 
 const ctx = glowContext("serum vit c ready? bisa COD?");
@@ -262,5 +262,43 @@ describe("audit hardening (D6 T1–T6)", () => {
       const p = { ...ctx, policies: { ...ctx.policies, promo: "Bonus sticker untuk pembelian pertama.", warranty: "" }, kb: [] };
       expect(checkReply(reply({ reply: "Ada bonus 3 voucher Kak." }), p, 0)).toMatchObject({ cause: "policy_exception" });
     });
+  });
+});
+
+describe("confidence from retrieval, not only the model's word (PDF §E.2 Tabel 20)", () => {
+  const nothingFound = { ...glowContext("parfum oud ada kak?"), cards: [], kb: [], retrievalScore: 0 };
+
+  it("nothing retrieved + the model says 0.9 → still escalated as low confidence", () => {
+    // A product claim propped up by an unrelated policy citation is not evidence.
+    const r = checkReply(
+      reply({ intent: "produk", reply: "Ada Kak, parfum oud-nya ready dan wanginya tahan lama.", sources: [{ type: "policy", id: "cod" }], confidence: 0.9 }),
+      nothingFound,
+      0,
+    );
+    expect(r).toMatchObject({ verdict: "escalate", cause: "low_confidence" });
+    expect(r.violations).toContainEqual({ rule: "low_confidence", detail: "model 0.9, data 0" });
+  });
+
+  it("strong retrieval + high model confidence → passes", () => {
+    expect(evidenceConfidence(reply(), ctx)).toBe(1);
+    expect(groundedConfidence(reply(), ctx)).toBe(0.9);
+    expect(checkReply(reply(), ctx, 0).verdict).toBe("pass");
+    const kbCtx = glowContext("produknya sudah BPOM?");
+    expect(kbCtx.kb[0]?.id).toBe("faq1");
+    const kbReply = reply({ intent: "produk", reply: "Iya Kak, semua produk sudah terdaftar BPOM.", sources: [{ type: "kb", id: "faq1" }] });
+    expect(evidenceConfidence(kbReply, kbCtx)).toBe(1);
+    expect(checkReply(kbReply, kbCtx, 0).verdict).toBe("pass");
+    // The same chunk found only weakly (fused score a third of a rank-1 hit) no longer carries a 0.9.
+    const weak = { ...kbCtx, retrievalScore: kbCtx.retrievalScore / 3 };
+    expect(checkReply(kbReply, weak, 0)).toMatchObject({ verdict: "escalate", cause: "low_confidence" });
+  });
+
+  it("the grounded confidence is the lower of the model's and the data's", () => {
+    expect(groundedConfidence(reply({ confidence: 0.7 }), ctx)).toBe(0.7);
+    expect(groundedConfidence(reply({ sources: [] }), ctx)).toBe(0);
+    // Policy questions are answered from structured policies — full evidence, no retrieval needed.
+    expect(evidenceConfidence(reply({ intent: "pembayaran", reply: "Bisa COD Kak.", sources: [{ type: "policy", id: "cod" }] }), nothingFound)).toBe(1);
+    // A greeting needs no data.
+    expect(evidenceConfidence(reply({ intent: "sapaan", reply: "Halo Kak!", sources: [] }), nothingFound)).toBe(1);
   });
 });

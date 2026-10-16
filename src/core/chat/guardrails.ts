@@ -1,12 +1,14 @@
 import { normalizePhone } from "@/core/phone";
 import { allowedAmounts, contextSourceIds, promiseSources, type ChatContext } from "./context";
-import { coreName } from "./retrieval";
+import { coreName, RRF_K } from "./retrieval";
 import type { ChatReply, EscalationCause } from "./schema";
 import { extractAmounts, findForbiddenTerms, findPhoneNumbers, hasPhrase, normalizeText, words } from "./text";
 
 /**
  * Deterministic guardrails (TECH-SPEC §7.3 step 5), in spec order:
- *  1. escalate flag / confidence < 0.6 / di_luar_cakupan → escalate;
+ *  1. escalate flag / confidence < 0.6 / di_luar_cakupan → escalate; the
+ *     confidence is the lower of the model's own and what retrieval backs
+ *     ({@link groundedConfidence}), so "0.9 yakin" over nothing found escalates;
  *  2. harga — every Rp amount must be a card price or a policy amount;
  *  3. stok — stock numbers ≤ qty_hint, availability words match the card;
  *  4. larangan — HPP|modal|margin|untung|saldo|laba or someone else's phone →
@@ -20,6 +22,36 @@ import { extractAmounts, findForbiddenTerms, findPhoneNumbers, hasPhrase, normal
  * unsafe reply is never regenerated or sent.
  */
 export const MIN_CONFIDENCE = 0.6;
+
+/** Intents about the catalog: only a retrieved product card or KB chunk backs them, not a policy. (`harga` may quote a promo/ongkir policy.) */
+const CATALOG_INTENTS: ReadonlySet<ChatReply["intent"]> = new Set(["produk", "stok"]);
+/** RRF score of a rank-1 hit in one list — a KB chunk scoring this (or more) counts as full evidence. */
+const KB_FULL_SCORE = 1 / (RRF_K + 1);
+
+/**
+ * How well the data the reply cites backs it, 0–1, from retrieval rather than
+ * the model's say-so: a cited card that retrieval matched or a policy (structured
+ * store data) = 1; a KB chunk = its fused score against a rank-1 hit; nothing
+ * valid cited = 0. Catalog intents (produk/stok) count only cards and KB.
+ * A greeting needs no data.
+ */
+export function evidenceConfidence(reply: ChatReply, ctx: ChatContext): number {
+  if (reply.intent === "sapaan") return 1;
+  const known = contextSourceIds(ctx);
+  let best = 0;
+  for (const s of reply.sources) {
+    if (!known.has(`${s.type}:${s.id}`)) continue;
+    if (s.type === "policy" && CATALOG_INTENTS.has(reply.intent)) continue;
+    const strength = s.type === "kb" ? Math.min(1, ctx.retrievalScore / KB_FULL_SCORE) : 1;
+    best = Math.max(best, strength);
+  }
+  return best;
+}
+
+/** The confidence the 0.6 threshold is applied to: min(model, retrieval evidence). */
+export function groundedConfidence(reply: ChatReply, ctx: ChatContext): number {
+  return Math.min(reply.confidence, evidenceConfidence(reply, ctx));
+}
 
 export type GuardRule =
   | "escalate_flag"
@@ -240,7 +272,17 @@ export function checkReply(reply: ChatReply, ctx: ChatContext, attempt: number):
 
   // 1. The model's own call.
   if (reply.escalate) violations.push({ rule: "escalate_flag", detail: reply.escalate_reason ?? "other" });
-  if (reply.confidence < MIN_CONFIDENCE) violations.push({ rule: "low_confidence", detail: String(reply.confidence) });
+  // Citing nothing valid is rule 6 (not_in_store_data); evidence only judges sources that exist.
+  const known = contextSourceIds(ctx);
+  const citesData = reply.sources.some((s) => known.has(`${s.type}:${s.id}`));
+  const evidence = citesData || reply.intent === "sapaan" ? evidenceConfidence(reply, ctx) : 1;
+  const confidence = Math.min(reply.confidence, evidence);
+  if (confidence < MIN_CONFIDENCE) {
+    violations.push({
+      rule: "low_confidence",
+      detail: evidence < reply.confidence ? `model ${reply.confidence}, data ${Math.round(evidence * 100) / 100}` : String(reply.confidence),
+    });
+  }
   if (reply.intent === "di_luar_cakupan") violations.push({ rule: "out_of_scope", detail: "di_luar_cakupan" });
 
   // 2. Harga.
@@ -262,21 +304,20 @@ export function checkReply(reply: ChatReply, ctx: ChatContext, attempt: number):
   if (promises.length > 0) violations.push({ rule: "promise", detail: promises.join(", ") });
 
   // 6. Sumber.
-  const known = contextSourceIds(ctx);
   const validSources = reply.sources.filter((s) => known.has(`${s.type}:${s.id}`));
   if (reply.intent !== "sapaan" && validSources.length === 0) violations.push({ rule: "sources", detail: "tanpa sumber" });
 
-  return decide(reply, violations, attempt);
+  return decide(reply, violations, attempt, confidence);
 }
 
-function decide(reply: ChatReply, violations: GuardViolation[], attempt: number): GuardResult {
+function decide(reply: ChatReply, violations: GuardViolation[], attempt: number, confidence: number): GuardResult {
   const has = (rule: GuardRule) => violations.some((v) => v.rule === rule);
   if (violations.length === 0) return { verdict: "pass", violations, unsafe: false };
 
   if (has("forbidden") || has("phone")) return { verdict: "escalate", violations, cause: "unsafe", unsafe: true };
 
   if (has("escalate_flag") || has("low_confidence") || has("out_of_scope")) {
-    return { verdict: "escalate", violations, cause: modelCause(reply), unsafe: false };
+    return { verdict: "escalate", violations, cause: modelCause(reply, confidence), unsafe: false };
   }
 
   const dataErrors = violations.filter((v) => v.rule === "price" || v.rule === "stock");
@@ -289,10 +330,10 @@ function decide(reply: ChatReply, violations: GuardViolation[], attempt: number)
   return { verdict: "escalate", violations, cause: "not_in_store_data", unsafe: false };
 }
 
-function modelCause(reply: ChatReply): EscalationCause {
+function modelCause(reply: ChatReply, confidence: number): EscalationCause {
   if (reply.escalate && reply.escalate_reason && reply.escalate_reason !== "other") return reply.escalate_reason;
   if (reply.intent === "di_luar_cakupan") return "out_of_scope";
-  if (reply.confidence < MIN_CONFIDENCE) return "low_confidence";
+  if (confidence < MIN_CONFIDENCE) return "low_confidence";
   return "other";
 }
 
