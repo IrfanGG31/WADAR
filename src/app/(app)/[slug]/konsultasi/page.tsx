@@ -12,12 +12,20 @@ export const metadata = { title: "Konsultasi Bisnis" };
  */
 export default function KonsultasiPage({ params }: PageProps<"/[slug]/konsultasi">) {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">Dijawab dari data tokomu sendiri</p>
         <h1 className="text-2xl font-semibold tracking-tight">Konsultasi Bisnis</h1>
       </div>
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" />}>
+      <Suspense
+        fallback={
+          <div className="flex flex-col gap-3" aria-hidden>
+            <div className="h-11 animate-pulse rounded-lg bg-muted" />
+            <div className="h-64 animate-pulse rounded-lg bg-muted" />
+            <div className="h-11 animate-pulse rounded-lg bg-muted" />
+          </div>
+        }
+      >
         <Body params={params} />
       </Suspense>
     </div>

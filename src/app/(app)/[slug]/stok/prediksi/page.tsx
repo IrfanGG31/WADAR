@@ -30,10 +30,10 @@ type Params = PageProps<"/[slug]/stok/prediksi">["params"];
  */
 export default function PrediksiPage({ params }: PageProps<"/[slug]/stok/prediksi">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Stok</h1>
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="h-11 w-28 animate-pulse rounded-md bg-muted md:hidden" />}>
           <KeuanganLink params={params} />
         </Suspense>
       </div>
@@ -65,10 +65,13 @@ async function Prediction({ params }: { params: Params }) {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-        <PackageOpen className="h-10 w-10 text-muted-foreground" />
+        <PackageOpen className="h-10 w-10 text-muted-foreground" aria-hidden />
         <p className="max-w-sm text-muted-foreground">
           Belum ada produk untuk diprediksi.{" "}
-          <Link href={shopPath(slug, "stok/produk/baru")} className="font-medium text-primary">
+          <Link
+            href={shopPath(slug, "stok/produk/baru")}
+            className="inline-flex min-h-11 items-center rounded-md px-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
             Tambah produk
           </Link>
         </p>
@@ -81,7 +84,7 @@ async function Prediction({ params }: { params: Params }) {
   return (
     <>
       <section className="flex gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4" aria-label="Prediksi utama">
-        <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-xs font-medium uppercase tracking-wide text-primary">Memprediksi</p>
           <p className="font-medium">{top ? top.narrative : "Semua stok aman."}</p>
@@ -99,7 +102,7 @@ function SlowMovers({ slow }: { slow: SlowMovingSummary }) {
     <section className="rounded-xl border border-border p-4" aria-labelledby="lambat-laku">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="lambat-laku" className="flex items-center gap-2 text-sm font-semibold">
-          <Snail className="h-4 w-4 text-muted-foreground" />
+          <Snail className="h-4 w-4 text-muted-foreground" aria-hidden />
           Barang lambat laku
         </h2>
         <p className="text-sm">
@@ -120,10 +123,14 @@ function SlowMovers({ slow }: { slow: SlowMovingSummary }) {
 
 function PredictionSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div aria-busy="true" aria-label="Memuat prediksi stok" className="flex flex-col gap-4">
       <div className="h-24 animate-pulse rounded-xl bg-muted" />
       <div className="h-32 animate-pulse rounded-xl bg-muted" />
-      <div className="h-96 rounded-xl border border-border" />
+      <div className="flex flex-col gap-2">
+        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+      </div>
     </div>
   );
 }

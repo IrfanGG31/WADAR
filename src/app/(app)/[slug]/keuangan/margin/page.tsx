@@ -19,7 +19,7 @@ type Params = PageProps<"/[slug]/keuangan/margin">["params"];
  */
 export default function MarginPage({ params }: PageProps<"/[slug]/keuangan/margin">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <KeuanganHeader params={params} active="keuangan/margin" />
       <Suspense fallback={<MarginSkeleton />}>
         <Margin params={params} />

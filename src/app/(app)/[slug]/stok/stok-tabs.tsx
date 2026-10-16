@@ -15,7 +15,10 @@ export function StokTabs({ slug, active }: { slug: string; active: (typeof TABS)
 /** On phones Stok sits under "Laporan" with Keuangan; one tap across. */
 export function ToKeuanganLink({ slug }: { slug: string }) {
   return (
-    <Link href={shopPath(slug, "keuangan")} className="text-sm font-medium text-primary md:hidden">
+    <Link
+      href={shopPath(slug, "keuangan")}
+      className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+    >
       Lihat keuangan
     </Link>
   );

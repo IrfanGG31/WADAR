@@ -33,7 +33,7 @@ type Params = PageProps<"/[slug]/keuangan">["params"];
  */
 export default function KeuanganPage({ params }: PageProps<"/[slug]/keuangan">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <KeuanganHeader params={params} active="keuangan" />
       <Suspense fallback={<SummarySkeleton />}>
         <Summary params={params} />
@@ -52,10 +52,13 @@ async function Summary({ params }: { params: Params }) {
   if (lines.length === 0 && expenses.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-        <Wallet className="h-10 w-10 text-muted-foreground" />
+        <Wallet className="h-10 w-10 text-muted-foreground" aria-hidden />
         <p className="max-w-sm text-muted-foreground">
           Belum ada penjualan 14 hari terakhir.{" "}
-          <Link href={shopPath(slug, "kasir")} className="font-medium text-primary">
+          <Link
+            href={shopPath(slug, "kasir")}
+            className="rounded-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
             Catat penjualan di kasir
           </Link>
         </p>

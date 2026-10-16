@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/states/page-skeleton";
 import { getProduct, listCatalog, variantLabel } from "@/db/catalog";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
@@ -18,7 +19,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default function EditProductPage({ params }: PageProps<"/[slug]/stok/produk/[id]">) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <Suspense fallback={<div className="h-[36rem] rounded-xl border border-border" />}>
+      <Suspense fallback={<PageSkeleton title="Ubah produk" shape="form" />}>
         <EditProduct params={params} />
       </Suspense>
     </div>
@@ -36,8 +37,11 @@ async function EditProduct({ params }: { params: Params }) {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <Link href={shopPath(slug, "stok")} className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
+        <Link
+          href={shopPath(slug, "stok")}
+          className="inline-flex min-h-11 w-fit items-center gap-1 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
           Stok
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>

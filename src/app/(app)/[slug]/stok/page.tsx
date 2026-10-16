@@ -15,10 +15,10 @@ type Params = PageProps<"/[slug]/stok">["params"];
 
 export default function StokPage({ params }: PageProps<"/[slug]/stok">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Stok</h1>
-        <Suspense fallback={<div className="h-11 w-36 rounded-md bg-muted" />}>
+        <Suspense fallback={<div className="h-11 w-36 animate-pulse rounded-md bg-muted" />}>
           <AddProductButton params={params} />
         </Suspense>
       </div>
@@ -39,7 +39,7 @@ async function AddProductButton({ params }: { params: Params }) {
       <ToKeuanganLink slug={slug} />
       <Button asChild>
         <Link href={shopPath(slug, "stok/produk/baru")}>
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden />
           Tambah produk
         </Link>
       </Button>
@@ -76,9 +76,15 @@ async function StockProducts({ params }: { params: Params }) {
 
 function ListSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-11 w-72 rounded-md bg-muted" />
-      <div className="h-96 rounded-xl border border-border" />
+    <div aria-busy="true" aria-label="Memuat stok produk" className="flex flex-col gap-3">
+      <div className="h-11 w-full animate-pulse rounded-md bg-muted" />
+      <div className="h-11 w-72 max-w-full animate-pulse rounded-full bg-muted" />
+      <div className="flex flex-col gap-2">
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+      </div>
     </div>
   );
 }

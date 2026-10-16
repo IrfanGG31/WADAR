@@ -18,9 +18,16 @@ type Params = PageProps<"/[slug]/keuangan/detail">["params"];
  */
 export default function DetailPage({ params }: PageProps<"/[slug]/keuangan/detail">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <KeuanganHeader params={params} active="keuangan/detail" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
+      <Suspense
+        fallback={
+          <div className="flex flex-col gap-4" aria-hidden>
+            <div className="h-32 animate-pulse rounded-xl bg-muted" />
+            <div className="h-96 animate-pulse rounded-xl bg-muted" />
+          </div>
+        }
+      >
         <Detail params={params} />
       </Suspense>
     </div>

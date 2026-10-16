@@ -4,7 +4,10 @@ import {
   decomposeProfitChange,
   discountHeavyPeriod,
   feeHeavyChannels,
+  marginDrop,
+  MARGIN_DROP_POINTS,
   marginWarnings,
+  missingCost,
   sellBelowCostLines,
   totalsByChannel,
   totalsByVariant,
@@ -208,5 +211,68 @@ describe("margin warnings (FIN-6)", () => {
     ]);
     expect(w[0].severity).toBe(3);
     expect(w[w.length - 1].severity).toBe(1);
+  });
+});
+
+describe("FIN-6: MARGIN_DROP & MISSING_COST", () => {
+  // margin = (price − cost) / price: 10.000 − 6.000 → 40%.
+  const before = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_000 })];
+
+  it("MARGIN_DROP fires when margin falls 6 points (40% → 34%)", () => {
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_600 })];
+    const w = marginDrop(now, before);
+    expect(MARGIN_DROP_POINTS).toBe(5);
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatchObject({ code: "MARGIN_DROP", scope: "period", severity: 2, cause: "cogs" });
+    expect(w[0].stats).toMatchObject({ margin_before: 40, margin_now: 34, drop_pts: 6, days: 7, cause_before: 60, cause_now: 66 });
+    // 6 poin dari penjualan bersih Rp100.000 → untung kotor berkurang ±Rp6.000.
+    expect(w[0].stats.lost_gp).toBe(6_000);
+  });
+
+  it("MARGIN_DROP stays silent when margin falls only 3 points (40% → 37%)", () => {
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_300 })];
+    expect(marginDrop(now, before)).toEqual([]);
+  });
+
+  it("MARGIN_DROP fires at exactly 5 points and names the fee as the cause", () => {
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_000, alloc_platform_fee: 500 })];
+    const w = marginDrop(now, before);
+    expect(w).toHaveLength(1);
+    expect(w[0].cause).toBe("fee");
+    expect(w[0].stats.drop_pts).toBe(5);
+  });
+
+  it("MARGIN_DROP needs HPP in both periods and ignores lines without HPP", () => {
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 9_000 })];
+    expect(marginDrop(now, [])).toEqual([]);
+    expect(marginDrop([], before)).toEqual([]);
+    // A no-HPP sale (would look like 100% margin) must not hide a real drop.
+    const mixed = [...now, line({ variant_id: "V9", qty: 50, unit_price: 10_000, unit_cost: 0, cost_is_set: false })];
+    expect(marginDrop(mixed, before)[0]?.stats.margin_now).toBe(10);
+  });
+
+  it("marginWarnings only checks MARGIN_DROP when the previous period is given", () => {
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_600 })];
+    expect(marginWarnings(now).map((w) => w.code)).not.toContain("MARGIN_DROP");
+    const w = marginWarnings(now, { previous: before, days: 30 });
+    expect(w.find((x) => x.code === "MARGIN_DROP")?.stats.days).toBe(30);
+  });
+
+  it("MISSING_COST lists sold variants without HPP", () => {
+    const lines = [
+      line({ variant_id: "A", product_name: "Masker", qty: 2, unit_price: 50_000, unit_cost: 0, cost_is_set: false }),
+      line({ variant_id: "A", product_name: "Masker", qty: 1, unit_price: 50_000, unit_cost: 0, cost_is_set: false }),
+      line({ variant_id: "B", product_name: "Sabun", qty: 1, unit_price: 20_000, unit_cost: 0, cost_is_set: false }),
+      line({ variant_id: "C", product_name: "Serum", qty: 1, unit_price: 30_000 }),
+    ];
+    const w = missingCost(lines);
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatchObject({ code: "MISSING_COST", scope: "period", label: "Masker, Sabun" });
+    expect(w[0].stats).toMatchObject({ variants: 2, qty: 4, R_missing: 170_000, R: 200_000 });
+    expect(marginWarnings(lines).map((x) => x.code)).toContain("MISSING_COST");
+  });
+
+  it("MISSING_COST stays silent when every sold variant has HPP", () => {
+    expect(missingCost([line()])).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/states/page-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AUTHOR_LABEL, conversationChip, escalationLabel } from "@/core/chat/inbox";
 import { visitorLabel } from "@/core/chat/widget";
@@ -15,7 +16,7 @@ export const metadata = { title: "Percakapan" };
 
 export default function ThreadPage({ params }: PageProps<"/[slug]/chat/[id]">) {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Memuat percakapan…</p>}>
+    <Suspense fallback={<PageSkeleton title="Percakapan" shape="thread" />}>
       <Thread params={params} />
     </Suspense>
   );
@@ -31,11 +32,14 @@ async function Thread({ params }: Pick<PageProps<"/[slug]/chat/[id]">, "params">
   const reason = c.status === "escalated" ? escalationLabel(c.escalation_reason) : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <AutoRefresh />
       <div className="flex flex-col gap-2">
-        <Link href={shopPath(slug, "chat")} className="flex items-center gap-1 text-sm font-medium text-primary">
-          <ChevronLeft className="size-4" /> Semua chat
+        <Link
+          href={shopPath(slug, "chat")}
+          className="inline-flex min-h-11 w-fit items-center gap-1 rounded-md text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <ChevronLeft className="size-4" aria-hidden /> Semua chat
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold tracking-tight">
@@ -52,7 +56,7 @@ async function Thread({ params }: Pick<PageProps<"/[slug]/chat/[id]">, "params">
           return (
             <li key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
               <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-primary/10" : "rounded-bl-sm bg-muted"}`}>
-                <p className="mb-0.5 text-xs font-medium text-muted-foreground">
+                <p className="mb-0.5 text-xs font-medium text-slate-700">
                   {AUTHOR_LABEL[m.author]} · {formatDateTime(m.created_at, shop.timezone)}
                 </p>
                 <p className="whitespace-pre-wrap">{m.content}</p>

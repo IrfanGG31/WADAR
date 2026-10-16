@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatRupiah } from "@/core/money";
+import { formatCount } from "@/core/number-format";
 import { STOCK_STATUS_LABEL, type StockStatus } from "@/core/stock-level";
 import {
   countByStatus,
@@ -37,7 +38,7 @@ const STATUS_BADGE: Record<StockStatus, "danger" | "warning" | "success"> = {
 
 const chip = (on: boolean) =>
   cn(
-    "h-9 shrink-0 rounded-full border px-4 text-sm font-medium",
+    "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
     on ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
   );
 
@@ -58,7 +59,7 @@ export function ForecastTable({ slug, rows, categories }: { slug: string; rows: 
         Prediksi per produk
       </h2>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           type="search"
           value={filter.query}
@@ -77,7 +78,7 @@ export function ForecastTable({ slug, rows, categories }: { slug: string; rows: 
             onClick={() => set({ status: value })}
             className={chip(filter.status === value)}
           >
-            {label} ({counts[value]})
+            {label} ({formatCount(counts[value])})
           </button>
         ))}
       </div>
@@ -86,7 +87,7 @@ export function ForecastTable({ slug, rows, categories }: { slug: string; rows: 
           value={filter.category ?? ""}
           onChange={(e) => set({ category: e.target.value || null })}
           aria-label="Kategori"
-          className="h-9 min-w-0 max-w-full rounded-full border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="h-11 min-w-0 max-w-full rounded-full border border-border bg-background px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <option value="">Semua kategori</option>
           {categories.map((c) => (
@@ -114,7 +115,7 @@ export function ForecastTable({ slug, rows, categories }: { slug: string; rows: 
       </div>
 
       <p className="text-xs text-muted-foreground" aria-live="polite">
-        {shown.length} dari {rows.length} produk
+        {formatCount(shown.length)} dari {formatCount(rows.length)} produk
       </p>
 
       {shown.length === 0 ? (
@@ -139,7 +140,10 @@ function ForecastCard({ slug, row }: { slug: string; row: ForecastRow }) {
   return (
     <li className="rounded-xl border border-border p-4">
       <div className="flex items-start justify-between gap-2">
-        <Link href={shopPath(slug, `stok/produk/${row.product_id}`)} className="min-w-0 font-medium hover:underline">
+        <Link
+          href={shopPath(slug, `stok/produk/${row.product_id}`)}
+          className="min-w-0 rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
           {row.title}
         </Link>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -147,13 +151,13 @@ function ForecastCard({ slug, row }: { slug: string; row: ForecastRow }) {
           {row.slow_moving && <SlowBadge />}
         </div>
       </div>
-      <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-        <Stat label="Stok" value={`${row.on_hand} ${row.unit}`} />
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
+        <Stat label="Stok" value={`${formatCount(row.on_hand)} ${row.unit}`} />
         <Stat label="Laku" value={formatRate(row.rate)} />
         <Stat label="Habis" value={formatDaysLeft(row)} />
-        <Stat label="Stok pengaman" value={`${row.safety_stock}`} />
-        <Stat label="Titik pesan" value={`${row.rop}`} />
-        <Stat label="Saran pesan" value={row.reorder_qty > 0 ? `${row.reorder_qty} ${row.unit}` : "—"} strong />
+        <Stat label="Stok pengaman" value={formatCount(row.safety_stock)} />
+        <Stat label="Titik pesan" value={formatCount(row.rop)} />
+        <Stat label="Saran pesan" value={row.reorder_qty > 0 ? `${formatCount(row.reorder_qty)} ${row.unit}` : "—"} strong />
       </dl>
       <p className="mt-3 text-xs text-muted-foreground">{row.narrative}</p>
     </li>
@@ -164,7 +168,7 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
   return (
     <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn("truncate tabular-nums", strong && "font-semibold")}>{value}</dd>
+      <dd className={cn("tabular-nums", strong && "font-semibold")}>{value}</dd>
     </div>
   );
 }
@@ -172,7 +176,7 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
 function SlowBadge() {
   return (
     <Badge variant="muted" className="gap-1">
-      <Snail className="h-3 w-3" />
+      <Snail className="h-3 w-3" aria-hidden />
       Lambat laku
     </Badge>
   );
@@ -182,7 +186,7 @@ function ForecastGrid({ slug, rows }: { slug: string; rows: ForecastRow[] }) {
   return (
     <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
       <table className="w-full text-sm">
-        <thead className="bg-muted text-left text-xs text-muted-foreground">
+        <thead className="bg-muted text-left text-xs text-slate-700">
           <tr>
             <th className="px-4 py-2 font-medium">Produk</th>
             <th className="px-3 py-2 text-right font-medium">Stok</th>
@@ -203,17 +207,20 @@ function ForecastGrid({ slug, rows }: { slug: string; rows: ForecastRow[] }) {
           {rows.map((row) => (
             <tr key={row.variant_id} className="align-top">
               <td className="px-4 py-3">
-                <Link href={shopPath(slug, `stok/produk/${row.product_id}`)} className="font-medium hover:underline">
+                <Link
+                  href={shopPath(slug, `stok/produk/${row.product_id}`)}
+                  className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                   {row.title}
                 </Link>
                 <p className="mt-0.5 max-w-xs text-xs text-muted-foreground">{row.narrative}</p>
               </td>
               <td className="px-3 py-3 text-right tabular-nums">
-                {row.on_hand} <span className="text-xs text-muted-foreground">{row.unit}</span>
+                {formatCount(row.on_hand)} <span className="text-xs text-muted-foreground">{row.unit}</span>
               </td>
               <td className="px-3 py-3 text-right tabular-nums">{formatRate(row.rate)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{row.safety_stock}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{row.rop}</td>
+              <td className="px-3 py-3 text-right tabular-nums">{formatCount(row.safety_stock)}</td>
+              <td className="px-3 py-3 text-right tabular-nums">{formatCount(row.rop)}</td>
               <td className="px-3 py-3 text-right tabular-nums">{formatDaysLeft(row)}</td>
               <td className="px-3 py-3">
                 <div className="flex flex-col items-start gap-1">
@@ -222,7 +229,7 @@ function ForecastGrid({ slug, rows }: { slug: string; rows: ForecastRow[] }) {
                 </div>
               </td>
               <td className="px-3 py-3 text-right font-semibold tabular-nums">
-                {row.reorder_qty > 0 ? `${row.reorder_qty} ${row.unit}` : "—"}
+                {row.reorder_qty > 0 ? `${formatCount(row.reorder_qty)} ${row.unit}` : "—"}
               </td>
               <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                 {row.slow_moving ? formatRupiah(row.idle_capital) : "—"}

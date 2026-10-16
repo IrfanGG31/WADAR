@@ -62,13 +62,13 @@ export function ThreadControls({ slug, conversationId, mode }: { slug: string; c
           maxLength={700}
           placeholder="Tulis balasan untuk pembeli…"
           aria-label="Balasan"
-          className="min-h-11 min-w-0 flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-0 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:text-sm"
         />
         <Button type="submit" size="icon" className="size-11 shrink-0 self-end" disabled={pending || !text.trim()} aria-label="Kirim balasan">
           {pending ? <Loader2 className="animate-spin" /> : <Send />}
         </Button>
       </form>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {mode === "ai" && <p className="text-xs text-muted-foreground">Mengirim balasan otomatis mengambil alih percakapan ini dari AI.</p>}
     </div>
   );

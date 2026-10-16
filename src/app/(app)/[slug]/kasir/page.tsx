@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageTabsSkeleton } from "@/components/shell/page-tabs";
 import { listCatalog } from "@/db/catalog";
 import { listChannels } from "@/db/channels";
 import { getShop } from "@/db/shop";
@@ -11,7 +12,7 @@ type Params = PageProps<"/[slug]/kasir">["params"];
 
 export default function KasirPage({ params }: PageProps<"/[slug]/kasir">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Transaksi</h1>
       <Suspense fallback={<PosSkeleton />}>
         <Pos params={params} />
@@ -51,12 +52,12 @@ async function Pos({ params }: { params: Params }) {
 
 function PosSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="h-11 rounded-lg bg-muted" />
-      <div className="h-11 rounded-md bg-muted" />
+    <div className="flex flex-col gap-4" aria-hidden>
+      <PageTabsSkeleton />
+      <div className="h-11 animate-pulse rounded-md bg-muted" />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => (
-          <div key={i} className="h-24 rounded-xl border border-border" />
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
         ))}
       </div>
     </div>

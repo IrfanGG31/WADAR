@@ -1,6 +1,8 @@
 import { Receipt } from "lucide-react";
 import { Suspense } from "react";
+import { PageTabsSkeleton } from "@/components/shell/page-tabs";
 import { formatRupiah } from "@/core/money";
+import { formatCount } from "@/core/number-format";
 import { formatPhone } from "@/core/phone";
 import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
 import { listRecentSales } from "@/db/sales";
@@ -14,9 +16,9 @@ type Params = PageProps<"/[slug]/kasir/riwayat">["params"];
 
 export default function RiwayatPage({ params }: PageProps<"/[slug]/kasir/riwayat">) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Transaksi</h1>
-      <Suspense fallback={<div className="h-96 rounded-xl border border-border" />}>
+      <Suspense fallback={<HistorySkeleton />}>
         <History params={params} />
       </Suspense>
     </div>
@@ -40,7 +42,7 @@ async function History({ params }: { params: Params }) {
       <KasirTabs slug={slug} active="kasir/riwayat" />
       {sales.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-          <Receipt className="h-10 w-10 text-muted-foreground" />
+          <Receipt className="h-10 w-10 text-muted-foreground" aria-hidden />
           <p className="text-muted-foreground">Belum ada transaksi.</p>
         </div>
       ) : (
@@ -50,7 +52,7 @@ async function History({ params }: { params: Params }) {
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
               {daySales.map((sale) => {
                 const method = sale.payment_method as PaymentMethod | null;
-                const itemText = sale.items.map((i) => `${i.name_snapshot} ×${i.qty}`).join(", ");
+                const itemText = sale.items.map((i) => `${i.name_snapshot} ×${formatCount(i.qty)}`).join(", ");
                 return (
                   <li key={sale.id} className="flex items-start gap-3 px-4 py-3">
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -75,5 +77,16 @@ async function History({ params }: { params: Params }) {
         ))
       )}
     </>
+  );
+}
+
+function HistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-3" aria-hidden>
+      <PageTabsSkeleton />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
+      ))}
+    </div>
   );
 }

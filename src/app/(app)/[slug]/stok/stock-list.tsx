@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { formatCount } from "@/core/number-format";
 import { STOCK_STATUS_LABEL, type StockStatus } from "@/core/stock-level";
 import { formatRate } from "@/core/stock-insight";
 import { shopPath } from "@/lib/routes";
@@ -71,7 +72,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-        <PackageOpen className="h-10 w-10 text-muted-foreground" />
+        <PackageOpen className="h-10 w-10 text-muted-foreground" aria-hidden />
         <p className="max-w-sm text-muted-foreground">Belum ada produk. Tambah produk pertama untuk mulai mencatat stok.</p>
       </div>
     );
@@ -80,7 +81,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           type="search"
           value={query}
@@ -90,20 +91,19 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
           className="pl-9"
         />
       </div>
-      <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Saring stok">
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Saring stok">
         {FILTERS.map(({ value, label }) => (
           <button
             key={value}
             type="button"
-            role="tab"
-            aria-selected={filter === value}
+            aria-pressed={filter === value}
             onClick={() => setFilter(value)}
             className={cn(
-              "h-9 shrink-0 rounded-full border px-4 text-sm font-medium",
+              "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               filter === value ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
             )}
           >
-            {label} ({counts[value]})
+            {label} ({formatCount(counts[value])})
           </button>
         ))}
       </div>
@@ -118,7 +118,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
             <li key={row.variantId}>
               <Link
                 href={shopPath(slug, `stok/produk/${row.productId}`)}
-                className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted"
+                className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate font-medium">
@@ -126,20 +126,22 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
                     {row.option && <span className="text-muted-foreground"> · {row.option}</span>}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                    <span>Min. {row.minStock} {row.unit}</span>
+                    <span>
+                      Min. {formatCount(row.minStock)} {row.unit}
+                    </span>
                     {row.category && <span>· {row.category}</span>}
                     {row.rate > 0 && <span>· laku {formatRate(row.rate)}</span>}
                     {(row.status === "kritis" || row.status === "menipis") && row.stockoutInDays !== null && (
-                      <span className="text-foreground">· habis ±{row.stockoutInDays} hari</span>
+                      <span className="text-foreground">· habis ±{formatCount(row.stockoutInDays)} hari</span>
                     )}
                     {row.status !== "aman" && row.reorderQty > 0 && (
                       <span className="text-foreground">
-                        · pesan {row.reorderQty} {row.unit}
+                        · pesan {formatCount(row.reorderQty)} {row.unit}
                       </span>
                     )}
                     {!row.costIsSet && (
-                      <span className="inline-flex items-center gap-1 text-warning">
-                        <AlertTriangle className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 text-amber-800">
+                        <AlertTriangle className="h-3 w-3" aria-hidden />
                         HPP belum diisi
                       </span>
                     )}
@@ -147,11 +149,11 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-lg font-semibold tabular-nums">
-                    {row.onHand} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
+                    {formatCount(row.onHand)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
                   </span>
                   <Badge variant={STATUS_BADGE[row.status]}>{STOCK_STATUS_LABEL[row.status]}</Badge>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
             </li>
           ))}

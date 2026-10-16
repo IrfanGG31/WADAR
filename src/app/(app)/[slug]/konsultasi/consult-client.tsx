@@ -118,7 +118,7 @@ export function ConsultClient({ slug, offlineReason }: { slug: string; offlineRe
                 type="button"
                 disabled={busy}
                 onClick={() => ask(s)}
-                className="min-h-11 rounded-full border border-border px-4 py-2 text-left text-sm hover:bg-muted"
+                className="min-h-11 rounded-full border border-border px-4 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {s}
               </button>

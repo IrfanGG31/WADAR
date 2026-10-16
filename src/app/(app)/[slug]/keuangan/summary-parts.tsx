@@ -8,9 +8,9 @@ import {
   type ProfitInsight,
   type SummaryCard,
 } from "@/core/finance-insight";
-import { formatRupiah, formatRupiahCompact, formatSignedRupiah } from "@/core/money";
+import { formatRupiah, formatSignedRupiah } from "@/core/money";
 import { formatPercent } from "@/core/number-format";
-import { formatIsoDay, formatIsoWeekday } from "@/lib/format-date";
+import { formatIsoDay } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 
 /* Presentational pieces of the Ringkasan tab. Every number arrives computed
@@ -34,7 +34,7 @@ export function SummaryCards({ cards }: { cards: SummaryCard[] }) {
           )}
         >
           <p className="text-xs text-muted-foreground sm:text-sm">{c.label}</p>
-          <p className="truncate text-lg font-semibold tabular-nums sm:text-2xl" title={formatRupiah(c.value)}>
+          <p className="text-base font-semibold tabular-nums sm:text-2xl">
             {formatRupiah(c.value)}
           </p>
           <Delta card={c} />
@@ -64,7 +64,7 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="kenapa-untung">
       <h2 id="kenapa-untung" className="flex items-center gap-2 text-sm font-semibold">
-        <Lightbulb className="h-4 w-4 text-accent" />
+        <Lightbulb className="h-4 w-4 text-accent" aria-hidden />
         Kenapa untung berubah?
       </h2>
       <p className="mt-2 text-sm">{insight.narrative}</p>
@@ -96,40 +96,46 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
   );
 }
 
-/** Untung kotor per day of the current window — one bar per day, negative days in red. */
+/** Untung kotor per day of the current window — one horizontal bar row per day with full Rupiah amount, negative days in red. */
 export function ProfitTrend({ rows }: { rows: DailyFinanceRow[] }) {
   const max = rows.reduce((m, r) => Math.max(m, Math.abs(r.GP)), 0);
   const total = sumDailyRows(rows);
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="tren-untung">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="tren-untung" className="text-sm font-semibold">
           Untung kotor per hari
         </h2>
-        <p className="text-xs text-muted-foreground">Total {formatRupiah(total.GP)}</p>
+        <p className="text-xs text-muted-foreground tabular-nums">Total {formatRupiah(total.GP)}</p>
       </div>
       {max === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Belum ada penjualan {CURRENT_LABEL}.</p>
       ) : (
-        <div className="flex items-end gap-1.5 sm:gap-2">
+        <ul className="flex flex-col gap-2">
           {rows.map((r) => {
-            const height = Math.max(4, Math.round((Math.abs(r.GP) / max) * 112));
+            const widthPct = Math.max(2, Math.round((Math.abs(r.GP) / max) * 100));
             return (
-              <div
+              <li
                 key={r.day}
-                className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                className="grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:text-sm"
                 title={`${formatIsoDay(r.day)} · penjualan ${formatRupiah(r.R)} · untung kotor ${formatRupiah(r.GP)}`}
               >
-                <span className="hidden text-[11px] font-medium tabular-nums sm:block">{formatRupiahCompact(r.GP)}</span>
-                <div
-                  className={cn("w-full rounded-t-md", r.GP < 0 ? "bg-red-500" : "bg-primary/80")}
-                  style={{ height: `${height}px` }}
-                />
-                <span className="text-[10px] text-muted-foreground sm:text-[11px]">{formatIsoWeekday(r.day)}</span>
-              </div>
+                <span className="truncate text-muted-foreground">{formatIsoDay(r.day)}</span>
+                <div className="h-2.5 rounded-full bg-muted">
+                  <div
+                    role="img"
+                    aria-label={`${formatIsoDay(r.day)}: untung kotor ${formatRupiah(r.GP)}`}
+                    className={cn("h-2.5 rounded-full", r.GP < 0 ? "bg-red-500" : "bg-primary/80")}
+                    style={{ width: `${widthPct}%` }}
+                  />
+                </div>
+                <span className={cn("text-right font-medium tabular-nums", r.GP < 0 && "text-red-700")}>
+                  {formatRupiah(r.GP)}
+                </span>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </section>
   );
@@ -165,9 +171,12 @@ export function CategoryDonut({ total, slices, otherLabel }: { total: number; sl
 
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="donut-kategori">
-      <h2 id="donut-kategori" className="mb-3 text-sm font-semibold">
-        Penjualan per kategori
-      </h2>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="donut-kategori" className="text-sm font-semibold">
+          Penjualan per kategori
+        </h2>
+        <p className="text-xs text-muted-foreground tabular-nums">Total {formatRupiah(total)}</p>
+      </div>
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
         <svg
           viewBox="0 0 140 140"
@@ -192,11 +201,11 @@ export function CategoryDonut({ total, slices, otherLabel }: { total: number; sl
               </circle>
             ))}
           </g>
-          <text x="70" y="66" textAnchor="middle" className="fill-muted-foreground text-[9px]">
+          <text x="70" y="65" textAnchor="middle" className="fill-muted-foreground text-[9px]">
             Penjualan
           </text>
-          <text x="70" y="82" textAnchor="middle" className="fill-foreground text-[13px] font-semibold">
-            {formatRupiahCompact(total)}
+          <text x="70" y="79" textAnchor="middle" className="fill-foreground text-[9.5px] font-semibold tabular-nums">
+            {formatRupiah(total)}
           </text>
         </svg>
         <ul className="flex w-full min-w-0 flex-col gap-2 text-sm">
@@ -204,8 +213,8 @@ export function CategoryDonut({ total, slices, otherLabel }: { total: number; sl
             <li key={s.key} className="flex items-center gap-2">
               <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: colorOf(s) }} aria-hidden />
               <span className="min-w-0 flex-1 truncate">{s.label}</span>
-              <span className="tabular-nums text-muted-foreground">{formatPercent(s.share_permille / 10)}</span>
-              <span className="w-24 text-right font-medium tabular-nums">{formatRupiahCompact(s.R)}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">{formatPercent(s.share_permille / 10)}</span>
+              <span className="shrink-0 text-right font-medium tabular-nums">{formatRupiah(s.R)}</span>
             </li>
           ))}
         </ul>

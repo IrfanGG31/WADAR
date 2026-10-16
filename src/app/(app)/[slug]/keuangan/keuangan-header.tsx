@@ -11,7 +11,7 @@ export function KeuanganHeader({ params, active }: { params: Params; active: Act
     <>
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Keuangan</h1>
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="h-5 w-20 animate-pulse rounded bg-muted md:hidden" aria-hidden />}>
           <StokLink params={params} />
         </Suspense>
       </div>

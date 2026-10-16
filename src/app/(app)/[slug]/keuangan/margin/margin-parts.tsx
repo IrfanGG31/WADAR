@@ -27,8 +27,8 @@ export function Warnings({ slug, rows }: { slug: string; rows: WarningRow[] }) {
   return (
     <section className="rounded-xl border border-amber-300 bg-amber-50/60 p-4" aria-labelledby="peringatan">
       <h2 id="peringatan" className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        Peringatan margin ({rows.length})
+        <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden />
+        Peringatan margin ({formatCount(rows.length)})
       </h2>
       <ul className="divide-y divide-amber-200">
         {rows.map((w) => (
@@ -37,10 +37,10 @@ export function Warnings({ slug, rows }: { slug: string; rows: WarningRow[] }) {
               <Badge variant={SEVERITY[w.severity].variant}>{SEVERITY[w.severity].label}</Badge>
               <span className="text-sm font-medium">{w.title}</span>
             </div>
-            <p className="text-sm text-muted-foreground">{w.detail}</p>
+            <p className="text-sm text-slate-700">{w.detail}</p>
             <Link
               href={w.anchor ? `#${w.anchor}` : shopPath(slug, "keuangan/detail")}
-              className="self-start text-xs font-medium text-primary"
+              className="inline-flex min-h-11 items-center self-start rounded-md text-xs font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Lihat datanya
             </Link>
@@ -74,7 +74,7 @@ export function ChannelMargins({ rows }: { rows: ChannelMarginRow[] }) {
               <span className="font-medium">{c.label}</span>
               {c.thinnest && <Badge variant="warning">Paling tipis</Badge>}
             </div>
-            <dl className="grid grid-cols-3 gap-2 text-sm md:contents">
+            <dl className="flex flex-col gap-1 text-sm sm:grid sm:grid-cols-3 sm:gap-2 md:contents">
               <Cell label="Penjualan" value={formatRupiah(c.R)} />
               <Cell label="Komisi" value={formatRupiah(c.F)} sub={formatPercent(c.fee_pct)} />
               <Cell label="Untung kotor" value={formatRupiah(c.GP)} />
@@ -103,7 +103,7 @@ export function ProductMargins({ rows }: { rows: ProductMarginRow[] }) {
         {rows.map((p) => (
           <li key={p.key} className={cn("flex flex-col gap-2 py-3 md:grid md:items-center md:gap-4", PRODUCT_GRID)}>
             <span className="min-w-0 font-medium">{p.label}</span>
-            <dl className="grid grid-cols-3 gap-2 text-sm md:contents">
+            <dl className="flex flex-col gap-1 text-sm sm:grid sm:grid-cols-3 sm:gap-2 md:contents">
               <Cell label="Terjual" value={formatCount(p.q)} />
               <Cell label="Penjualan" value={formatRupiah(p.R)} />
               <Cell label="Untung kotor" value={p.missing_cost && p.margin_pct === null ? "—" : formatRupiah(p.GP)} />
@@ -121,7 +121,7 @@ export function ProductMargins({ rows }: { rows: ProductMarginRow[] }) {
               )}
             </div>
             {p.missing_cost && p.margin_pct !== null && (
-              <p className="text-xs text-amber-700 md:col-span-5">Sebagian penjualan belum ada HPP; margin dihitung dari yang ada HPP saja.</p>
+              <p className="text-xs text-amber-800 md:col-span-5">Sebagian penjualan belum ada HPP; margin dihitung dari yang ada HPP saja.</p>
             )}
           </li>
         ))}
@@ -150,10 +150,12 @@ function ColumnHeads({ first, cols, template }: { first: string; cols: string[];
 
 function Cell({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="min-w-0">
+    <div className="flex min-w-0 items-baseline justify-between gap-2 sm:block">
       <dt className="text-xs text-muted-foreground md:sr-only">{label}</dt>
-      <dd className="truncate tabular-nums md:text-right">{value}</dd>
-      {sub && <dd className="truncate text-xs text-muted-foreground md:text-right">{sub}</dd>}
+      <div className="flex items-baseline gap-1.5 sm:block md:text-right">
+        <dd className="tabular-nums">{value}</dd>
+        {sub && <dd className="text-xs text-muted-foreground">({sub})</dd>}
+      </div>
     </div>
   );
 }

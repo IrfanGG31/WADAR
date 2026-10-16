@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatRupiah } from "@/core/money";
+import { formatCount } from "@/core/number-format";
 import { stockIn } from "./actions";
 
 export interface StockInVariant {
@@ -51,7 +52,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
       }
       setMessage({
         ok: true,
-        text: `Tercatat. Stok sekarang ${result.onHand} ${variant.unit}, HPP rata-rata ${formatRupiah(result.avgCost ?? 0)}.`,
+        text: `Tercatat. Stok sekarang ${formatCount(result.onHand ?? 0)} ${variant.unit}, HPP rata-rata ${formatRupiah(result.avgCost ?? 0)}.`,
       });
       router.refresh();
     });
@@ -60,7 +61,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl border border-border p-4">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <PackagePlus className="h-5 w-5 text-primary" />
+        <PackagePlus className="h-5 w-5 text-primary" aria-hidden />
         Stok masuk
       </h2>
       {variants.length > 1 && (
@@ -70,7 +71,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
             id="stock-in-variant"
             value={variant.id}
             onChange={(e) => pick(e.target.value)}
-            className="h-11 rounded-md border border-border bg-background px-3 text-base md:text-sm"
+            className="h-11 rounded-md border border-border bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary md:text-sm"
           >
             {variants.map((v) => (
               <option key={v.id} value={v.id}>{v.label}</option>
@@ -78,7 +79,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
           </select>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="stock-in-qty">Jumlah ({variant.unit})</Label>
           <Input
@@ -95,12 +96,12 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
         </div>
       </div>
       {message && (
-        <p role="status" className={message.ok ? "text-sm text-success" : "text-sm text-destructive"}>
+        <p role={message.ok ? "status" : "alert"} className={message.ok ? "text-sm text-emerald-700" : "text-sm text-red-800"}>
           {message.text}
         </p>
       )}
       <Button type="submit" variant="outline" disabled={pending || qty < 1}>
-        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
         Catat stok masuk
       </Button>
     </form>

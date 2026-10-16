@@ -6,6 +6,7 @@ import { RupiahInput } from "@/components/rupiah-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatCount } from "@/core/number-format";
 import { saveProduct } from "./actions";
 import { newVariant, type ProductDraft, type VariantDraft } from "./product-draft";
 
@@ -70,11 +71,12 @@ export function ProductForm({ slug, productId, initial, categories }: {
   return (
     <form onSubmit={submit} className="flex flex-col gap-6">
       <section className="flex flex-col gap-4 rounded-xl border border-border p-4">
+        <h2 className="text-lg font-semibold">Informasi produk</h2>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="name">Nama produk</Label>
           <Input id="name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required maxLength={120} placeholder="Serum Vitamin C" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="category">Kategori</Label>
             <Input id="category" list="categories" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} maxLength={60} placeholder="Serum" />
@@ -108,12 +110,12 @@ export function ProductForm({ slug, productId, initial, categories }: {
               <span className="font-medium">Varian {index + 1}</span>
               {!v.id && draft.variants.length > 1 && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setDraft((d) => ({ ...d, variants: d.variants.filter((x) => x.key !== v.key) }))}>
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                   Hapus
                 </Button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`${v.key}-label`}>Nama varian</Label>
                 <Input id={`${v.key}-label`} value={v.option_label} onChange={(e) => setVariant(v.key, { option_label: e.target.value })} maxLength={60} placeholder="20 ml (boleh kosong)" />
@@ -129,14 +131,14 @@ export function ProductForm({ slug, productId, initial, categories }: {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`${v.key}-cost`}>HPP (modal per {draft.unit || "pcs"})</Label>
                 <RupiahInput id={`${v.key}-cost`} value={v.cost} onValueChange={(cost) => setVariant(v.key, { cost })} required />
-                {v.cost === 0 && <p className="text-xs text-warning">HPP belum diisi: untung tidak bisa dihitung tepat.</p>}
+                {v.cost === 0 && <p className="text-xs text-amber-800">HPP belum diisi: untung tidak bisa dihitung tepat.</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {v.id ? (
                 <div className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Stok sekarang</span>
-                  <span className="flex h-11 items-center text-lg font-semibold tabular-nums">{v.on_hand ?? 0}</span>
+                  <span className="flex h-11 items-center text-lg font-semibold tabular-nums">{formatCount(v.on_hand ?? 0)}</span>
                 </div>
               ) : (
                 <IntField id={`${v.key}-qty`} label="Stok awal" value={v.initial_qty} onChange={(initial_qty) => setVariant(v.key, { initial_qty })} />
@@ -148,18 +150,18 @@ export function ProductForm({ slug, productId, initial, categories }: {
           </fieldset>
         ))}
         <Button type="button" variant="outline" onClick={() => setDraft((d) => ({ ...d, variants: [...d.variants, newVariant(crypto.randomUUID())] }))} disabled={draft.variants.length >= 50}>
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden />
           Tambah varian
         </Button>
       </section>
 
       {error && (
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-red-800">
           {error}
         </p>
       )}
       <Button type="submit" size="lg" disabled={pending}>
-        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
         {pending ? "Menyimpan..." : "Simpan produk"}
       </Button>
     </form>

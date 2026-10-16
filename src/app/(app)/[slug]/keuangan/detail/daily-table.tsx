@@ -39,7 +39,7 @@ export function DailyFinanceTable({
         {COLUMNS.map((c) => (
           <div key={c.key} className="min-w-0">
             <p className="text-xs text-muted-foreground">{c.label}</p>
-            <p className={cn("truncate font-semibold tabular-nums", total[c.key] < 0 && "text-red-700")}>
+            <p className={cn("font-semibold tabular-nums", total[c.key] < 0 && "text-red-700")}>
               {formatRupiah(total[c.key])}
             </p>
           </div>
@@ -50,32 +50,36 @@ export function DailyFinanceTable({
         </div>
       </section>
 
-      <ul className="flex flex-col gap-3 md:hidden">
-        {rows.map((r) => (
-          <li key={r.day} className="rounded-xl border border-border p-4">
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-sm font-semibold">{formatIsoDay(r.day)}</h3>
-              <p className={cn("text-sm font-semibold tabular-nums", r.NP < 0 && "text-red-700")}>{formatRupiah(r.NP)}</p>
-            </div>
-            {r.q === 0 && r.E === 0 ? (
-              <p className="mt-1 text-xs text-muted-foreground">Tidak ada penjualan atau pengeluaran.</p>
-            ) : (
-              <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                {COLUMNS.filter((c) => c.key !== "NP").map((c) => (
-                  <div key={c.key} className="flex min-w-0 justify-between gap-2">
-                    <dt className="truncate text-xs text-muted-foreground">{c.label}</dt>
-                    <dd className="tabular-nums">{formatRupiah(r[c.key])}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </li>
-        ))}
-      </ul>
+      <section aria-labelledby="rincian-harian" className="flex flex-col gap-3">
+        <h2 id="rincian-harian" className="sr-only">
+          Rincian per hari
+        </h2>
+        <ul className="flex flex-col gap-3 md:hidden">
+          {rows.map((r) => (
+            <li key={r.day} className="rounded-xl border border-border p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="text-sm font-semibold">{formatIsoDay(r.day)}</h3>
+                <p className={cn("text-sm font-semibold tabular-nums", r.NP < 0 && "text-red-700")}>{formatRupiah(r.NP)}</p>
+              </div>
+              {r.q === 0 && r.E === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">Tidak ada penjualan atau pengeluaran.</p>
+              ) : (
+                <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                  {COLUMNS.filter((c) => c.key !== "NP").map((c) => (
+                    <div key={c.key} className="flex min-w-0 justify-between gap-2">
+                      <dt className="truncate text-xs text-muted-foreground">{c.label}</dt>
+                      <dd className="tabular-nums">{formatRupiah(r[c.key])}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </li>
+          ))}
+        </ul>
 
-      <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-xs text-muted-foreground">
+        <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+          <table className="w-full text-sm">
+            <thead className="bg-muted text-left text-xs text-slate-700">
             <tr>
               <th className="px-4 py-2 font-medium">Tanggal</th>
               <th className="px-3 py-2 text-right font-medium">Terjual</th>
@@ -119,6 +123,7 @@ export function DailyFinanceTable({
           </tfoot>
         </table>
       </div>
+      </section>
     </>
   );
 }
