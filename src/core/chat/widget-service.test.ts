@@ -4,7 +4,7 @@ import type { Generate } from "./pipeline";
 import { WIDGET_IP_LIMIT, WIDGET_SESSION_LIMIT, WIDGET_TENANT_LIMIT } from "./widget";
 import type { ConversationRow, PublicMessage, WidgetShop, WidgetStore } from "./widget-service";
 import { handleWidgetMessage } from "./widget-service";
-import { createMemoryRateLimiter, type RateLimiter } from "./rate-limit";
+import { createMemoryRateLimiter, type RateLimiter } from "@/core/rate-limit";
 
 const ctx = glowContext("serum vit c ready?");
 const vitC = ctx.cards.find((c) => c.name === "Serum Vit C 20ml")!;

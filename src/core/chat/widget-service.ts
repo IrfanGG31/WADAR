@@ -5,7 +5,7 @@ import { runTurn } from "./pipeline";
 import type { KbCandidate } from "./retrieval";
 import type { HistoryTurn, ProductCard } from "./schema";
 import type { StorePersona, StorePolicies } from "./store-policies";
-import { widgetBuckets } from "./rate-limit";
+import { widgetBuckets } from "@/core/rate-limit";
 import type { RateLimitResult } from "./widget";
 import { isValidSessionId, startsNewWindow, WidgetMessageInput } from "./widget";
 

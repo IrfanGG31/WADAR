@@ -15,6 +15,9 @@ import { createClient } from "@/lib/supabase/server";
  * grounded (or the template that replaced it) and always replaces the draft.
  * Actions: ask (default) · remember (saves a confirmed "ingat ya…") · weekly.
  */
+/** Two drafts (draft + one regeneration) with tool steps must fit before the platform cuts the stream. */
+export const maxDuration = 60;
+
 const Turn = z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(1500) });
 const Body = z.discriminatedUnion("action", [
   z.object({

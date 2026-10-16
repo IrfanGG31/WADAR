@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/states/page-skeleton";
 
 export default function Loading() {
-  return <PageSkeleton title="Kasir" shape="list" />;
+  return <PageSkeleton title="Transaksi" shape="list" />;
 }

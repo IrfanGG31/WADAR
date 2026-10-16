@@ -6,30 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isDeepQuestion } from "@/core/consult/question";
-
-interface Meta {
-  engine: "llm" | "offline";
-  model: string;
-  tier?: string;
-  grounding?: string;
-  fallbackReason?: string | null;
-  toolsUsed?: string[];
-  /** Replayed from the server cache, not freshly generated. */
-  cached?: boolean;
-}
-
-interface Message {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-  /** The model's unverified draft is still streaming. */
-  draft?: boolean;
-  status?: string;
-  question?: string;
-  meta?: Meta;
-  remember?: { content: string; state: "pending" | "saved" | "skipped" };
-  error?: boolean;
-}
+import { readConsultStream, type Message } from "./consult-stream";
 
 const SUGGESTIONS = [
   "Berapa penjualan hari ini?",
@@ -73,55 +50,10 @@ export function ConsultClient({ slug, offlineReason }: { slug: string; offlineRe
       const err = (await res.json().catch(() => null)) as { error?: string } | null;
       throw new Error(err?.error ?? "Konsultan tidak bisa dihubungi.");
     }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    let draft = "";
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buf.indexOf("\n")) >= 0) {
-        const line = buf.slice(0, nl).trim();
-        buf = buf.slice(nl + 1);
-        if (!line) continue;
-        const e = JSON.parse(line) as Record<string, unknown> & { type: string };
-        if (e.type === "status") patch(id, { status: String(e.text) });
-        else if (e.type === "delta") {
-          draft += String(e.text);
-          patch(id, { text: draft, draft: true, status: "Memeriksa angka…" });
-        } else if (e.type === "final") {
-          patch(id, {
-            text: String(e.text),
-            draft: false,
-            status: undefined,
-            meta: {
-              engine: e.engine as Meta["engine"],
-              model: String(e.model),
-              tier: String(e.tier),
-              grounding: String(e.grounding),
-              fallbackReason: (e.fallbackReason as string | null) ?? null,
-              toolsUsed: (e.toolsUsed as string[]) ?? [],
-              cached: e.cached === true,
-            },
-            remember: e.kind === "remember" && e.remember ? { content: (e.remember as { content: string }).content, state: "pending" } : undefined,
-          });
-        } else if (e.type === "weekly") {
-          patch(id, {
-            text: String(e.text),
-            draft: false,
-            status: undefined,
-            meta: { engine: e.engine as Meta["engine"], model: String(e.model), tier: "narrate", grounding: String(e.grounding), fallbackReason: (e.fallbackReason as string | null) ?? null, cached: e.cached === true },
-          });
-        } else if (e.type === "remembered") {
-          patch(id, { text: `Oke, sudah kuingat: "${String(e.content)}".`, status: undefined, draft: false });
-        } else if (e.type === "error") {
-          patch(id, { text: String(e.text), error: true, draft: false, status: undefined });
-        }
-        scroll();
-      }
-    }
+    await readConsultStream(res.body, (p) => {
+      patch(id, p);
+      scroll();
+    });
   }
 
   async function run(userText: string | null, payload: Record<string, unknown>, question?: string) {

@@ -19,6 +19,7 @@ const LINK_ERROR_MESSAGES: Record<string, string> = {
   auth_callback_failed: "Gagal memverifikasi link masuk. Coba kirim ulang.",
   demo_unavailable: "Mode demo sedang tidak tersedia. Coba lagi beberapa menit lagi.",
   demo_failed: "Toko contoh gagal disiapkan. Coba sekali lagi.",
+  demo_busy: "Terlalu banyak toko contoh dibuat dari jaringan ini. Coba lagi sejam lagi, atau masuk dengan akunmu.",
 };
 
 /** Email OTP (code or magic link) + Google (hidden until it is enabled in Supabase). */

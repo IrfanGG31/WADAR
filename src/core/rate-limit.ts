@@ -5,7 +5,7 @@ import {
   WIDGET_SESSION_LIMIT,
   WIDGET_TENANT_LIMIT,
   type RateLimitResult,
-} from "./widget";
+} from "./chat/widget";
 
 /**
  * Widget rate limit over several buckets at once (session, client IP, whole
@@ -22,6 +22,10 @@ export interface RateBucket {
 export interface RateLimiter {
   hit(buckets: readonly RateBucket[], nowMs: number): Promise<RateLimitResult>;
 }
+
+/** "Coba demo" builds a 90-day shop (~1 s of database work): per client IP per hour. Room for a venue Wi-Fi. */
+export const DEMO_IP_LIMIT = 20;
+export const DEMO_WINDOW_MS = 60 * 60 * 1000;
 
 export function widgetBuckets(args: { tenantId: string; sessionId: string; ip: string | null }): RateBucket[] {
   return [

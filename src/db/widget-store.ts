@@ -5,15 +5,11 @@ import type { TurnOutcome } from "@/core/chat/pipeline";
 import { searchTerms, type KbCandidate } from "@/core/chat/retrieval";
 import type { HistoryTurn, ProductCard } from "@/core/chat/schema";
 import { parsePersona, parsePolicies } from "@/core/chat/store-policies";
-import { createMemoryRateLimiter } from "@/core/chat/rate-limit";
+import { sharedRateLimiter } from "@/db/rate-limit";
 import { RATE_LIMIT_WINDOW_MS, SESSION_WINDOW_MS } from "@/core/chat/widget";
 import type { PublicMessage, WidgetStore } from "@/core/chat/widget-service";
 
 const MESSAGE_COLUMNS = "id, author, content, created_at";
-
-/** Used only while `widget_rate_hit` is not deployed yet: per instance, but never no limit at all. */
-const fallbackLimiter = createMemoryRateLimiter();
-const MISSING_FUNCTION = new Set(["PGRST202", "42883"]);
 
 /** Service-role implementation of `WidgetStore`: the only reader is the customer-safe view + KB RPC. */
 export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
@@ -49,21 +45,8 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
       return { id: data.id, mode: data.mode, status: data.status, lastInboundAt: data.last_inbound_at };
     },
 
-    async hitRateLimit(buckets, nowMs) {
-      const { data, error } = await db.rpc("widget_rate_hit", {
-        p_buckets: buckets.map((b) => b.key),
-        p_limits: buckets.map((b) => b.limit),
-        p_window_ms: RATE_LIMIT_WINDOW_MS,
-      });
-      if (error) {
-        if (error.code && MISSING_FUNCTION.has(error.code)) {
-          console.warn("widget_rate_hit missing — using the per-instance limiter");
-          return fallbackLimiter.hit(buckets, nowMs);
-        }
-        throw error;
-      }
-      const retryAfterSeconds = Number(data ?? 0);
-      return { limited: retryAfterSeconds > 0, retryAfterSeconds };
+    hitRateLimit(buckets, nowMs) {
+      return sharedRateLimiter(db, RATE_LIMIT_WINDOW_MS).hit(buckets, nowMs);
     },
 
     async insertInbound({ tenantId, conversationId, providerMessageId, text }) {
