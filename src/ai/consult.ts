@@ -154,7 +154,10 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
     messages: ConsultTurn[];
     tools: readonly ToolName[];
     data: ConsultData;
+    /** Server-side data the answer may quote (snapshot, saved preferences) — never client-sent text. */
     evidence: unknown[];
+    /** The owner's question: not evidence, only labels echoed numbers in the feedback. */
+    question?: string;
     template: (runs: ToolRun[]) => string;
     emit: (e: ConsultEvent) => void;
   }) {
@@ -197,6 +200,7 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
         }
       },
       evidence,
+      question: opts.question,
       template: () => opts.template(runs),
       onReject: ({ ungrounded }) => {
         const last = attempts[attempts.length - 1];
@@ -283,7 +287,9 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
           "get_preferences",
         ],
         data: req.data,
-        evidence: [snapshot, messages.map((m) => m.content)],
+        // The question and history come from the client: a leading "kenapa omzet turun 30%?" must not ground itself.
+        evidence: [snapshot, req.data.memory],
+        question: req.question,
         template: (r) => templateFromRuns(r.length ? r : runPlan([{ name: "get_business_snapshot", args: {} }], req.data)),
         emit,
       });

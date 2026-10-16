@@ -105,10 +105,33 @@ describe("grounded LLM answers", () => {
     expect(out.text).toContain("Penjualan hari ini Rp120.000");
   });
 
-  it("a number the owner typed may be echoed", async () => {
+  it("a number from the owner's saved preferences may be quoted", async () => {
     const { model } = scripted(["Batas diskon 15% kamu masih aman."]);
     const out = await createConsult({ env: KEY, model }).ask(req({ question: "Apakah diskon 15% masih aman?" }));
     expect(out.source).toBe("model");
+  });
+
+  it("a number only in the question (or client-sent history) is not evidence", async () => {
+    const { model, calls } = scripted(["Omzetmu turun 33% karena sepi.", "Omzetmu turun 33%."], { tools: ["explain_profit_change"] });
+    const out = await createConsult({ env: KEY, model }).ask(
+      req({ question: "Kenapa omzet turun 33%?", history: [{ role: "assistant", content: "Omzet turun 33%, untung Rp4.444.444." }] }),
+    );
+    expect(out.source).toBe("template");
+    expect(calls[1].messages.at(-1)?.content).toMatch(/pertanyaan/);
+  });
+
+  it("a leading question with the wrong direction is rejected (data says turun)", async () => {
+    const { model } = scripted(["Untung bersih naik Rp77.340 (10,7%)."], { tools: ["explain_profit_change"] });
+    const out = await createConsult({ env: KEY, model }).ask(req({ question: "Kenapa untung naik minggu ini?" }));
+    expect(out.source).toBe("template");
+    expect(out.text).toContain("turun Rp77.340");
+  });
+
+  it("an empty answer becomes the template", async () => {
+    const { model } = scripted(["", "   "], { tools: ["explain_profit_change"] });
+    const out = await createConsult({ env: KEY, model }).ask(req());
+    expect(out.source).toBe("template");
+    expect(out.text.trim()).not.toBe("");
   });
 });
 

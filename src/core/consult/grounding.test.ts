@@ -19,8 +19,23 @@ describe("extractClaims", () => {
   it("reads percentages and 'persen'", () => {
     expect(extractClaims("margin 28,6% dan komisi 18 persen").map((x) => x.value)).toEqual([28.6, 18]);
   });
-  it("ignores plain counts and dates", () => {
-    expect(extractClaims("terjual 12 pcs pada 2026-10-14, habis 3 hari lagi")).toEqual([]);
+  it("ignores dates, years, times and day counts", () => {
+    expect(extractClaims("pada 2026-10-14 (tahun 2026) jam 10:30, habis 3 hari lagi, 7 hari terakhir")).toEqual([]);
+  });
+  it("reads plain amounts ≥ 1.000 without Rp", () => {
+    expect(extractClaims("omzet 1.250.000 minggu ini").map((x) => x.value)).toEqual([1_250_000]);
+    expect(extractClaims("omzet 1250000").map((x) => x.value)).toEqual([1_250_000]);
+  });
+  it("reads IDR and 'rupiah'", () => {
+    expect(extractClaims("IDR 1.250.000 dan IDR2,5 juta").map((x) => [x.kind, x.value])).toEqual([["rupiah", 1_250_000], ["rupiah", 2_500_000]]);
+    expect(extractClaims("untung 75000 rupiah, lalu 1.250 rupiah").map((x) => [x.kind, x.value])).toEqual([["rupiah", 75_000], ["rupiah", 1_250]]);
+  });
+  it("reads counts with a unit", () => {
+    expect(extractClaims("terjual 120 pcs dan 3 botol").map((x) => [x.kind, x.value])).toEqual([["count", 120], ["count", 3]]);
+  });
+  it("reads the direction written right before a number", () => {
+    const c = extractClaims("omzet turun 30%, untung naik Rp77.340, lalu turun jadi Rp500.000");
+    expect(c.map((x) => [x.value, x.direction ?? null])).toEqual([[77_340, "up"], [500_000, null], [30, "down"]]);
   });
 });
 
@@ -36,6 +51,33 @@ describe("checkGrounding", () => {
   it("compares absolute values (a drop of Rp77.340 matches -77340)", () => {
     const e = collectEvidence({ delta: -77_340, delta_pct: -10.7 });
     expect(checkGrounding("turun Rp77.340 (10,7%)", e).ok).toBe(true);
+  });
+  it("rejects the wrong direction: 'turun 30%' when the data rose 30%", () => {
+    const e = collectEvidence({ R_delta: 300_000, R_delta_pct: 30 });
+    expect(checkGrounding("Omzet turun 30%.", e).ok).toBe(false);
+    expect(checkGrounding("Omzet turun Rp300.000.", e).ok).toBe(false);
+    expect(checkGrounding("Omzet naik 30% (Rp300.000).", e).ok).toBe(true);
+  });
+  it("reads the direction of template sentences in the evidence", () => {
+    const e = collectEvidence("Untung bersih turun Rp77.340 (10,7%).");
+    expect(checkGrounding("untung naik Rp77.340", e).ok).toBe(false);
+    expect(checkGrounding("untung turun Rp77.340", e).ok).toBe(true);
+  });
+  it("checks plain numbers, IDR, rupiah and counts against the evidence", () => {
+    const e = collectEvidence({ R: 1_250_000, q: 12 });
+    expect(checkGrounding("Omzet 1.250.000, terjual 12 pcs.", e).ok).toBe(true);
+    for (const bad of ["Omzet 9.999.999.", "Omzet IDR 9.999.999.", "Omzet 9999999 rupiah.", "Terjual 120 pcs."]) {
+      expect(checkGrounding(bad, e).ok, bad).toBe(false);
+    }
+  });
+  it("an empty or whitespace answer fails", () => {
+    expect(checkGrounding("", ev([1])).ok).toBe(false);
+    expect(checkGrounding("  \n ", ev([1]))).toMatchObject({ ok: false, empty: true });
+  });
+  it("marks claims that only echo the question", () => {
+    const r = checkGrounding("Omzet turun 33%.", ev([], [5]), "kenapa omzet turun 33%?");
+    expect(r.ok).toBe(false);
+    expect(r.fromQuestion.map((c) => c.text)).toEqual(["33%"]);
   });
   it("does not let a rupiah claim match a percent value", () => {
     expect(checkGrounding("Rp28", collectEvidence({ margin_pct: 28 })).ok).toBe(false);
@@ -84,6 +126,19 @@ describe("groundAnswer", () => {
     expect(r).toMatchObject({ source: "template", attempts: 2, text: "TEMPLATE Rp500.000" });
     expect(r.rejected.map((c) => c.text)).toEqual(["Rp2.000.000"]);
     expect(rejected).toEqual([1, 2]);
+  });
+
+  it("regenerates an empty draft, then falls back to the template", async () => {
+    const feedbacks: (string | undefined)[] = [];
+    const r = await groundAnswer({
+      ...base,
+      generate: async (fb) => {
+        feedbacks.push(fb);
+        return " ";
+      },
+    });
+    expect(feedbacks[1]).toMatch(/kosong/i);
+    expect(r).toMatchObject({ source: "template", text: "TEMPLATE Rp500.000" });
   });
 
   it("uses evidence gathered while drafting (tool calls happen inside generate)", async () => {
