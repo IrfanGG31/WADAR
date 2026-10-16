@@ -15,3 +15,4 @@ Dicatat saat menolak/menunda fitur selama sprint (CLAUDE.md "Cara kerja"). Sumbe
 - Aturan FIN-6 sisanya: `MARGIN_DROP` (margin turun ≥ 5 poin vs 4 minggu) dan `MISSING_COST` (sprint: 3 aturan).
 - Pilihan periode Keuangan harian/bulanan + pembanding (FIN-3) — sprint: 7 hari vs 7 hari sebelumnya + detail 28 hari.
 - Konsultasi (D7): hapus/ubah memori "Yang WADAR tahu" (CON-4), kuota pertanyaan per paket (CON-7), izin Kasir/Admin Chat (CON-6), cache insight Beranda 1×/hari (CON-5), kandidat "pertanyaan pembeli belum terjawab" untuk insight mingguan, golden set 150 pertanyaan (CON-1).
+- D8: cache Konsultasi bersama lintas instance Vercel (tabel/KV; sekarang memori per instance), service worker Serwist (cache shell/offline, TECH-SPEC §14), Lighthouse mobile di URL produksi + halaman berlogin.
