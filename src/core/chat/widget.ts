@@ -3,9 +3,16 @@ import { z } from "zod";
 /**
  * Public widget (CHT-8): anonymous session ids, the message payload, and the
  * rate limit (10 messages per minute per session — TECH-SPEC §7.3 "Widget").
+ * The session comes from a cookie the client can drop, so the same window also
+ * caps each client IP and the whole shop (`rate-limit.ts`).
  */
 export const RATE_LIMIT_MESSAGES = 10;
 export const RATE_LIMIT_WINDOW_MS = 60_000;
+export const WIDGET_SESSION_LIMIT = RATE_LIMIT_MESSAGES;
+/** Room for a few visitors behind one NAT / carrier IP. */
+export const WIDGET_IP_LIMIT = 30;
+/** All widget messages of one shop per minute: bounds the LLM spend a spray of IPs can cause. */
+export const WIDGET_TENANT_LIMIT = 120;
 
 /** Random URL-safe id minted by the server; anything else in the cookie is ignored. */
 export function isValidSessionId(value: string | undefined | null): value is string {

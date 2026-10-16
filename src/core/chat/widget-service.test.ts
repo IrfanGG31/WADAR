@@ -1,23 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { glowContext } from "./fixtures/glow-by-sari";
 import type { Generate } from "./pipeline";
+import { WIDGET_IP_LIMIT, WIDGET_SESSION_LIMIT, WIDGET_TENANT_LIMIT } from "./widget";
 import type { ConversationRow, PublicMessage, WidgetShop, WidgetStore } from "./widget-service";
 import { handleWidgetMessage } from "./widget-service";
+import { createMemoryRateLimiter, type RateLimiter } from "./rate-limit";
 
 const ctx = glowContext("serum vit c ready?");
 const vitC = ctx.cards.find((c) => c.name === "Serum Vit C 20ml")!;
 const SESSION = "A".repeat(24);
 const NOW = new Date("2026-10-15T10:00:00.000Z");
 
-function fakeStore(over: { mode?: "ai" | "human"; inbound?: number[] } = {}) {
-  const shop: WidgetShop = { tenantId: "t1", name: "Glow by Sari", persona: ctx.persona, policies: ctx.policies };
+function fakeStore(over: { mode?: "ai" | "human"; inbound?: number[]; limiter?: RateLimiter } = {}) {
+  const shop = (tenantId: string): WidgetShop => ({ tenantId, name: "Glow by Sari", persona: ctx.persona, policies: ctx.policies });
   const conv: ConversationRow = { id: "c1", mode: over.mode ?? "ai", status: "open", lastInboundAt: null };
   const seen = new Set<string>();
   const saved: unknown[] = [];
+  const conversations: string[] = [];
+  const limiter = over.limiter ?? createMemoryRateLimiter();
+  // Pre-load the session bucket the way earlier requests would have.
+  for (const t of over.inbound ?? []) void limiter.hit([{ key: `session:t1:${SESSION}`, limit: Infinity }], t);
   const store: WidgetStore = {
-    findShop: async (slug) => (slug === "glow" ? shop : null),
-    ensureConversation: async () => conv,
-    recentInboundTimes: async () => over.inbound ?? [],
+    findShop: async (slug) => (slug === "glow" ? shop("t1") : slug === "other" ? shop("t2") : null),
+    ensureConversation: async (_tenantId, sessionId) => {
+      conversations.push(sessionId);
+      return conv;
+    },
+    hitRateLimit: (buckets, nowMs) => limiter.hit(buckets, nowMs),
     insertInbound: async ({ providerMessageId, text }) => {
       if (seen.has(providerMessageId)) return null;
       seen.add(providerMessageId);
@@ -31,7 +40,7 @@ function fakeStore(over: { mode?: "ai" | "human"; inbound?: number[] } = {}) {
       return [{ id: "m-out", author: outcome.action === "reply" ? "ai" : "system", content: text, created_at: NOW.toISOString() } as PublicMessage];
     },
   };
-  return { store, saved };
+  return { store, saved, conversations };
 }
 
 const good: Generate = async () => ({
@@ -53,6 +62,7 @@ const forbidden: Generate = async () => ({
 const req = (over: Record<string, unknown> = {}) => ({
   slug: "glow",
   sessionId: SESSION,
+  ip: "203.0.113.7",
   body: { text: "serum vit c ready?", client_id: "client-0001" },
   now: NOW,
   ...over,
@@ -79,6 +89,39 @@ describe("handleWidgetMessage", () => {
     expect(r).toMatchObject({ status: 429, body: { retryAfterSeconds: expect.any(Number) } });
     const ok = await handleWidgetMessage(fakeStore({ inbound: inbound.slice(1) }).store, good, req());
     expect(ok.status).toBe(200);
+  });
+
+  it("keeps limiting a client that drops its cookie (fresh session id per request, same IP)", async () => {
+    const { store, conversations } = fakeStore();
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const r = await handleWidgetMessage(store, good, req({ sessionId: `fresh-session-${String(i).padStart(10, "0")}`, body: { text: "halo", client_id: `client-${i}-xxxx` } }));
+      statuses.push(r.status);
+    }
+    expect(statuses.filter((s) => s === 200)).toHaveLength(WIDGET_IP_LIMIT);
+    expect(statuses.slice(WIDGET_IP_LIMIT).every((s) => s === 429)).toBe(true);
+    // The limit is checked before the conversation upsert: rejected requests create nothing.
+    expect(conversations).toHaveLength(WIDGET_IP_LIMIT);
+  });
+
+  it("does not let parallel requests slip past the limit together", async () => {
+    const { store } = fakeStore();
+    const results = await Promise.all(
+      Array.from({ length: 25 }, (_, i) => handleWidgetMessage(store, good, req({ body: { text: "halo", client_id: `parallel-${i}-xx` } }))),
+    );
+    expect(results.filter((r) => r.status === 200)).toHaveLength(WIDGET_SESSION_LIMIT);
+  });
+
+  it("caps a whole shop across IPs, without touching another shop", async () => {
+    const { store } = fakeStore();
+    let ok = 0;
+    for (let i = 0; i < WIDGET_TENANT_LIMIT + 5; i++) {
+      const r = await handleWidgetMessage(store, good, req({ sessionId: `spray-session-${String(i).padStart(10, "0")}`, ip: `198.51.100.${i % 250}.${i}`, body: { text: "halo", client_id: `spray-${i}-xxx` } }));
+      if (r.status === 200) ok += 1;
+    }
+    expect(ok).toBe(WIDGET_TENANT_LIMIT);
+    const other = await handleWidgetMessage(store, good, req({ slug: "other", body: { text: "halo", client_id: "other-0001" } }));
+    expect(other.status).toBe(200);
   });
 
   it("stores a retried client_id once and does not answer twice", async () => {

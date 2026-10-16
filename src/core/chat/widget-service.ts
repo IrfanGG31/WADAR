@@ -5,11 +5,13 @@ import { runTurn } from "./pipeline";
 import type { KbCandidate } from "./retrieval";
 import type { HistoryTurn, ProductCard } from "./schema";
 import type { StorePersona, StorePolicies } from "./store-policies";
-import { checkRateLimit, isValidSessionId, startsNewWindow, WidgetMessageInput, RATE_LIMIT_WINDOW_MS } from "./widget";
+import { widgetBuckets } from "./rate-limit";
+import type { RateLimitResult } from "./widget";
+import { isValidSessionId, startsNewWindow, WidgetMessageInput } from "./widget";
 
 /**
- * One inbound widget message, end to end (CHT-8): validate → rate limit →
- * store → the same `runTurn` pipeline as every other channel → store the reply.
+ * One inbound widget message, end to end (CHT-8): validate → rate limit
+ * (session + IP + shop, before any write) → store → the same `runTurn` pipeline as every other channel → store the reply.
  * All I/O goes through `WidgetStore`, so the rules below are unit-tested
  * without a database (`src/db/widget-store.ts` is the Supabase implementation).
  */
@@ -44,8 +46,8 @@ export interface TurnData {
 export interface WidgetStore {
   findShop(slug: string): Promise<WidgetShop | null>;
   ensureConversation(tenantId: string, sessionId: string): Promise<ConversationRow>;
-  /** Times (ms) of the session's inbound messages since `sinceIso`. */
-  recentInboundTimes(conversationId: string, sinceIso: string): Promise<number[]>;
+  /** Atomic check-and-record over all buckets (see `RateLimiter`). */
+  hitRateLimit(buckets: ReturnType<typeof widgetBuckets>, nowMs: number): Promise<RateLimitResult>;
   /** null when this `providerMessageId` is already stored (retry / double tap). */
   insertInbound(args: { tenantId: string; conversationId: string; providerMessageId: string; text: string }): Promise<PublicMessage | null>;
   touchInbound(args: { tenantId: string; conversationId: string; nowIso: string; newWindow: boolean }): Promise<void>;
@@ -61,6 +63,8 @@ export type WidgetResult =
 export interface WidgetRequest {
   slug: string;
   sessionId: string | null;
+  /** Client IP from the platform proxy (null when unknown, e.g. local dev). */
+  ip: string | null;
   body: unknown;
   now: Date;
 }
@@ -74,13 +78,13 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
   if (!shop) return { status: 404, body: { error: "Toko tidak ditemukan." } };
 
   const nowMs = req.now.getTime();
-  const conversation = await store.ensureConversation(shop.tenantId, req.sessionId);
-
-  const recent = await store.recentInboundTimes(conversation.id, new Date(nowMs - RATE_LIMIT_WINDOW_MS).toISOString());
-  const limit = checkRateLimit(recent, nowMs);
+  // Before anything is written: a rejected request must not create a conversation row.
+  const limit = await store.hitRateLimit(widgetBuckets({ tenantId: shop.tenantId, sessionId: req.sessionId, ip: req.ip }), nowMs);
   if (limit.limited) {
     return { status: 429, body: { error: "Pesannya terlalu cepat. Tunggu sebentar ya.", retryAfterSeconds: limit.retryAfterSeconds } };
   }
+
+  const conversation = await store.ensureConversation(shop.tenantId, req.sessionId);
 
   const stored = await store.insertInbound({
     tenantId: shop.tenantId,

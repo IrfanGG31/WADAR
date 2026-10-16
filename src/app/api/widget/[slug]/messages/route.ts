@@ -2,11 +2,15 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAi } from "@/ai";
 import { chatGenerator } from "@/ai/chat-generator";
+import { clientIp } from "@/core/chat/rate-limit";
 import { isValidSessionId } from "@/core/chat/widget";
 import { handleWidgetMessage } from "@/core/chat/widget-service";
 import { supabaseWidgetStore } from "@/db/widget-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WIDGET_COOKIE, WIDGET_COOKIE_OPTIONS } from "../session";
+
+/** One model call plus a regeneration must fit; the default limit can cut a slow answer off. */
+export const maxDuration = 60;
 
 /** POST /api/widget/<slug>/messages — one buyer message; answers through the shared chat pipeline. */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -26,6 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     const result = await handleWidgetMessage(supabaseWidgetStore(createAdminClient()), chatGenerator(getAi()), {
       slug,
       sessionId,
+      ip: clientIp(request.headers),
       body,
       now: new Date(),
     });
