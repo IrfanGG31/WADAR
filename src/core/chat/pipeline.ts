@@ -19,6 +19,8 @@ export interface GenerateRequest {
   /** Guardrail feedback for the regeneration attempt. */
   feedback?: string;
   attempt: number;
+  /** What is left of the turn budget for this call; the generator should give up (or fall back) before it. */
+  timeoutMs?: number;
 }
 
 /** Usage and cost of one model call, as written to `ai_runs` (TECH-SPEC §6.3). */
@@ -79,26 +81,62 @@ export type TurnOutcome =
 
 export const MAX_ATTEMPTS = 2;
 
-export async function runTurn(input: TurnInput, generate: Generate): Promise<TurnOutcome> {
+/**
+ * "Waktu balas < 10 detik per pesan" (PDF §C.3): one budget for the whole turn,
+ * not per attempt (2 × the 8 s model timeout would be 16 s). ~1 s of the 10 s
+ * is left for retrieval before and saving after.
+ */
+export const TURN_BUDGET_MS = 9_000;
+/** A regeneration is only started with at least this much budget left; otherwise the holding message goes. */
+export const MIN_ATTEMPT_MS = 3_000;
+/** Told to the generator below the hard cap, so its own fallback (offline template) still lands in time. */
+export const GENERATE_MARGIN_MS = 250;
+
+export interface TurnOptions {
+  budgetMs?: number;
+  now?: () => number;
+}
+
+const TURN_TIMEOUT = "turn_timeout";
+
+/** `promise`, or a timeout result once `ms` has passed — the turn never waits past its budget. */
+function withDeadline(promise: Promise<GenerateResult>, ms: number): Promise<GenerateResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<GenerateResult>((resolve) => {
+    timer = setTimeout(() => resolve({ reply: null, engine: "offline", model: "none", error: TURN_TIMEOUT }), Math.max(0, ms));
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+export async function runTurn(input: TurnInput, generate: Generate, opts: TurnOptions = {}): Promise<TurnOutcome> {
   if (input.mode === "human") return { action: "store_only", attempts: [] };
 
   const hold = safeHolding(holdingMessage(input.context.persona));
   const routed = preRoute({ text: input.text, hasMedia: input.hasMedia });
   if (routed) return { action: "escalate", text: hold, cause: routed, unsafe: false, preRoute: routed, attempts: [] };
 
+  const now = opts.now ?? Date.now;
+  const deadline = now() + (opts.budgetMs ?? TURN_BUDGET_MS);
   const attempts: AttemptLog[] = [];
   let feedback: string | undefined;
   let unsafe = false;
+  let lastCause: EscalationCause | undefined;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const left = deadline - now();
+    // Not enough time for another model call: hold instead of answering late.
+    if (attempt > 0 && left < MIN_ATTEMPT_MS) break;
     // A throwing generator must end in the holding message, never in an unguarded reply.
-    const result = await generate({ question: input.text, context: input.context, feedback, attempt }).catch(
-      (err: unknown): GenerateResult => ({
-        reply: null,
-        engine: "offline",
-        model: "error",
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
+    const call = Promise.resolve()
+      .then(() => generate({ question: input.text, context: input.context, feedback, attempt, timeoutMs: Math.max(0, left - GENERATE_MARGIN_MS) }))
+      .catch(
+        (err: unknown): GenerateResult => ({
+          reply: null,
+          engine: "offline",
+          model: "error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    const result = await withDeadline(call, left);
     const log: AttemptLog = {
       engine: result.engine,
       model: result.model,
@@ -128,8 +166,10 @@ export async function runTurn(input: TurnInput, generate: Generate): Promise<Tur
       return { action: "escalate", text: hold, cause: guard.cause ?? "other", unsafe, preRoute: null, attempts };
     }
     feedback = guard.feedback;
+    // If the regeneration never runs (no time left), escalate for what this reply got wrong.
+    lastCause = checkReply(result.reply, input.context, MAX_ATTEMPTS - 1).cause;
   }
-  return { action: "escalate", text: hold, cause: unsafe ? "unsafe" : "other", unsafe, preRoute: null, attempts };
+  return { action: "escalate", text: hold, cause: unsafe ? "unsafe" : (lastCause ?? "other"), unsafe, preRoute: null, attempts };
 }
 
 /** A holding message an owner wrote is validated on save; this keeps an old/bad row from reaching a buyer. */

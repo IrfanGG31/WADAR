@@ -100,6 +100,14 @@ describe("routing with a key", () => {
     expect(r.meter.fallbackReason).toBe("timeout");
   });
 
+  it("a shorter per-call timeout (what is left of the chat turn) wins over the default", async () => {
+    const ai = createAi({ env: KEY, providers: { google: fakeProvider("hang").provider }, timeoutMs: 60_000 });
+    const started = Date.now();
+    const r = await ai.run("chat_reply", { question: "serum vit c ready?", context: ctx }, { timeoutMs: 20 });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(r.meter.fallbackReason).toBe("timeout");
+  });
+
   it("stops calling a failing provider once its circuit opens", async () => {
     const fake = fakeProvider("throw");
     const ai = createAi({ env: KEY, providers: { google: fake.provider } });

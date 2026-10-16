@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { glowContext } from "./fixtures/glow-by-sari";
-import { runTurn, type Generate, type GenerateRequest } from "./pipeline";
+import { MIN_ATTEMPT_MS, runTurn, TURN_BUDGET_MS, type Generate, type GenerateRequest } from "./pipeline";
 import type { ChatReply } from "./schema";
 import { DEFAULT_HOLDING_MESSAGE, StorePersona } from "./store-policies";
 
@@ -102,5 +102,73 @@ describe("runTurn — a throwing generator (D6 T8)", () => {
     expect(out).toMatchObject({ action: "escalate", cause: "other", unsafe: false });
     expect(out.action === "escalate" && out.text).toBe(ctx.persona.holding_message || DEFAULT_HOLDING_MESSAGE);
     expect(out.attempts[0]).toMatchObject({ reply: null, error: "boom" });
+  });
+});
+
+describe("runTurn time budget (< 10 detik per pesan, PDF §C.3)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  /** A "model" that answers each attempt after the given delay (ms); Infinity never answers. */
+  function slow(delays: number[], replies: Partial<ChatReply>[]) {
+    const calls: GenerateRequest[] = [];
+    const generate: Generate = (request) => {
+      calls.push(request);
+      const i = calls.length - 1;
+      return new Promise((resolve) => {
+        if (!Number.isFinite(delays[i])) return;
+        setTimeout(
+          () =>
+            resolve({
+              reply: { intent: "stok", reply: "", sources: [], confidence: 0.9, escalate: false, ...replies[i] },
+              engine: "llm",
+              model: "test-model",
+            }),
+          delays[i],
+        );
+      });
+    };
+    return { generate, calls };
+  }
+  const wrongPrice = { ...good, reply: "Serum Vit C 20ml ready Kak, harganya Rp85.000." };
+
+  it("the whole turn budget stays under 10 seconds", () => {
+    expect(TURN_BUDGET_MS).toBeLessThan(10_000);
+    expect(MIN_ATTEMPT_MS).toBeGreaterThan(0);
+  });
+
+  it("a first attempt that never answers ends in the holding message within the budget", async () => {
+    const { generate, calls } = slow([Infinity], [good]);
+    const started = Date.now();
+    let outcome: Awaited<ReturnType<typeof runTurn>> | undefined;
+    void runTurn({ text: question, mode: "ai", context: ctx }, generate).then((o) => (outcome = o));
+    await vi.advanceTimersByTimeAsync(TURN_BUDGET_MS);
+    expect(outcome).toMatchObject({ action: "escalate", text: ctx.persona.holding_message || DEFAULT_HOLDING_MESSAGE, cause: "other" });
+    expect(outcome!.attempts).toHaveLength(1);
+    expect(outcome!.attempts[0].error).toBe("turn_timeout");
+    expect(Date.now() - started).toBeLessThanOrEqual(TURN_BUDGET_MS);
+    // The generator is told how long it may take, never more than the budget.
+    expect(calls[0].timeoutMs).toBeLessThanOrEqual(TURN_BUDGET_MS);
+  });
+
+  it("does not start the regeneration when too little time is left", async () => {
+    const { generate, calls } = slow([TURN_BUDGET_MS - MIN_ATTEMPT_MS + 1, 0], [wrongPrice, good]);
+    const started = Date.now();
+    let outcome: Awaited<ReturnType<typeof runTurn>> | undefined;
+    void runTurn({ text: question, mode: "ai", context: ctx }, generate).then((o) => (outcome = o));
+    await vi.advanceTimersByTimeAsync(TURN_BUDGET_MS);
+    expect(calls).toHaveLength(1);
+    expect(outcome).toMatchObject({ action: "escalate", text: ctx.persona.holding_message || DEFAULT_HOLDING_MESSAGE, cause: "price_mismatch" });
+    expect(Date.now() - started).toBeLessThanOrEqual(TURN_BUDGET_MS);
+  });
+
+  it("regenerates when there is time, with only the remaining budget", async () => {
+    const { generate, calls } = slow([1_000, 500], [wrongPrice, good]);
+    let outcome: Awaited<ReturnType<typeof runTurn>> | undefined;
+    void runTurn({ text: question, mode: "ai", context: ctx }, generate).then((o) => (outcome = o));
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].timeoutMs).toBeLessThanOrEqual(TURN_BUDGET_MS - 1_000);
+    expect(outcome).toMatchObject({ action: "reply", text: good.reply });
   });
 });

@@ -108,7 +108,8 @@ function cleanChatReply(reply: ChatReply | null): ChatReply | null {
 export function createAi({ env, providers, breakers = {}, now = Date.now, timeoutMs = LLM_TIMEOUT_MS }: AiDeps) {
   const breaker = { google: breakers.google ?? new CircuitBreaker({ now }) };
 
-  async function run<T extends ChatTask>(task: T, input: TaskInput<T>): Promise<RunResult<T>> {
+  /** `opts.timeoutMs` can only shorten the model timeout (e.g. to what is left of a chat turn). */
+  async function run<T extends ChatTask>(task: T, input: TaskInput<T>, opts: { timeoutMs?: number } = {}): Promise<RunResult<T>> {
     const started = now();
     const offline = offlineReason(env);
     let fallbackReason: string | null = offline;
@@ -137,7 +138,7 @@ export function createAi({ env, providers, breakers = {}, now = Date.now, timeou
         continue;
       }
       try {
-        const result = await impl.call(task, modelIdOf(ref), input, AbortSignal.timeout(timeoutMs));
+        const result = await impl.call(task, modelIdOf(ref), input, AbortSignal.timeout(Math.max(0, Math.min(timeoutMs, opts.timeoutMs ?? timeoutMs))));
         breaker[provider].success();
         const output = (task === "chat_reply" ? cleanChatReply(result.output as ChatReply | null) : result.output) as TaskOutput<T>;
         return {
