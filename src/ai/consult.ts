@@ -1,4 +1,5 @@
-import { askCacheKey, createTtlCache, dataVersion, weeklyCacheKey } from "@/core/consult/cache";
+import { safeGet, safeSet, type AnswerStore } from "@/core/answer-cache";
+import { askCacheKey, createTtlCache, DAILY_INSIGHT_TTL_MS, dailyInsightKey, dataVersion } from "@/core/consult/cache";
 import {
   collectEvidence,
   groundAnswer,
@@ -38,6 +39,8 @@ import type { RunMeter } from "@/core/chat/pipeline";
  * (DEMO_SAFE, no key, open circuit, timeout/error) — live answers stay live —
  * and a hit is labelled `cached` and costs no `ai_runs` row. Under DEMO_SAFE the
  * offline template is cached too, so repeated demo questions are instant.
+ * The insight narration is different: it is read BEFORE the model, once per
+ * tenant per day (`dailyInsightKey`), optionally shared across instances.
  */
 export interface ConsultTurn {
   role: "user" | "assistant";
@@ -136,7 +139,8 @@ function errorText(e: unknown): string {
 
 export function createConsult({ env, model, breaker = new CircuitBreaker(), now = Date.now, timeoutMs = LLM_TIMEOUT_MS, cacheTtlMs }: ConsultDeps) {
   const askCache = createTtlCache<ConsultOutcome>({ ttlMs: cacheTtlMs, now });
-  const weeklyCache = createTtlCache<WeeklyNarration>({ ttlMs: cacheTtlMs, now });
+  const weeklyTtlMs = cacheTtlMs ?? DAILY_INSIGHT_TTL_MS;
+  const weeklyCache = createTtlCache<WeeklyNarration>({ ttlMs: weeklyTtlMs, now });
 
   /** First reason the LLM can't answer, or null. */
   function unavailable(): string | null {
@@ -317,21 +321,33 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
     selected: readonly InsightCandidate[],
     data: ConsultData,
     emit: (e: ConsultEvent) => void = () => {},
-    opts: { cacheScope?: string } = {},
+    opts: { cacheScope?: string; store?: AnswerStore } = {},
   ): Promise<WeeklyNarration> {
     const template = () => narrationText(narrateInsights(selected));
-    const cacheKey = opts.cacheScope && selected.length > 0 ? weeklyCacheKey({ scope: opts.cacheScope, version: dataVersion(data), selected }) : null;
-    const replay = (): WeeklyNarration | null => {
-      const hit = cacheKey ? weeklyCache.get(cacheKey) : undefined;
-      return hit ? { ...hit, cached: true } : null;
+    const cacheKey = opts.cacheScope && selected.length > 0 ? dailyInsightKey({ scope: opts.cacheScope, day: data.today, selected }) : null;
+    // Read BEFORE the model (PDF §C.1 "ringkasan harian di-cache"): this instance first, then the shared table.
+    const lookup = async (): Promise<WeeklyNarration | null> => {
+      if (!cacheKey) return null;
+      const local = weeklyCache.get(cacheKey);
+      if (local) return { ...local, cached: true };
+      const shared = opts.store ? await safeGet<WeeklyNarration>(opts.store, cacheKey) : null;
+      if (!shared?.text) return null;
+      weeklyCache.set(cacheKey, shared);
+      return { ...shared, attempts: [], cached: true };
     };
-    const keep = (n: WeeklyNarration): WeeklyNarration => {
-      if (cacheKey && cacheable(n)) weeklyCache.set(cacheKey, { ...n, attempts: [], cached: undefined });
+    const keep = async (n: WeeklyNarration): Promise<WeeklyNarration> => {
+      if (cacheKey && cacheable(n)) {
+        const entry: WeeklyNarration = { ...n, attempts: [], cached: undefined };
+        weeklyCache.set(cacheKey, entry);
+        if (opts.store) await safeSet(opts.store, cacheKey, entry, weeklyTtlMs);
+      }
       return n;
     };
+    const hit = await lookup();
+    if (hit) return hit;
     const why = unavailable();
     if (why || selected.length === 0) {
-      return replay() ?? keep({ text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: why ?? "nothing_to_narrate", attempts: [] });
+      return keep({ text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: why ?? "nothing_to_narrate", attempts: [] });
     }
     try {
       // total_impact is precomputed so the model never has to add the impacts itself.
@@ -351,7 +367,7 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
       });
       return keep({ text: outcome.text, engine: "llm", model: modelId, source: outcome.source, fallbackReason: null, attempts });
     } catch (e) {
-      return replay() ?? { text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: /timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", attempts: [] };
+      return { text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: /timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", attempts: [] };
     }
   }
 

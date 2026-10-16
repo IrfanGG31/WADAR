@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { memoryAnswerStore } from "@/core/answer-cache";
+import { DAILY_INSIGHT_TTL_MS } from "@/core/consult/cache";
 import { makeData } from "@/core/consult/fixture";
+import { addDays } from "@/core/period";
 import { selectInsights, weeklyCandidates } from "@/core/consult/insights";
 import type { ToolName } from "@/core/consult/tools";
 import { CircuitBreaker } from "./breaker";
@@ -274,5 +277,55 @@ describe("cache (DEMO_SAFE, SPRINT-8D §5)", () => {
     expect(second).toMatchObject({ cached: true, text: first.text });
     expect((await c.narrateWeekly(selected.slice(1), data, undefined, SCOPE)).cached).toBeUndefined();
     expect((await c.narrateWeekly(selected, data)).cached).toBeUndefined();
+  });
+});
+
+describe("daily insight cache (PDF §C.1 \"ringkasan harian\"), read before the model", () => {
+  const top = selectInsights(weeklyCandidates(data), new Set());
+  const text = `Ringkasan: dampak ±Rp${top.reduce((s, c) => s + c.impact, 0).toLocaleString("id-ID")}.`;
+  const live = () => scripted([text, text, text, text]);
+
+  it("(a) same tenant, same day → one model call, even after a new sale; replay has no attempts", async () => {
+    const { model, calls } = live();
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker() });
+    const first = await c.narrateWeekly(top, data, undefined, { cacheScope: "t1" });
+    expect(first).toMatchObject({ engine: "llm", source: "model" });
+    const sold = makeData({ lines: data.lines.map((l, i) => (i === 0 ? { ...l, qty: l.qty + 1 } : l)) });
+    const again = await c.narrateWeekly(top, sold, undefined, { cacheScope: "t1" });
+    expect(calls).toHaveLength(1);
+    expect(again).toMatchObject({ cached: true, text: first.text, attempts: [] });
+  });
+
+  it("(b) another tenant or the next day calls the model", async () => {
+    const { model, calls } = live();
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker() });
+    await c.narrateWeekly(top, data, undefined, { cacheScope: "t1" });
+    expect((await c.narrateWeekly(top, data, undefined, { cacheScope: "t2" })).cached).toBeUndefined();
+    expect(calls).toHaveLength(2);
+    await c.narrateWeekly(top, { ...data, today: addDays(data.today, 1) }, undefined, { cacheScope: "t1" });
+    expect(calls).toHaveLength(3);
+  });
+
+  it("(c) expires after the daily TTL", async () => {
+    let t = 0;
+    const { model, calls } = live();
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker(), now: () => t });
+    await c.narrateWeekly(top, data, undefined, { cacheScope: "t1" });
+    t = DAILY_INSIGHT_TTL_MS - 1;
+    await c.narrateWeekly(top, data, undefined, { cacheScope: "t1" });
+    expect(calls).toHaveLength(1);
+    t = DAILY_INSIGHT_TTL_MS + 1;
+    await c.narrateWeekly(top, data, undefined, { cacheScope: "t1" });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("a shared store lets another instance replay without calling its model", async () => {
+    const shared = memoryAnswerStore();
+    const one = live();
+    await createConsult({ env: KEY, model: one.model, breaker: new CircuitBreaker() }).narrateWeekly(top, data, undefined, { cacheScope: "t1", store: shared });
+    const two = live();
+    const r = await createConsult({ env: KEY, model: two.model, breaker: new CircuitBreaker() }).narrateWeekly(top, data, undefined, { cacheScope: "t1", store: shared });
+    expect(two.calls).toHaveLength(0);
+    expect(r).toMatchObject({ cached: true, engine: "llm" });
   });
 });

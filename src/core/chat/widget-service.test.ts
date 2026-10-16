@@ -4,6 +4,7 @@ import type { Generate } from "./pipeline";
 import { WIDGET_IP_LIMIT, WIDGET_SESSION_LIMIT, WIDGET_TENANT_LIMIT } from "./widget";
 import type { ConversationRow, PublicMessage, WidgetShop, WidgetStore } from "./widget-service";
 import { handleWidgetMessage } from "./widget-service";
+import { memoryAnswerStore } from "@/core/answer-cache";
 import { createMemoryRateLimiter, type RateLimiter } from "@/core/rate-limit";
 
 const ctx = glowContext("serum vit c ready?");
@@ -74,6 +75,23 @@ describe("handleWidgetMessage", () => {
     const r = await handleWidgetMessage(store, good, req());
     expect(r).toMatchObject({ status: 200, body: { mode: "ai" } });
     expect(r.status === 200 && r.body.messages[0]).toMatchObject({ author: "ai" });
+  });
+
+  it("FAQ cache: a second visitor asking the same thing is answered without the model, per shop", async () => {
+    const { store, saved } = fakeStore();
+    const answers = memoryAnswerStore();
+    store.answers = () => answers;
+    let calls = 0;
+    const live: Generate = async (r) => {
+      calls++;
+      return { ...(await good(r)), engine: "llm", model: "m" };
+    };
+    await handleWidgetMessage(store, live, req());
+    await handleWidgetMessage(store, live, req({ sessionId: "B".repeat(24), ip: "203.0.113.8" }));
+    expect(calls).toBe(1);
+    expect(saved[1]).toMatchObject({ action: "reply", cached: true, attempts: [] });
+    await handleWidgetMessage(store, live, req({ slug: "other", sessionId: "C".repeat(24), ip: "203.0.113.9" }));
+    expect(calls).toBe(2);
   });
 
   it("rejects a bad session, bad body and unknown shop", async () => {

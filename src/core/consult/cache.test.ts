@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askCacheKey, createTtlCache, dataVersion, normalizeQuestion, weeklyCacheKey } from "./cache";
+import { askCacheKey, createTtlCache, dailyInsightKey, dataVersion, normalizeQuestion, weeklyCacheKey } from "./cache";
 import { makeData } from "./fixture";
 import { selectInsights, weeklyCandidates } from "./insights";
 
@@ -85,5 +85,16 @@ describe("weeklyCacheKey", () => {
     expect(weeklyCacheKey({ scope: "t2", version: "v1", selected })).not.toBe(k);
     expect(weeklyCacheKey({ scope: "t1", version: "v2", selected })).not.toBe(k);
     expect(weeklyCacheKey({ scope: "t1", version: "v1", selected: selected.slice(1) })).not.toBe(k);
+  });
+});
+
+describe("dailyInsightKey", () => {
+  it("depends on tenant, day and the selected insights — not on every sale", () => {
+    const selected = selectInsights(weeklyCandidates(makeData()), new Set());
+    const k = dailyInsightKey({ scope: "t1", day: "2026-10-17", selected });
+    expect(dailyInsightKey({ scope: "t1", day: "2026-10-17", selected })).toBe(k);
+    expect(dailyInsightKey({ scope: "t2", day: "2026-10-17", selected })).not.toBe(k);
+    expect(dailyInsightKey({ scope: "t1", day: "2026-10-18", selected })).not.toBe(k);
+    expect(dailyInsightKey({ scope: "t1", day: "2026-10-17", selected: selected.slice(1) })).not.toBe(k);
   });
 });

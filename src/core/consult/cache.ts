@@ -10,6 +10,8 @@ import type { ConsultData } from "./tools";
  */
 export const CONSULT_CACHE_TTL_MS = 60 * 60 * 1000;
 export const CONSULT_CACHE_MAX_ENTRIES = 200;
+/** The insight narration is generated at most once per tenant per day ("ringkasan harian", PDF §C.1). */
+export const DAILY_INSIGHT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface TtlCache<V> {
   get(key: string): V | undefined;
@@ -75,4 +77,14 @@ export function askCacheKey(p: {
 export function weeklyCacheKey(p: { scope: string; version: string; selected: readonly InsightCandidate[] }): string {
   const picked = sha256(p.selected.map((c) => `${c.dedupe_key}:${c.title}:${c.text}`).join("\n")).slice(0, 24);
   return ["weekly", p.scope, p.version, picked].join("|");
+}
+
+/**
+ * Daily insight narration: tenant + shop-local day + the selected insights.
+ * Not the full data fingerprint — a new sale must not re-run the model; the
+ * narration only quotes the selected insights, so a change in those (new
+ * numbers, another top-3) is a new key.
+ */
+export function dailyInsightKey(p: { scope: string; day: string; selected: readonly InsightCandidate[] }): string {
+  return weeklyCacheKey({ scope: p.scope, version: `day:${p.day}`, selected: p.selected });
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllRows } from "@/db/paginate";
+import { layeredAnswerStore, memoryAnswerStore } from "@/core/answer-cache";
 import type { TurnOutcome } from "@/core/chat/pipeline";
 import { searchTerms, type KbCandidate } from "@/core/chat/retrieval";
 import type { HistoryTurn, ProductCard } from "@/core/chat/schema";
@@ -8,12 +9,20 @@ import { parsePersona, parsePolicies } from "@/core/chat/store-policies";
 import { sharedRateLimiter } from "@/db/rate-limit";
 import { RATE_LIMIT_WINDOW_MS, SESSION_WINDOW_MS } from "@/core/chat/widget";
 import type { PublicMessage, WidgetStore } from "@/core/chat/widget-service";
+import { tableAnswerStore } from "@/db/answer-cache";
 
 const MESSAGE_COLUMNS = "id, author, content, created_at";
+
+/** Per-instance layer in front of `ai_answer_cache` (keys carry the tenant). */
+const answerMemory = memoryAnswerStore();
+/** A row pulled from the shared table is kept locally only briefly. */
+const WARM_TTL_MS = 5 * 60 * 1000;
 
 /** Service-role implementation of `WidgetStore`: the only reader is the customer-safe view + KB RPC. */
 export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
   return {
+    answers: (tenantId) => layeredAnswerStore(answerMemory, tableAnswerStore(db, tenantId), WARM_TTL_MS),
+
     async findShop(slug) {
       const { data: tenant, error } = await db.from("tenants").select("id, name").eq("slug", slug).maybeSingle();
       if (error) throw error;
@@ -160,7 +169,7 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
           content: outcome.text,
           ai_run_id: runId,
           meta: isReply
-            ? { engine: outcome.engine }
+            ? { engine: outcome.engine, ...(outcome.cached ? { cached: true } : {}) }
             : { cause: outcome.cause, unsafe: outcome.unsafe, pre_route: outcome.preRoute },
         })
         .select(MESSAGE_COLUMNS)

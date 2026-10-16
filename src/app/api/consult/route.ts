@@ -4,6 +4,7 @@ import type { ConsultEvent } from "@/ai/consult";
 import { narrateInsights } from "@/core/consult/insights";
 import { detectRemember } from "@/core/consult/question";
 import { consultUsageThisMonth, getWeeklyInsights, loadConsultData, recordConsultRuns, saveMemory } from "@/db/consult";
+import { tableAnswerStore } from "@/db/answer-cache";
 import { findShop } from "@/db/shop";
 import { isoDateInZone } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
@@ -78,7 +79,10 @@ export async function POST(request: Request): Promise<Response> {
       emit({ type: "status", text: "Menyusun insight minggu ini…" });
       const data = await loadConsultData(shop, today);
       const weekly = await getWeeklyInsights(shop, data, { persist: true });
-      const narration = await consult.narrateWeekly(weekly.selected, data, undefined, { cacheScope: shop.id });
+      const narration = await consult.narrateWeekly(weekly.selected, data, undefined, {
+        cacheScope: shop.id,
+        store: tableAnswerStore(supabase, shop.id),
+      });
       await recordConsultRuns(shop.id, { attempts: narration.attempts, source: narration.source, tierReason: "weekly", fallbackReason: narration.fallbackReason });
       emit({
         type: "weekly",

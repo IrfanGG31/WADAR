@@ -1,3 +1,4 @@
+import type { AnswerStore } from "../answer-cache";
 import type { ChatContext } from "./context";
 import { retrieveContext } from "./context";
 import type { Generate, TurnOutcome } from "./pipeline";
@@ -52,6 +53,8 @@ export interface WidgetStore {
   insertInbound(args: { tenantId: string; conversationId: string; providerMessageId: string; text: string }): Promise<PublicMessage | null>;
   touchInbound(args: { tenantId: string; conversationId: string; nowIso: string; newWindow: boolean }): Promise<void>;
   loadTurnData(args: { tenantId: string; conversationId: string; text: string; before: string }): Promise<TurnData>;
+  /** FAQ answer cache of one shop (PDF §C.1); without it every turn calls the model. */
+  answers?(tenantId: string): AnswerStore;
   /** Stores ai_runs, the outgoing message and the escalation state; returns the visitor-visible messages. */
   saveOutcome(args: { shop: WidgetShop; conversationId: string; outcome: TurnOutcome }): Promise<PublicMessage[]>;
 }
@@ -119,7 +122,8 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
     kbCandidates: data.kbCandidates,
     history: data.history,
   });
-  const outcome = await runTurn({ text: parsed.data.text, mode: "ai", context }, generate);
+  const cache = store.answers ? { store: store.answers(shop.tenantId), scope: shop.tenantId } : undefined;
+  const outcome = await runTurn({ text: parsed.data.text, mode: "ai", context }, generate, { cache });
   const messages = await store.saveOutcome({ shop, conversationId: conversation.id, outcome });
   return { status: 200, body: { messages, inbound: stored, mode: outcome.action === "escalate" ? "human" : "ai" } };
 }
