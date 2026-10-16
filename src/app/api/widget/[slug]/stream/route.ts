@@ -44,6 +44,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
           let query = db
             .from("messages")
             .select("id, author, content, created_at")
+            .eq("tenant_id", tenant.id)
             .eq("conversation_id", conv.id)
             .order("created_at", { ascending: true })
             .limit(50);

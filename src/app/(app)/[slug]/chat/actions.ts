@@ -39,12 +39,15 @@ export async function sendReply(slug: string, conversationId: string, input: unk
 
   const shop = await getShop(slug);
   const supabase = await createClient();
-  const { error: ce } = await supabase
+  // An id of another shop's conversation updates nothing (no error): require the row back before inserting.
+  const { data: conv, error: ce } = await supabase
     .from("conversations")
     .update({ mode: "human", status: "open" })
     .eq("tenant_id", shop.id)
-    .eq("id", conversationId);
-  if (ce) return { error: "Percakapan tidak ditemukan." };
+    .eq("id", conversationId)
+    .select("id")
+    .maybeSingle();
+  if (ce || !conv) return { error: "Percakapan tidak ditemukan." };
   const { error } = await supabase.from("messages").insert({
     tenant_id: shop.id,
     conversation_id: conversationId,
