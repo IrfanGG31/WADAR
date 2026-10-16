@@ -228,6 +228,25 @@ describe("audit hardening (D6 T1–T6)", () => {
     });
   });
 
+  describe("review P4: stock phrasings that slipped through", () => {
+    const c = two({ qty_hint: 2, availability: "sisa_sedikit" }, { qty_hint: 2, availability: "sisa_sedikit" });
+    it.each([
+      "Serum Vit C 20ml stoknya 12 pcs",
+      "Serum Vit C 20ml masih ada 12 botol",
+      "Serum Vit C 20ml ready 12 pcs",
+      "Serum Vit C 20ml stok tersedia 12",
+      "Serum Vit C 20ml stok masih 12",
+      "Serum Vit C 20ml stocknya masih ada 12 ya",
+      "Serum Vit C 20ml tersedia 12 kak.",
+    ])("catches %s", (text) => {
+      expect(stockViolations(text, c)).toHaveLength(1);
+    });
+    it("still accepts numbers within qty_hint and non-stock counts", () => {
+      expect(stockViolations("Serum Vit C 20ml masih ada 2 botol, ready ya.", c)).toEqual([]);
+      expect(stockViolations("Serum Vit C 20ml ada 3 varian ukuran.", c)).toEqual([]);
+    });
+  });
+
   describe("T5 promises are checked per claim", () => {
     it("treats 'ongkir gratis' as the 'gratis ongkir' claim", () => {
       const noPromises = { ...ctx, policies: { ...ctx.policies, promo: "", warranty: "" }, kb: [] };

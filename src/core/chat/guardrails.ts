@@ -70,13 +70,20 @@ const COUNT_UNIT = "(?:pcs|pc|buah|botol|unit|porsi|item|biji|pack|pak|lembar|cu
 const NOT_COUNT = "(?!\\s*(?:ml|gr|g|gram|kg|mg|cm|%|hari|jam|menit|rb|ribu|jt|juta|k)\\b)";
 
 /**
- * Stock numbers a buyer could read as "this many left": "sisa 3", "stok: 4", "tinggal lima pcs",
- * "cuma 5 pcs", "5 pcs saja", "3 pcs lagi". Group 1 is the number (digit or word).
+ * Stock numbers a buyer could read as "this many left": "sisa 3", "stok: 4", "stoknya masih 12",
+ * "stok tersedia 12", "tinggal lima pcs", "cuma 5 pcs", "5 pcs saja", "3 pcs lagi", "masih ada 12 botol",
+ * "ready 12 pcs", "tersedia 12.". After a stock word any number counts; after ada/ready/tersedia only
+ * a number with a count unit or at the end of the clause ("ada 3 varian" is not a stock claim).
  */
+const STOCK_WORD = "(?:sisa|tersisa|tinggal|stok|stock|persediaan)(?:nya)?";
+const AVAIL_WORD = "(?:ada|ready|redi|rdy|tersedia)";
+const FILLER = "(?:(?:masih|ada|ready|tersedia|cuma|hanya|tinggal|sekitar|tersisa|kurang lebih|sekarang|saat ini|kak|ya)\\s+)";
+const CLAUSE_END = "(?=\\s*(?:kak|ya|kok|nih|lho)?\\s*(?:[.,!?\\n]|$))";
 const STOCK_COUNT = new RegExp(
-  `\\b(?:sisa|tersisa|tinggal|stok|stock|persediaan)\\s*[:=]?\\s*(?:(?:cuma|hanya|tinggal|sekitar|tersisa|kurang lebih)\\s+)?(${NUM})\\b${NOT_COUNT}` +
+  `\\b${STOCK_WORD}\\s*[:=]?\\s*${FILLER}{0,3}(${NUM})\\b${NOT_COUNT}` +
     `|\\b(?:cuma|hanya|tinggal)\\s+(${NUM})\\s*${COUNT_UNIT}\\b` +
-    `|\\b(${NUM})\\s*${COUNT_UNIT}?\\s+(?:lagi|tersisa|saja|aja|doang)\\b`,
+    `|\\b(${NUM})\\s*${COUNT_UNIT}?\\s+(?:lagi|tersisa|saja|aja|doang)\\b` +
+    `|\\b${AVAIL_WORD}\\s+${FILLER}{0,2}(${NUM})(?:\\s*${COUNT_UNIT}\\b|\\b${NOT_COUNT}${CLAUSE_END})`,
   "g",
 );
 
@@ -137,7 +144,7 @@ function checkStock(reply: ChatReply, ctx: ChatContext): GuardViolation[] {
 
   // Numbers: bound by the qty_hint of the product they sit next to (nearest mention before, else after).
   for (const m of maskProductNames(ctx, lower).matchAll(STOCK_COUNT)) {
-    const n = parseCount(m[1] ?? m[2] ?? m[3]);
+    const n = parseCount(m[1] ?? m[2] ?? m[3] ?? m[4]);
     const before = mentions.filter((x) => x.end <= m.index!).at(-1);
     const after = mentions.find((x) => x.at >= m.index!);
     const owner = before ?? after;

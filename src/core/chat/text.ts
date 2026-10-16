@@ -126,39 +126,114 @@ export function findPhoneNumbers(input: string): string[] {
 const UNIT_MULTIPLIER: Record<string, bigint> = {
   rb: 1_000n,
   ribu: 1_000n,
+  ribuan: 1_000n,
+  rban: 1_000n,
   k: 1_000n,
   jt: 1_000_000n,
   juta: 1_000_000n,
+  jutaan: 1_000_000n,
+  rupiah: 1n,
 };
 
 /**
  * Every rupiah amount written in a text, as whole rupiah: "Rp89.000",
- * "Rp 1.250.000", "Rp89rb", "89 ribu", "89k", "Rp1,2 jt". A bare number
- * without "Rp" or a unit ("20ml", "SPF50", "2 pcs") is not an amount.
+ * "Rp 1.250.000", "Rp89rb", "89 ribu", "75 ribuan", "89k", "Rp1,2 jt",
+ * "75,000" (comma thousands), "75000 rupiah", a bare figure of 4+ digits
+ * ("75000"), and amounts spelled out in words ("tujuh puluh lima ribu").
+ * Not an amount: "20ml", "SPF50", "2 pcs", "1000ml", dates, phone numbers.
  * Integer arithmetic only (decimal "1,2 jt" = 12 × 1.000.000 / 10).
  */
-const GROUPED = String.raw`\d{1,3}(?:\.\d{3})+`;
+const GROUPED = String.raw`\d{1,3}(?:\.\d{3})+|\d{1,3}(?:,\d{3})+`;
+const UNIT = String.raw`(?:ribuan|ribu|rban|rb|k|jutaan|juta|jt|rupiah)`;
 const AMOUNT = new RegExp(
-  // 1: "Rp 89.000" / "Rp1,2 jt";  2: "89 ribu" / "1.500 rb" / "1,5 jt";  3: bare "85.000".
-  String.raw`(?:\b(?:rp|idr)\.?\s?(${GROUPED}|\d+)(?:,(\d{1,2}))?(?:\s?(rb|ribu|k|jt|juta)\b)?)` +
-    String.raw`|(?:\b(${GROUPED}|\d+)(?:[.,](\d{1,2})(?!\d))?\s?(rb|ribu|k|jt|juta)\b)` +
-    String.raw`|(?:(?<![\d.,])(${GROUPED})(?![\d.,]?\d))`,
+  // 1: "Rp 89.000" / "Rp1,2 jt";  2: "89 ribu" / "1.500 rb" / "1,5 jt" / "75000 rupiah";
+  // 3: bare "85.000" / "75,000";  4: bare "75000".
+  String.raw`(?:\b(?:rp|idr)\.?\s?(${GROUPED}|\d+)(?:,(\d{1,2}))?(?:\s?(${UNIT})\b)?)` +
+    String.raw`|(?:\b(${GROUPED}|\d+)(?:[.,](\d{1,2})(?!\d))?\s?(${UNIT})\b)` +
+    String.raw`|(?:(?<![\d.,])(${GROUPED})(?![\d.,]?\d))` +
+    String.raw`|(?:(?<![\w.,:/-])(\d{4,})(?![\d.,:/-]?\d)(?!\s?(?:ml|l|liter|gr|g|gram|kg|mg|cm|mm|m|pcs|pc|lembar|botol|buah|biji|x)\b))`,
   "gi",
 );
 
+const DIGIT_WORDS: Record<string, number> = {
+  satu: 1, dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6, tujuh: 7, delapan: 8, sembilan: 9,
+};
+const NUMBER_WORDS = new Set([
+  ...Object.keys(DIGIT_WORDS), "nol", "se", "sepuluh", "sebelas", "seratus", "seribu", "sejuta", "belas", "puluh", "ratus", "ribu", "juta",
+]);
+
+/** "tujuh puluh lima ribu" → 75000, "dua juta lima ratus ribu" → 2500000; null when the words make no number. */
+function parseNumberWords(tokens: readonly string[]): number | null {
+  let total = 0;
+  let small = 0; // 0–999 being built
+  let pending = 0; // last digit word, waiting for belas/puluh/ratus
+  for (const t of tokens) {
+    if (t in DIGIT_WORDS) {
+      small += pending;
+      pending = DIGIT_WORDS[t];
+    } else if (t === "nol") continue;
+    else if (t === "se") pending = 1;
+    else if (t === "sepuluh") small += 10;
+    else if (t === "sebelas") small += 11;
+    else if (t === "seratus") small += 100;
+    else if (t === "belas") (small += 10 + pending), (pending = 0);
+    else if (t === "puluh") (small += pending * 10), (pending = 0);
+    else if (t === "ratus") (small += pending * 100), (pending = 0);
+    else if (t === "seribu") total += 1_000;
+    else if (t === "sejuta") total += 1_000_000;
+    else if (t === "ribu" || t === "juta") {
+      const n = small + pending;
+      if (n === 0) return null;
+      total += n * (t === "ribu" ? 1_000 : 1_000_000);
+      small = 0;
+      pending = 0;
+    }
+  }
+  const value = total + small + pending;
+  return value > 0 ? value : null;
+}
+
+/** Amounts spelled out: a run of number words that reaches ribu/juta, or is followed by "rupiah". */
+function wordAmounts(input: string): number[] {
+  const tokens = input
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z]+/g, " ")
+    .trim()
+    .split(" ");
+  const out: number[] = [];
+  for (let i = 0; i < tokens.length; ) {
+    if (!NUMBER_WORDS.has(tokens[i])) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < tokens.length && NUMBER_WORDS.has(tokens[j])) j++;
+    const run = tokens.slice(i, j);
+    const isMoney = run.some((t) => t === "ribu" || t === "juta" || t === "seribu" || t === "sejuta") || tokens[j] === "rupiah";
+    const value = isMoney ? parseNumberWords(run) : null;
+    if (value !== null) out.push(value);
+    i = j;
+  }
+  return out;
+}
+
 export function extractAmounts(input: string): number[] {
   const out: number[] = [];
+  // Phone numbers are checked by their own rule; their digit groups are not prices.
+  const phones = [...input.matchAll(PHONE)].map((m) => [m.index, m.index + m[0].length] as const);
   for (const m of input.matchAll(AMOUNT)) {
+    if (phones.some(([a, b]) => m.index < b && m.index + m[0].length > a)) continue;
     const [whole, frac, unit] =
-      m[1] !== undefined ? [m[1], m[2], m[3]] : m[4] !== undefined ? [m[4], m[5], m[6]] : [m[7], undefined, undefined];
-    const integer = BigInt(whole.replace(/\./g, ""));
+      m[1] !== undefined ? [m[1], m[2], m[3]] : m[4] !== undefined ? [m[4], m[5], m[6]] : m[7] !== undefined ? [m[7], undefined, undefined] : [m[8], undefined, undefined];
+    const integer = BigInt(whole.replace(/[.,]/g, ""));
     const multiplier = unit ? UNIT_MULTIPLIER[unit.toLowerCase()] : 1n;
     let value = integer * multiplier;
-    if (frac && unit) {
+    if (frac && unit && multiplier > 1n) {
       // "1,2 jt" / "1.5 jt": the fraction scales with the unit; "Rp89.000,00" (no unit) drops sen.
       value += (BigInt(frac) * multiplier) / 10n ** BigInt(frac.length);
     }
     out.push(Number(value));
   }
-  return out;
+  return [...out, ...wordAmounts(input)];
 }

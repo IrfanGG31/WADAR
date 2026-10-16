@@ -38,6 +38,23 @@ describe("extractAmounts", () => {
     expect(extractAmounts("Pulau Jawa Rp12.000–Rp25.000 (2–4 hari)")).toEqual([12_000, 25_000]);
   });
 
+  it("review P4: reads the formats that slipped through", () => {
+    expect(extractAmounts("harganya 75000 rupiah kak")).toEqual([75_000]);
+    expect(extractAmounts("cuma 75,000 aja")).toEqual([75_000]);
+    expect(extractAmounts("Rp 1,250,000")).toEqual([1_250_000]);
+    expect(extractAmounts("75 ribuan kak")).toEqual([75_000]);
+    expect(extractAmounts("harganya tujuh puluh lima ribu")).toEqual([75_000]);
+    expect(extractAmounts("seratus dua puluh lima ribu rupiah")).toEqual([125_000]);
+    expect(extractAmounts("dua juta lima ratus ribu")).toEqual([2_500_000]);
+    expect(extractAmounts("lima belas ribu aja")).toEqual([15_000]);
+    expect(extractAmounts("harganya 75000")).toEqual([75_000]);
+  });
+
+  it("does not read phone numbers, sizes, years-in-dates or small counts as money", () => {
+    expect(extractAmounts("chat admin di 0812-2700-3456 atau +62 812 2700 3456")).toEqual([]);
+    expect(extractAmounts("isi 1000ml, berat 1500 gr, tiga botol, 2026-10-14")).toEqual([]);
+  });
+
   it("ignores numbers that are not money", () => {
     expect(extractAmounts("Serum Vit C 20ml, SPF50, sisa 3 pcs, 10%, Toner Pad 60 Lembar, 2–4 hari, 10 kg")).toEqual([]);
   });
