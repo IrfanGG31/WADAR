@@ -27,11 +27,11 @@ export function BottomTabs() {
             href={shopPath(slug, item.page)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors",
+              "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-5 w-5" aria-hidden />
             {item.label}
           </Link>
         );
@@ -63,11 +63,11 @@ export function Sidebar() {
               href={shopPath(slug, item.page)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
               )}
             >
-              <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
+              <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
               {item.label}
             </Link>
           );
@@ -81,8 +81,17 @@ export function Sidebar() {
 export function NavSkeleton() {
   return (
     <>
-      <div aria-hidden className="hidden h-dvh w-64 shrink-0 border-r border-border md:block" />
-      <div aria-hidden className="fixed inset-x-0 bottom-0 h-14 border-t border-border bg-background md:hidden" />
+      <div aria-hidden className="hidden h-dvh w-64 shrink-0 flex-col gap-2 border-r border-border p-4 md:flex">
+        <div className="mb-6 mt-2 h-8 w-28 animate-pulse rounded-lg bg-muted" />
+        {DESKTOP_NAV.map((item) => (
+          <div key={item.page} className="h-11 animate-pulse rounded-xl bg-muted" />
+        ))}
+      </div>
+      <div aria-hidden className="fixed inset-x-0 bottom-0 flex h-14 items-center gap-2 border-t border-border bg-background px-3 md:hidden">
+        {MOBILE_NAV.map((item) => (
+          <div key={item.page} className="h-8 flex-1 animate-pulse rounded-lg bg-muted" />
+        ))}
+      </div>
     </>
   );
 }

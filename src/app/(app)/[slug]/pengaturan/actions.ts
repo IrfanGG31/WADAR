@@ -67,13 +67,15 @@ export async function addFaq(slug: string, input: unknown): Promise<ActionResult
         .eq("document_id", doc.id);
       if (ee) throw ee;
     } else {
-      note = "FAQ tersimpan dan bisa dicari lewat kata kunci. Pencarian makna aktif setelah kunci AI dipasang.";
+      note = "FAQ tersimpan dan bisa dicari lewat kata kunci.";
     }
   } catch (e) {
     // The FAQ is still searchable by text; say so instead of marking it ready silently.
+    // The provider's message can carry key fragments / project ids: log it, never store or show it.
+    console.error("faq embedding failed", e);
     await supabase
       .from("kb_documents")
-      .update({ status: "ready", error: `Embedding gagal: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300) })
+      .update({ status: "ready", error: "Embedding gagal. Pencarian lewat kata kunci tetap jalan." })
       .eq("id", doc.id);
     return { note: "FAQ tersimpan, tetapi embedding gagal. Pencarian lewat kata kunci tetap jalan." };
   }

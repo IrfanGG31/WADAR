@@ -188,6 +188,13 @@ describe("margin warnings (FIN-6)", () => {
     expect(w[0].code).toBe("DISCOUNT_HEAVY");
   });
 
+  it("warning messages use Indonesian decimals (21,5%, not 21.5%)", () => {
+    const fee = feeHeavyChannels([line({ channel_id: "S", channel_name: "Shopee", qty: 1, unit_price: 10_000, alloc_platform_fee: 2_150 })]);
+    expect(fee[0].message).toBe("Komisi Shopee 21,5% dari penjualan.");
+    const disc = discountHeavyPeriod([line({ qty: 1, unit_price: 10_000, line_discount: 1_650 })]);
+    expect(disc[0].message).toBe("Diskon 16,5% dari penjualan kotor.");
+  });
+
   it("DISCOUNT_HEAVY stays silent at or below 15%", () => {
     const w = discountHeavyPeriod([line({ qty: 1, unit_price: 10_000, line_discount: 1_500 })]);
     expect(w).toEqual([]);

@@ -18,6 +18,29 @@ export function isoDateInZone(now: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
+/**
+ * The UTC instant of local midnight starting `iso` in `timeZone`, as an ISO
+ * timestamp: "2026-10-01" in Asia/Jakarta → "2026-09-30T17:00:00.000Z".
+ * For `created_at >= …` filters that must follow the shop's calendar.
+ */
+export function startOfDayUtc(iso: string, timeZone: string): string {
+  if (!ISO_DAY.test(iso)) throw new RangeError(`startOfDayUtc: expected YYYY-MM-DD, got "${iso}"`);
+  const [y, m, d] = iso.split("-").map(Number);
+  const guess = Date.UTC(y, m - 1, d);
+  const wall = (ms: number) => {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        .formatToParts(new Date(ms))
+        .map((p) => [p.type, Number(p.value)]),
+    );
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  };
+  // Two passes settle the offset even when the guess falls on the other side of a DST change.
+  let at = guess - (wall(guess) - guess);
+  at = guess - (wall(at) - at);
+  return new Date(at).toISOString();
+}
+
 /** "2026-10-15" + 3 → "2026-10-18"; works across month/year ends (UTC calendar math, no DST). */
 export function addDays(iso: string, days: number): string {
   if (!ISO_DAY.test(iso)) throw new RangeError(`addDays: expected YYYY-MM-DD, got "${iso}"`);

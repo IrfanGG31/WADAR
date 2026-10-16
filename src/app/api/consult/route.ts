@@ -95,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
 
   return ndjson(async (emit) => {
     emit({ type: "status", text: "Memikirkan pertanyaanmu…" });
-    const [data, usage] = await Promise.all([loadConsultData(shop, today), consultUsageThisMonth(shop.id, today)]);
+    const [data, usage] = await Promise.all([loadConsultData(shop, today), consultUsageThisMonth(shop.id, today, shop.timezone)]);
     const outcome = await consult.ask(
       { question: body.question, history: body.history, data, deepRequested: body.deep, usage, cacheScope: shop.id },
       (e: ConsultEvent) => emit(e),

@@ -33,8 +33,8 @@ export function PageTabs({
           href={shopPath(slug, tab.page)}
           aria-current={tab.page === active ? "page" : undefined}
           className={cn(
-            "flex h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-md px-2 text-sm font-medium md:flex-none md:px-6",
-            tab.page === active ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+            "flex min-h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-md px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:flex-none md:px-6",
+            tab.page === active ? "bg-background text-foreground shadow-sm" : "text-slate-700 hover:text-foreground",
           )}
         >
           {tab.shortLabel ? (
@@ -52,5 +52,5 @@ export function PageTabs({
 }
 
 export function PageTabsSkeleton() {
-  return <div className="h-11 animate-pulse rounded-lg bg-muted" />;
+  return <div className="h-[3.25rem] animate-pulse rounded-lg bg-muted" aria-hidden />;
 }

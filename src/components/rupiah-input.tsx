@@ -2,8 +2,7 @@
 
 import type { ComponentProps } from "react";
 import { Input } from "@/components/ui/input";
-
-const formatter = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 });
+import { formatCount } from "@/core/number-format";
 
 /** Whole-rupiah input: shows "89.000", reports 89000 (or undefined when empty). */
 export function RupiahInput({
@@ -22,7 +21,7 @@ export function RupiahInput({
         inputMode="numeric"
         autoComplete="off"
         className={`pl-9 ${props.className ?? ""}`}
-        value={value === undefined ? "" : formatter.format(value)}
+        value={value === undefined ? "" : formatCount(value)}
         onChange={(event) => {
           const digits = event.target.value.replace(/\D/g, "").slice(0, 13);
           onValueChange(digits === "" ? undefined : Number(digits));

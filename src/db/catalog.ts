@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "./paginate";
 
 export interface VariantRow {
   id: string;
@@ -33,14 +34,17 @@ const PRODUCT_COLUMNS =
 /** Active catalog of a shop (RLS: members only), products by name, variants by label. */
 export async function listCatalog(tenantId: string): Promise<ProductRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_COLUMNS)
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .order("name");
-  if (error) throw error;
-  const rows = (data ?? []) as unknown as ProductRow[];
+  // Paged: PostgREST silently stops at 1000 rows. id breaks name ties so pages never overlap.
+  const rows = await fetchAllRows<ProductRow>((from, to) =>
+    supabase
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("name")
+      .order("id")
+      .range(from, to),
+  );
   for (const p of rows) p.variants.sort((a, b) => (a.option_label ?? "").localeCompare(b.option_label ?? ""));
   return rows;
 }

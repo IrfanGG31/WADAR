@@ -71,9 +71,13 @@ const SLANG: Record<string, string> = {
   free: "gratis",
 };
 
+/** Zero-width space / non-joiner / joiner and BOM: invisible, but they split a word in two ("mo\u200Bdal"). */
+const ZERO_WIDTH = /[\u200B-\u200D\u2060\uFEFF\u00AD]/g;
+
 /** "Kak, serum Vit-C rdy gk?" → "kak serum vit c ready tidak". */
 export function normalizeText(input: string): string {
   const base = input
+    .replace(ZERO_WIDTH, "")
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
@@ -107,10 +111,10 @@ export function hasAnyPhrase(normalized: string, phrases: readonly string[]): bo
  * "margin-nya" count; "beruntung" and "modalitas" do not.
  */
 const FORBIDDEN =
-  /(?:^|[^a-z])(hpp|modal|margin|keuntungan|untung|saldo|laba|harga pokok|harga beli|kulakan|omzet|omset)(?:nya|ku|mu|lah|kah)?(?![a-z])/g;
+  /(?:^|[^a-z])(hpp|modal|margin|keuntungan|untung|saldo|laba|harga pokok|harga beli|kulakan|omzet|omset|profit|cuan|markup|mark up)(?:nya|ku|mu|lah|kah)?(?![a-z])/g;
 
 export function findForbiddenTerms(input: string): string[] {
-  const lower = input.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const lower = input.replace(ZERO_WIDTH, "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const found = new Set<string>();
   for (const match of lower.matchAll(FORBIDDEN)) found.add(match[1]);
   return [...found];

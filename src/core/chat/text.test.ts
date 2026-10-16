@@ -111,6 +111,13 @@ describe("audit hardening (D6 T2, T3, T9)", () => {
     expect(extractAmounts("jam 09.00 sampai 20.00, 20ml, SPF50")).toEqual([]);
   });
 
+  it("review P6: zero-width characters do not hide a forbidden word; profit/cuan/markup are forbidden", () => {
+    expect(findForbiddenTerms("mo\u200Bdal-nya 38rb")).toEqual(["modal"]);
+    expect(findForbiddenTerms("H\u200CP\u200DP\uFEFF kami")).toEqual(["hpp"]);
+    expect(findForbiddenTerms("profitnya lumayan, cuan 20%, markup 2x")).toEqual(["profit", "cuan", "markup"]);
+    expect(normalizeText("re\u200Bady?")).toBe("ready");
+  });
+
   it("matches forbidden terms as whole words", () => {
     expect(findForbiddenTerms("modalitas pembayaran, beruntung banget")).toEqual([]);
     expect(findForbiddenTerms("modalnya 50rb, margin-nya tipis, labanya kecil")).toEqual(["modal", "margin", "laba"]);

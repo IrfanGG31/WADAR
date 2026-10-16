@@ -6,7 +6,8 @@ import { STOCK_STATUS_LABEL } from "@/core/stock-level";
 import { narrateProfitHeadline, profitInsight } from "@/core/finance-insight";
 import { weekOverWeek } from "@/core/period";
 import { narrateStockOverview, needsRestock, sortByUrgency, type ForecastRow } from "@/core/stock-insight";
-import { formatRupiah, formatRupiahCompact } from "@/core/money";
+import { formatRupiah } from "@/core/money";
+import { formatCount } from "@/core/number-format";
 import { getWeeklyInsights, loadConsultData } from "@/db/consult";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
 import { getShop } from "@/db/shop";
@@ -55,17 +56,17 @@ async function KpiCards({ params }: { params: Params }) {
   const s = await getBerandaSummary(shop.id);
   const cards = [
     { label: "Total Penjualan Hari Ini", icon: ShoppingBag, value: formatRupiah(s.revenue_today) },
-    { label: "Jumlah Transaksi", icon: Receipt, value: s.orders_today.toLocaleString("id-ID") },
-    { label: "Produk Terjual", icon: Package, value: s.items_today.toLocaleString("id-ID") },
-    { label: "Pelanggan Baru", icon: UserPlus, value: s.new_customers_today.toLocaleString("id-ID") },
+    { label: "Jumlah Transaksi", icon: Receipt, value: formatCount(s.orders_today) },
+    { label: "Produk Terjual", icon: Package, value: formatCount(s.items_today) },
+    { label: "Pelanggan Baru", icon: UserPlus, value: formatCount(s.new_customers_today) },
   ] as const;
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {cards.map(({ label, icon: Icon, value }) => (
-        <div key={label} className="flex flex-col gap-2 rounded-xl border border-border p-4">
-          <Icon className="h-5 w-5 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tabular-nums">{value}</p>
+        <div key={label} className="flex min-w-0 flex-col gap-2 rounded-xl border border-border p-3 sm:p-4">
+          <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
+          <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
+          <p className="text-base font-semibold tabular-nums sm:text-2xl">{value}</p>
         </div>
       ))}
     </div>
@@ -91,27 +92,30 @@ function TrendChart({ points }: { points: BerandaSummary["trend_7d"] }) {
   const dayLabel = (iso: string) =>
     new Date(`${iso}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric" });
   return (
-    <section className="rounded-xl border border-border p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Penjualan 7 Hari</h2>
-        <p className="text-xs text-muted-foreground">Total {formatRupiah(points.reduce((s, p) => s + p.revenue, 0))}</p>
+    <section className="rounded-xl border border-border p-4" aria-labelledby="penjualan-7-hari">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="penjualan-7-hari" className="text-sm font-semibold">Penjualan 7 Hari</h2>
+        <p className="text-xs text-muted-foreground tabular-nums">Total {formatRupiah(points.reduce((s, p) => s + p.revenue, 0))}</p>
       </div>
-      <div className="flex items-end gap-2">
+      <ul className="flex flex-col gap-2">
         {points.map((p) => {
-          const height = max > 0 ? Math.max(4, Math.round((p.revenue / max) * 120)) : 4;
+          const widthPct = max > 0 ? Math.max(2, Math.round((p.revenue / max) * 100)) : 2;
           return (
-            <div key={p.day} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <div
-                className="w-full rounded-md bg-primary/80"
-                style={{ height: `${height}px` }}
-                aria-label={`${dayLabel(p.day)}: ${formatRupiah(p.revenue)}`}
-              />
-              <span className="text-[11px] text-muted-foreground">{dayLabel(p.day)}</span>
-              <span className="text-[11px] font-medium tabular-nums">{formatRupiahCompact(p.revenue)}</span>
-            </div>
+            <li key={p.day} className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:text-sm">
+              <span className="truncate text-muted-foreground">{dayLabel(p.day)}</span>
+              <div className="h-2.5 rounded-full bg-muted">
+                <div
+                  role="img"
+                  aria-label={`${dayLabel(p.day)}: ${formatRupiah(p.revenue)}`}
+                  className="h-2.5 rounded-full bg-primary/80"
+                  style={{ width: `${widthPct}%` }}
+                />
+              </div>
+              <span className="text-right font-medium tabular-nums">{formatRupiah(p.revenue)}</span>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
@@ -130,9 +134,12 @@ async function LowStockSection({ params }: { params: Params }) {
   }
   return (
     <section className="rounded-xl border border-border p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Stok Menipis</h2>
-        <Link href={shopPath(slug, "stok")} className="text-xs font-medium text-primary">
+        <Link
+          href={shopPath(slug, "stok")}
+          className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
           Lihat semua
         </Link>
       </div>
@@ -150,7 +157,7 @@ function LowStockItem({ row }: { row: ForecastRow }) {
     row.status === "habis" || row.status === "kritis" ? "danger" : row.status === "menipis" ? "warning" : "muted";
   return (
     <li className="flex items-start gap-3 py-3">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-medium">{row.title}</p>
@@ -158,7 +165,7 @@ function LowStockItem({ row }: { row: ForecastRow }) {
         </div>
         <p className="text-xs text-muted-foreground">{row.narrative}</p>
         <p className="text-xs text-muted-foreground">
-          Stok {row.on_hand} {row.unit} · pesan ulang disarankan {row.reorder_qty} {row.unit}
+          Stok {formatCount(row.on_hand)} {row.unit} · pesan ulang disarankan {formatCount(row.reorder_qty)} {row.unit}
         </p>
       </div>
     </li>
@@ -221,25 +228,31 @@ async function InsightSection({ params }: { params: Params }) {
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="insight-untukmu">
       <h2 id="insight-untukmu" className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <Sparkles className="h-4 w-4 text-primary" />
+        <Sparkles className="h-4 w-4 text-primary" aria-hidden />
         Insight untukmu
       </h2>
       <ul className="divide-y divide-border">
         {items.map(({ key, title, icon: Icon, text, href }) => (
           <li key={key}>
-            <Link href={href} className="flex min-h-14 items-start gap-3 py-3 hover:bg-muted/50">
-              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <Link
+              href={href}
+              className="flex min-h-14 items-start gap-3 rounded-lg py-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-sm font-medium">{title}</span>
                 <span className="text-sm text-muted-foreground">{text}</span>
               </span>
-              <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
           </li>
         ))}
       </ul>
-      <Link href={shopPath(slug, "konsultasi")} className="mt-1 flex min-h-11 items-center gap-2 text-sm font-medium text-primary">
-        <MessagesSquare className="h-4 w-4" />
+      <Link
+        href={shopPath(slug, "konsultasi")}
+        className="mt-1 flex min-h-11 items-center gap-2 rounded-lg text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <MessagesSquare className="h-4 w-4" aria-hidden />
         Tanya konsultan tentang tokomu
       </Link>
     </section>

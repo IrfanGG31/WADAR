@@ -9,7 +9,7 @@ import type {
   InsightStatus,
   MemoryItem,
 } from "@/core/consult/tools";
-import { addDays, isoDateInZone, lastDays } from "@/core/period";
+import { addDays, isoDateInZone, lastDays, startOfDayUtc } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
 import { getFinanceData } from "./finance";
 import { fetchAllRows } from "./paginate";
@@ -18,6 +18,19 @@ import { listStockForecasts } from "./stock";
 
 /** Days of fin_daily loaded: enough for "bulan lalu" against the month before it. */
 export const CONSULT_HISTORY_DAYS = 90;
+
+type Db = Awaited<ReturnType<typeof createClient>>;
+
+/** Owner's saved notes for the prompt: pinned first, then newest — the cap drops the oldest, not the latest. */
+export function memoryQuery(supabase: Db, tenantId: string) {
+  return supabase
+    .from("memory_items")
+    .select("id, kind, content, pinned")
+    .eq("tenant_id", tenantId)
+    .order("pinned", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(50);
+}
 
 /** Everything the Konsultasi tools read, loaded as the signed-in owner (RLS applies). */
 export async function loadConsultData(shop: Shop, today: string, opts: { historyDays?: number } = {}): Promise<ConsultData> {
@@ -36,7 +49,7 @@ export async function loadConsultData(shop: Shop, today: string, opts: { history
           .order("id")
           .range(from, to),
     ),
-    supabase.from("memory_items").select("id, kind, content, pinned").eq("tenant_id", shop.id).order("created_at").limit(50),
+    memoryQuery(supabase, shop.id),
     supabase
       .from("insights")
       .select("type, title, body, severity, dedupe_key, status, period_start, created_at")
@@ -82,9 +95,10 @@ export async function loadConsultData(shop: Shop, today: string, opts: { history
 }
 
 /** Consult calls this month that actually reached a model (offline answers don't count against the deep quota). */
-export async function consultUsageThisMonth(tenantId: string, today: string): Promise<{ total: number; deep: number }> {
+export async function consultUsageThisMonth(tenantId: string, today: string, timeZone = "Asia/Jakarta"): Promise<{ total: number; deep: number }> {
   const supabase = await createClient();
-  const since = `${today.slice(0, 7)}-01T00:00:00Z`;
+  // The 1st of the month at the shop's midnight (WIB 00.00 = 17.00 UTC the day before).
+  const since = startOfDayUtc(`${today.slice(0, 7)}-01`, timeZone);
   const count = async (feature: string) => {
     const { count: n, error } = await supabase
       .from("ai_runs")

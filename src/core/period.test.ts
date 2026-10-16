@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysOf, inWindow, isoDateInZone, lastDays, weekOverWeek } from "./period";
+import { addDays, startOfDayUtc, daysOf, inWindow, isoDateInZone, lastDays, weekOverWeek } from "./period";
 
 describe("isoDateInZone", () => {
   it("uses the shop's local day, not UTC", () => {
@@ -34,5 +34,13 @@ describe("windows", () => {
     expect(daysOf(previous)).toHaveLength(7);
     expect(inWindow("2026-10-08", current)).toBe(false);
     expect(inWindow("2026-10-08", previous)).toBe(true);
+  });
+});
+
+describe("startOfDayUtc", () => {
+  it("is local midnight of the shop, not UTC midnight", () => {
+    expect(startOfDayUtc("2026-10-01", "Asia/Jakarta")).toBe("2026-09-30T17:00:00.000Z");
+    expect(startOfDayUtc("2026-10-01", "Asia/Makassar")).toBe("2026-09-30T16:00:00.000Z");
+    expect(startOfDayUtc("2026-10-01", "UTC")).toBe("2026-10-01T00:00:00.000Z");
   });
 });

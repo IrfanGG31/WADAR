@@ -16,6 +16,8 @@
  *   NP = GP − E (period expenses)
  */
 
+import { formatPercent } from "./number-format";
+
 /** One row from sale_items joined with product/channel identity, period-restricted by the caller. */
 export interface SaleItemLine {
   variant_id: string;
@@ -364,7 +366,7 @@ export function feeHeavyChannels(lines: readonly SaleItemLine[]): MarginWarning[
       scope: "channel",
       key: c.key,
       label: c.label,
-      message: `Komisi ${c.label ?? "kanal"} ${((c.totals.F / c.totals.R) * 100).toFixed(1)}% dari penjualan.`,
+      message: `Komisi ${c.label ?? "kanal"} ${formatPercent((c.totals.F / c.totals.R) * 100)} dari penjualan.`,
       stats: { F: c.totals.F, R: c.totals.R, ratio: c.totals.F / c.totals.R },
     }));
 }
@@ -377,7 +379,7 @@ export function discountHeavyPeriod(lines: readonly SaleItemLine[]): MarginWarni
       code: "DISCOUNT_HEAVY",
       severity: 1,
       scope: "period",
-      message: `Diskon ${((t.discount / t.revenue_gross) * 100).toFixed(1)}% dari penjualan kotor.`,
+      message: `Diskon ${formatPercent((t.discount / t.revenue_gross) * 100)} dari penjualan kotor.`,
       stats: { discount: t.discount, revenue_gross: t.revenue_gross, ratio: t.discount / t.revenue_gross },
     },
   ];
