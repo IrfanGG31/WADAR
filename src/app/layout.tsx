@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata: Metadata = {
   title: { default: brand.name, template: `%s · ${brand.shortName}` },
   description: brand.tagline,
+  // Served by src/app/manifest.ts; listed here so the link tag does not depend on file-convention detection.
+  manifest: "/manifest.webmanifest",
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }], apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: brand.shortName, statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
