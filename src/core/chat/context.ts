@@ -7,7 +7,8 @@ import { extractAmounts } from "./text";
 /**
  * Everything the reply step may use, and nothing more (TECH-SPEC §7.3 step 3):
  * structured policies, ≤ 5 product cards from `chat_product_cards`, ≤ 3 KB
- * snippets, the last 6 turns. The guardrails check replies against this same
+ * snippets, the last 6 turns — and the DATA TOKO block stays within
+ * {@link CONTEXT_TOKEN_BUDGET} (PDF §C.1). The guardrails check replies against this same
  * object, so "in the context" and "allowed to say" are one definition.
  */
 export interface ChatContext {
@@ -24,6 +25,8 @@ export interface ChatContext {
 }
 
 export const HISTORY_TURNS = 6;
+/** "Konteks RAG ringkas (±1.800 token per jawaban)" — measured on the rendered DATA TOKO block. */
+export const CONTEXT_TOKEN_BUDGET = 1_800;
 
 export interface RetrieveInput {
   message: string;
@@ -42,7 +45,7 @@ export interface RetrieveInput {
 
 export function retrieveContext(input: RetrieveInput): ChatContext {
   const kb = fuseKb(input.kbCandidates);
-  return {
+  return fitTokenBudget({
     shopName: input.shopName,
     persona: input.persona,
     policies: input.policies,
@@ -51,7 +54,26 @@ export function retrieveContext(input: RetrieveInput): ChatContext {
     history: (input.history ?? []).slice(-HISTORY_TURNS),
     retrievalScore: kb.retrievalScore,
     buyerPhone: input.buyerPhone ?? null,
-  };
+  });
+}
+
+/**
+ * Drop whole items until the DATA TOKO block fits `budget` tokens — never cut
+ * text mid-way. The least relevant item goes first: the one ranked lowest in
+ * its own list (cards and KB are both best-first); on a tie the KB chunk goes
+ * (usually the longer one). Policies always stay. With no KB chunk left the
+ * retrieval score is 0: nothing retrieved backs an answer any more.
+ */
+export function fitTokenBudget(ctx: ChatContext, budget = CONTEXT_TOKEN_BUDGET): ChatContext {
+  let cards = ctx.cards;
+  let kb = ctx.kb;
+  const fits = () => estimateTokens(renderStoreData({ ...ctx, cards, kb })) <= budget;
+  if (fits()) return ctx;
+  while (cards.length + kb.length > 0 && !fits()) {
+    if (kb.length >= cards.length && kb.length > 0) kb = kb.slice(0, -1);
+    else cards = cards.slice(0, -1);
+  }
+  return { ...ctx, cards, kb, retrievalScore: kb.length > 0 ? ctx.retrievalScore : 0 };
 }
 
 export const AVAILABILITY_LABEL: Record<ProductCard["availability"], string> = {

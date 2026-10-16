@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { allowedAmounts, contextSourceIds, estimateTokens, renderStoreData, retrieveContext } from "./context";
+import {
+  allowedAmounts,
+  CONTEXT_TOKEN_BUDGET,
+  contextSourceIds,
+  estimateTokens,
+  fitTokenBudget,
+  renderStoreData,
+  retrieveContext,
+  type RetrieveInput,
+} from "./context";
+import { fuseKb, rankProductCards, type KbCandidate } from "./retrieval";
+import type { ProductCard } from "./schema";
 import { GLOW_CARDS, GLOW_PERSONA, GLOW_POLICIES, glowContext } from "./fixtures/glow-by-sari";
 import { classifyIntentOffline } from "./offline-reply";
 import { formatShippingEstimate, parsePersona, parsePolicies, policyFacts, StorePersona, StorePolicies } from "./store-policies";
@@ -125,5 +136,73 @@ describe("classifyIntentOffline (the offline `intent` task)", () => {
 
   it("covers every demo card name without crashing", () => {
     for (const card of GLOW_CARDS) expect(classifyIntentOffline(`${card.name} ready?`)).toBe("stok");
+  });
+});
+
+describe("RAG context budget (±1.800 token, PDF §C.1)", () => {
+  const card = (i: number, description: string): ProductCard => ({
+    variant_id: `v${i}`,
+    name: `Serum ${"ABCDE"[i]}`,
+    option_label: null,
+    category: "Serum",
+    description,
+    price: 50_000 + i * 1_000,
+    availability: "tersedia",
+    qty_hint: 0,
+  });
+  const kb = (i: number, content: string): KbCandidate => ({ id: `k${i}`, kind: "doc", content, vec_rank: i + 1, txt_rank: i + 1 });
+  const input = (cardText: number, kbText: number): RetrieveInput => ({
+    message: "serum",
+    shopName: "Toko",
+    persona: StorePersona.parse({}),
+    policies: GLOW_POLICIES,
+    allCards: [0, 1, 2, 3, 4].map((i) => card(i, `Deskripsi serum ${i}. ${"kandungan niacinamide ".repeat(cardText)}`)),
+    kbCandidates: [0, 1, 2].map((i) => kb(i, `Dokumen ${i}: ${"cara pakai serum pagi dan malam ".repeat(kbText)}`)),
+  });
+
+  it("5 large cards + 3 large KB chunks are trimmed to ≤ 1.800 tokens", () => {
+    expect(CONTEXT_TOKEN_BUDGET).toBe(1_800);
+    const big = input(40, 60);
+    const untrimmed = renderStoreData({ ...retrieveContext(big), cards: rankProductCards(big.message, big.allCards), kb: fuseKb(big.kbCandidates).snippets });
+    expect(estimateTokens(untrimmed)).toBeGreaterThan(CONTEXT_TOKEN_BUDGET);
+    const ctx = retrieveContext(big);
+    expect(estimateTokens(renderStoreData(ctx))).toBeLessThanOrEqual(CONTEXT_TOKEN_BUDGET);
+    expect(ctx.cards.length + ctx.kb.length).toBeGreaterThan(0);
+    // Whole items are dropped, never cut mid-text.
+    for (const k of ctx.kb) expect(big.kbCandidates.find((c) => c.id === k.id)?.content).toBe(k.content);
+    for (const c of ctx.cards) expect(big.allCards.find((x) => x.variant_id === c.variant_id)).toEqual(c);
+  });
+
+  it("a small context is not trimmed", () => {
+    const small = input(1, 1);
+    const ctx = retrieveContext(small);
+    expect(ctx.cards.map((c) => c.variant_id)).toEqual(rankProductCards(small.message, small.allCards).map((c) => c.variant_id));
+    expect(ctx.kb.map((k) => k.id)).toEqual(["k0", "k1", "k2"]);
+    expect(ctx.retrievalScore).toBe(fuseKb(small.kbCandidates).retrievalScore);
+    const glow = glowContext("serum ada apa aja?");
+    expect(fitTokenBudget(glow)).toEqual(glow);
+  });
+
+  it("drops the least relevant item first and keeps relevance order", () => {
+    const ctx = retrieveContext(input(1, 1));
+    const full = estimateTokens(renderStoreData(ctx));
+    // Room for everything but one item: the 5th card (rank 5) goes before the 3rd KB chunk (rank 3).
+    const one = fitTokenBudget(ctx, full - 1);
+    expect(one.cards.map((c) => c.variant_id)).toEqual(ctx.cards.slice(0, 4).map((c) => c.variant_id));
+    expect(one.kb).toEqual(ctx.kb);
+    // Tighter: survivors are always the top of each ranked list, in the same order.
+    for (let budget = full - 1; budget > 0; budget -= 25) {
+      const t = fitTokenBudget(ctx, budget);
+      expect(t.cards).toEqual(ctx.cards.slice(0, t.cards.length));
+      expect(t.kb).toEqual(ctx.kb.slice(0, t.kb.length));
+    }
+  });
+
+  it("no KB chunk left → retrievalScore 0 (nothing retrieved backs an answer)", () => {
+    const ctx = retrieveContext(input(1, 1));
+    const t = fitTokenBudget(ctx, 1);
+    expect(t.kb).toEqual([]);
+    expect(t.cards).toEqual([]);
+    expect(t.retrievalScore).toBe(0);
   });
 });
