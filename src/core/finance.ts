@@ -16,7 +16,7 @@
  *   NP = GP − E (period expenses)
  */
 
-import { formatPercent } from "./number-format";
+import { formatDecimal, formatPercent } from "./number-format";
 
 /** One row from sale_items joined with product/channel identity, period-restricted by the caller. */
 export interface SaleItemLine {
@@ -300,7 +300,10 @@ export function decomposeProfitChange(
 
 /* ─── Margin warnings (FIN-6) ─────────────────────────────────────────────── */
 
-export type MarginWarningCode = "SELL_BELOW_COST" | "FEE_HEAVY" | "DISCOUNT_HEAVY";
+export type MarginWarningCode = "SELL_BELOW_COST" | "FEE_HEAVY" | "DISCOUNT_HEAVY" | "MARGIN_DROP" | "MISSING_COST";
+
+/** What ate the margin in a MARGIN_DROP: the cost line whose share of penjualan kotor grew most. */
+export type MarginDropCause = "cogs" | "fee" | "discount" | "shipping";
 
 export interface MarginWarning {
   code: MarginWarningCode;
@@ -313,12 +316,16 @@ export interface MarginWarning {
   message: string;
   /** Raw numbers, so callers can format or re-render. */
   stats: Record<string, number>;
+  /** MARGIN_DROP only; absent when no cost share grew. */
+  cause?: MarginDropCause;
 }
 
 /** FEE_HEAVY threshold: F / R > 20%. */
 export const FEE_HEAVY_RATIO = 0.2;
 /** DISCOUNT_HEAVY threshold: diskon > 15% of penjualan kotor. */
 export const DISCOUNT_HEAVY_RATIO = 0.15;
+/** MARGIN_DROP threshold: honest margin fell ≥ 5 percentage points vs the previous period. */
+export const MARGIN_DROP_POINTS = 5;
 
 /** Lines where (unit_price·qty − line_discount − order_discount − fee − shipping) / qty < unit_cost, cost known only. */
 export function sellBelowCostLines(lines: readonly SaleItemLine[]): MarginWarning[] {
@@ -385,10 +392,112 @@ export function discountHeavyPeriod(lines: readonly SaleItemLine[]): MarginWarni
   ];
 }
 
-export function marginWarnings(lines: readonly SaleItemLine[]): MarginWarning[] {
-  return [...sellBelowCostLines(lines), ...feeHeavyChannels(lines), ...discountHeavyPeriod(lines)].sort(
-    (a, b) => b.severity - a.severity,
-  );
+/** Share of `part` in `whole` in %, one decimal; 0 when whole ≤ 0. */
+function pctOf(part: number, whole: number): number {
+  return whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
+}
+
+/**
+ * Margin (over lines with HPP only, FIN-4) fell ≥ {@link MARGIN_DROP_POINTS}
+ * points vs the previous period of the same length. The cause is the cost line
+ * — HPP, komisi, diskon, subsidi ongkir — whose share of penjualan kotor grew
+ * most, so the warning can say "margin turun karena …" in plain words.
+ */
+export function marginDrop(
+  lines: readonly SaleItemLine[],
+  previous: readonly SaleItemLine[],
+  days = 7,
+): MarginWarning[] {
+  const known = (ls: readonly SaleItemLine[]) => ls.filter((l) => l.cost_is_set);
+  const now = totalsOverLines(known(lines));
+  const before = totalsOverLines(known(previous));
+  if (now.R <= 0 || before.R <= 0) return [];
+  const drop = Math.round((before.margin_pct - now.margin_pct) * 100) / 100;
+  if (drop < MARGIN_DROP_POINTS) return [];
+
+  const shares = (t: FinanceTotals): Record<MarginDropCause, number> => ({
+    cogs: pctOf(t.C, t.revenue_gross),
+    fee: pctOf(t.F, t.revenue_gross),
+    discount: pctOf(t.discount, t.revenue_gross),
+    shipping: pctOf(t.S, t.revenue_gross),
+  });
+  const s0 = shares(before);
+  const s1 = shares(now);
+  let cause: MarginDropCause | undefined;
+  for (const k of ["cogs", "fee", "discount", "shipping"] as const) {
+    const grew = s1[k] - s0[k];
+    if (grew > 0 && (cause === undefined || grew > s1[cause] - s0[cause])) cause = k;
+  }
+  return [
+    {
+      code: "MARGIN_DROP",
+      severity: 2,
+      scope: "period",
+      message: `Margin turun ${formatDecimal(drop)} poin: dari ${formatPercent(before.margin_pct)} ke ${formatPercent(now.margin_pct)}.`,
+      stats: {
+        margin_before: before.margin_pct,
+        margin_now: now.margin_pct,
+        drop_pts: drop,
+        days,
+        R: now.R,
+        /** Untung kotor lost vs keeping the old margin on this period's sales. */
+        lost_gp: Math.round((drop * now.R) / 100),
+        ...(cause ? { cause_before: s0[cause], cause_now: s1[cause] } : {}),
+      },
+      ...(cause ? { cause } : {}),
+    },
+  ];
+}
+
+/** Variants sold without HPP: their margin reads as 100%, so every margin figure is off (FIN-4). */
+export function missingCost(lines: readonly SaleItemLine[]): MarginWarning[] {
+  const byVariant = new Map<string, { label: string | undefined; qty: number; R: number }>();
+  let total = 0;
+  for (const l of lines) {
+    const rev = lineGross(l) - l.line_discount - l.alloc_order_discount;
+    total += rev;
+    if (l.cost_is_set) continue;
+    const b = byVariant.get(l.variant_id) ?? { label: l.product_name, qty: 0, R: 0 };
+    b.qty += l.qty;
+    b.R += rev;
+    byVariant.set(l.variant_id, b);
+  }
+  if (byVariant.size === 0) return [];
+  const ranked = [...byVariant.values()].sort((a, b) => b.R - a.R);
+  const names = ranked.slice(0, 3).map((b) => b.label ?? "Produk");
+  const more = ranked.length - names.length;
+  return [
+    {
+      code: "MISSING_COST",
+      severity: 2,
+      scope: "period",
+      label: more > 0 ? `${names.join(", ")} dan ${more} lainnya` : names.join(", "),
+      message: `${ranked.length} produk terjual tanpa HPP, jadi margin belum akurat.`,
+      stats: {
+        variants: ranked.length,
+        qty: ranked.reduce((s, b) => s + b.qty, 0),
+        R_missing: ranked.reduce((s, b) => s + b.R, 0),
+        R: total,
+      },
+    },
+  ];
+}
+
+export interface MarginWarningOptions {
+  /** Lines of the previous period of the same length — enables MARGIN_DROP. */
+  previous?: readonly SaleItemLine[];
+  /** Period length in days (for the narration); default 7. */
+  days?: number;
+}
+
+export function marginWarnings(lines: readonly SaleItemLine[], opts: MarginWarningOptions = {}): MarginWarning[] {
+  return [
+    ...sellBelowCostLines(lines),
+    ...(opts.previous ? marginDrop(lines, opts.previous, opts.days) : []),
+    ...missingCost(lines),
+    ...feeHeavyChannels(lines),
+    ...discountHeavyPeriod(lines),
+  ].sort((a, b) => b.severity - a.severity);
 }
 
 /* ─── Convenience: aggregate sale items into ProductPeriodAgg[] ───────────── */

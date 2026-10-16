@@ -45,6 +45,19 @@ describe("weeklyCandidates", () => {
   it("margin warning impact is the fee amount", () => {
     expect(byKey.get("margin_warning:FEE_HEAVY:ch-tt")).toMatchObject({ urgency: 2, impact: 192_240, score: 384_480 });
   });
+  it("margin drop vs last week is a margin warning worth the untung kotor it lost", () => {
+    // Margin (HPP known) 53,31% → 44,26%: −9,05 poin × R 2.027.800 = 183.516.
+    const c = byKey.get("margin_warning:MARGIN_DROP:period")!;
+    expect(c).toMatchObject({ urgency: 2, impact: 183_516, title: "Margin tergerus" });
+    expect(c.text).toMatch(/^Margin 7 hari terakhir turun 9,1 poin, dari 53,3% jadi 44,3% dibanding 7 hari sebelumnya\./);
+  });
+  it("sales without HPP get their own warning, not the discount sentence", () => {
+    const extra = { ...data.lines[6], variant_id: "v-new", product_name: "Sabun", cost_is_set: false, cost_total: 0, unit_cost: 0 };
+    const c = weeklyCandidates(makeData({ lines: [...data.lines, extra] })).find((x) => x.dedupe_key === "margin_warning:MISSING_COST:period")!;
+    expect(c).toMatchObject({ title: "HPP belum diisi", urgency: 2, impact: 0 });
+    expect(c.text).toContain("Sabun terjual Rp120.000 tanpa HPP");
+    expect(c.text).not.toContain("Diskon");
+  });
   it("flags lapsed top customers after 30 days with their typical order value", () => {
     // Sari Dewi: 3.000.000 / 12 = 250.000; Tono: 2.000.000 / 8 = 250.000
     expect(byKey.get("lapsed_customers")).toMatchObject({ urgency: 1, impact: 500_000, score: 500_000 });

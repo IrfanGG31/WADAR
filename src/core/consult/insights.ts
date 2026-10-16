@@ -5,7 +5,7 @@
  * is held to the same grounding check as every consult answer.
  */
 import { marginWarnings } from "../finance";
-import { linesIn } from "../finance-insight";
+import { linesIn, MARGIN_WARNING_LABEL, narrateMarginWarning } from "../finance-insight";
 import { formatRupiah } from "../money";
 import { formatPercent } from "../number-format";
 import { addDays } from "../period";
@@ -95,22 +95,46 @@ export function weeklyCandidates(d: ConsultData): InsightCandidate[] {
     );
   }
 
-  // 3. Peringatan margin (7 hari).
-  for (const w of marginWarnings(weekLines)) {
+  // 3. Peringatan margin (7 hari, margin tergerus dibanding 7 hari sebelumnya).
+  for (const w of marginWarnings(weekLines, { previous: linesIn(d.lines, week.previous), days: 7 })) {
     const s = w.stats;
-    const impact = w.code === "SELL_BELOW_COST" ? s.loss : w.code === "FEE_HEAVY" ? s.F : s.discount;
-    const text =
-      w.code === "SELL_BELOW_COST"
-        ? `${w.label ?? "Produk"} terjual di bawah modal ${s.qty} unit, rugi ${formatRupiah(s.loss)}.`
-        : w.code === "FEE_HEAVY"
-          ? `Komisi ${w.label ?? "kanal"} ${formatRupiah(s.F)} atau ${formatPercent((s.F / s.R) * 100)} dari penjualannya, di atas batas 20%.`
-          : `Diskon ${formatRupiah(s.discount)} atau ${formatPercent((s.discount / s.revenue_gross) * 100)} dari penjualan kotor, di atas batas 15%.`;
+    let impact: number;
+    let title: string;
+    let text: string;
+    switch (w.code) {
+      case "SELL_BELOW_COST":
+        impact = s.loss;
+        title = "Jual di bawah modal";
+        text = `${w.label ?? "Produk"} terjual di bawah modal ${s.qty} unit, rugi ${formatRupiah(s.loss)}.`;
+        break;
+      case "FEE_HEAVY":
+        impact = s.F;
+        title = "Komisi kanal berat";
+        text = `Komisi ${w.label ?? "kanal"} ${formatRupiah(s.F)} atau ${formatPercent((s.F / s.R) * 100)} dari penjualannya, di atas batas 20%.`;
+        break;
+      case "DISCOUNT_HEAVY":
+        impact = s.discount;
+        title = "Diskon terlalu besar";
+        text = `Diskon ${formatRupiah(s.discount)} atau ${formatPercent((s.discount / s.revenue_gross) * 100)} dari penjualan kotor, di atas batas 15%.`;
+        break;
+      case "MARGIN_DROP":
+        impact = s.lost_gp;
+        title = MARGIN_WARNING_LABEL[w.code];
+        text = narrateMarginWarning(w);
+        break;
+      case "MISSING_COST":
+        // Data hygiene: no rupiah at stake by itself, so it only fills a free slot.
+        impact = 0;
+        title = MARGIN_WARNING_LABEL[w.code];
+        text = narrateMarginWarning(w);
+        break;
+    }
     out.push(
       candidate({
         type: "margin_warning",
         urgency: w.severity,
-        impact: impact ?? 0,
-        title: w.code === "SELL_BELOW_COST" ? "Jual di bawah modal" : w.code === "FEE_HEAVY" ? "Komisi kanal berat" : "Diskon terlalu besar",
+        impact,
+        title,
         text,
         dedupe_key: `margin_warning:${w.code}:${w.key ?? "period"}`,
         evidence: { code: w.code, label: w.label ?? null, ...s },

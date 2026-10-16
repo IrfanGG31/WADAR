@@ -235,7 +235,7 @@ describe("FIN-6: MARGIN_DROP & MISSING_COST", () => {
   });
 
   it("MARGIN_DROP fires at exactly 5 points and names the fee as the cause", () => {
-    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_000, alloc_platform_fee: 500 })];
+    const now = [line({ qty: 10, unit_price: 10_000, unit_cost: 6_000, alloc_platform_fee: 5_000 })];
     const w = marginDrop(now, before);
     expect(w).toHaveLength(1);
     expect(w[0].cause).toBe("fee");

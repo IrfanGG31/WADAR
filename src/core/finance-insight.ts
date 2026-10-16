@@ -13,14 +13,16 @@ import {
   totalsByVariant,
   totalsOverLines,
   type FinanceTotals,
+  type MarginDropCause,
   type MarginWarning,
   type MarginWarningCode,
+  type MarginWarningOptions,
   type ProfitChange,
   type ProfitEffects,
   type SaleItemLine,
 } from "./finance";
 import { allocateLargestRemainder, formatRupiah, formatSignedRupiah } from "./money";
-import { formatCount, formatPercent } from "./number-format";
+import { formatCount, formatDecimal, formatPercent } from "./number-format";
 import { daysOf, inWindow, type PeriodWindow } from "./period";
 import { NO_CATEGORY } from "./stock-insight";
 
@@ -59,6 +61,20 @@ export interface FinLine extends SaleItemLine {
 export const OTHER_CATEGORY = "Lainnya";
 export const CURRENT_LABEL = "7 hari terakhir";
 export const PREVIOUS_LABEL = "7 hari sebelumnya";
+
+/** Period lengths the Keuangan screens can compare (FIN-3); 7 stays the default. */
+export const FINANCE_PERIOD_DAYS = [7, 30] as const;
+export type FinancePeriodDays = (typeof FINANCE_PERIOD_DAYS)[number];
+
+/** `?periode=30` → 30; anything else (missing, unknown) → 7. */
+export function parseFinancePeriodDays(raw: string | string[] | undefined): FinancePeriodDays {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return FINANCE_PERIOD_DAYS.find((d) => String(d) === v) ?? 7;
+}
+
+export function periodLabels(days: number): { current: string; previous: string } {
+  return { current: `${days} hari terakhir`, previous: `${days} hari sebelumnya` };
+}
 
 export function lineFromFinDaily(
   row: FinDailyRow,
@@ -434,7 +450,35 @@ export const MARGIN_WARNING_LABEL: Record<MarginWarningCode, string> = {
   SELL_BELOW_COST: "Jual di bawah modal",
   FEE_HEAVY: "Komisi kanal tinggi",
   DISCOUNT_HEAVY: "Diskon terlalu besar",
+  MARGIN_DROP: "Margin tergerus",
+  MISSING_COST: "HPP belum diisi",
 };
+
+/** "Sebabnya: …" — the cost line whose share of penjualan kotor grew most. */
+const DROP_CAUSE_PHRASE: Record<MarginDropCause, string> = {
+  cogs: "modal barang (HPP) makin besar dibanding harga jual",
+  fee: "komisi kanal makin besar",
+  discount: "diskon makin besar",
+  shipping: "subsidi ongkir makin besar",
+};
+
+function narrateMarginDrop(w: MarginWarning): string {
+  const s = w.stats;
+  const { current, previous } = periodLabels(s.days);
+  const sentences = [
+    `Margin ${current} turun ${formatDecimal(s.drop_pts)} poin, dari ${formatPercent(s.margin_before)} jadi ${formatPercent(s.margin_now)} dibanding ${previous}.`,
+  ];
+  if (w.cause) {
+    sentences.push(
+      `Sebabnya: ${DROP_CAUSE_PHRASE[w.cause]}, dari ${formatPercent(s.cause_before)} jadi ${formatPercent(s.cause_now)} penjualan kotor.`,
+    );
+  }
+  // drop_pts poin of every Rp100.000 = drop_pts × Rp1.000.
+  sentences.push(
+    `Akibatnya, dari setiap ${formatRupiah(100_000)} penjualan, untung kotormu berkurang ±${formatRupiah(Math.round(s.drop_pts * 1_000))} (±${formatRupiah(s.lost_gp)} di periode ini).`,
+  );
+  return sentences.join(" ");
+}
 
 /** Indonesian sentence for one warning, quoting only the warning's own stats. */
 export function narrateMarginWarning(w: MarginWarning): string {
@@ -446,6 +490,10 @@ export function narrateMarginWarning(w: MarginWarning): string {
       return `Komisi ${w.label ?? "kanal"} ${formatPercent(sharePct(s.F, s.R))} dari penjualan (${formatRupiah(s.F)} dari ${formatRupiah(s.R)}), di atas batas 20%.`;
     case "DISCOUNT_HEAVY":
       return `Diskon ${formatPercent(sharePct(s.discount, s.revenue_gross))} dari penjualan kotor (${formatRupiah(s.discount)} dari ${formatRupiah(s.revenue_gross)}), di atas batas 15%.`;
+    case "MARGIN_DROP":
+      return narrateMarginDrop(w);
+    case "MISSING_COST":
+      return `${w.label ?? "Produk"} terjual ${formatRupiah(s.R_missing)} tanpa HPP (modal). Akibatnya margin dan untung terlihat lebih besar dari aslinya. Isi HPP-nya di Stok supaya angkanya akurat.`;
   }
 }
 
@@ -459,14 +507,18 @@ export interface WarningRow {
   anchor: "produk" | "kanal" | null;
 }
 
-export function warningRows(lines: readonly SaleItemLine[]): WarningRow[] {
-  return marginWarnings(lines).map((w) => ({
+/** Codes whose "Lihat datanya" points at the per-product margin table even though they cover the whole period. */
+const PRODUCT_ANCHORED: readonly MarginWarningCode[] = ["MARGIN_DROP", "MISSING_COST"];
+
+/** Pass `opts.previous` (same-length window before) to also check MARGIN_DROP. */
+export function warningRows(lines: readonly SaleItemLine[], opts: MarginWarningOptions = {}): WarningRow[] {
+  return marginWarnings(lines, opts).map((w) => ({
     code: w.code,
     key: `${w.code}:${w.key ?? "period"}`,
     title: MARGIN_WARNING_LABEL[w.code],
     detail: narrateMarginWarning(w),
     severity: w.severity,
-    anchor: w.scope === "variant" ? "produk" : w.scope === "channel" ? "kanal" : null,
+    anchor: w.scope === "variant" || PRODUCT_ANCHORED.includes(w.code) ? "produk" : w.scope === "channel" ? "kanal" : null,
   }));
 }
 

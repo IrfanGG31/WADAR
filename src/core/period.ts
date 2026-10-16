@@ -69,6 +69,11 @@ export function inWindow(day: string, window: PeriodWindow): boolean {
  * current = today−6 … today, previous = today−13 … today−7.
  */
 export function weekOverWeek(today: string): { current: PeriodWindow; previous: PeriodWindow } {
-  const current = lastDays(today, 7);
-  return { current, previous: lastDays(addDays(current.from, -1), 7) };
+  return periodComparison(today, 7);
+}
+
+/** The last `days` days ending at `today`, and the `days` days right before them (FIN-3: 7 vs 7, 30 vs 30). */
+export function periodComparison(today: string, days: number): { current: PeriodWindow; previous: PeriodWindow } {
+  const current = lastDays(today, days);
+  return { current, previous: lastDays(addDays(current.from, -1), days) };
 }

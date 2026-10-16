@@ -20,6 +20,8 @@ import {
   narrateProfitChange,
   narrateProfitHeadline,
   OTHER_CATEGORY,
+  parseFinancePeriodDays,
+  periodLabels,
   periodResult,
   productMarginRows,
   profitInsight,
@@ -32,7 +34,7 @@ import {
   type VariantLabel,
 } from "./finance-insight";
 import { formatRupiah, formatSignedRupiah } from "./money";
-import { daysOf, weekOverWeek } from "./period";
+import { daysOf, periodComparison, weekOverWeek } from "./period";
 
 type RawLine = SaleItemLine & { day: string };
 
@@ -301,7 +303,7 @@ describe("Margin tab", () => {
     const rows = warningRows(cur);
     const core = marginWarnings(cur);
     expect(rows.map((r) => r.code)).toEqual(core.map((w) => w.code));
-    expect(new Set(rows.map((r) => r.code))).toEqual(new Set(["SELL_BELOW_COST", "FEE_HEAVY", "DISCOUNT_HEAVY"]));
+    expect(new Set(rows.map((r) => r.code))).toEqual(new Set(["SELL_BELOW_COST", "FEE_HEAVY", "DISCOUNT_HEAVY", "MISSING_COST"]));
     for (const r of rows) expect(r.title).toBe(MARGIN_WARNING_LABEL[r.code]);
     const below = core.find((w) => w.code === "SELL_BELOW_COST")!;
     expect(narrateMarginWarning(below)).toBe(
@@ -347,5 +349,70 @@ describe("effectRows on a hand-built change", () => {
       0,
     );
     expect(effectRows(change)).toEqual([{ key: "volume", label: "Jumlah terjual", amount: 4_000 }]);
+  });
+});
+
+describe("Peringatan margin tergerus (FIN-6 MARGIN_DROP, MISSING_COST)", () => {
+  const sale = (day: string, unitCost: number): RawLine => ({ ...raw(day, "serum", "pos", 10), unit_price: 10_000, unit_cost: unitCost });
+
+  it("warningRows with the previous period narrates a 6-point drop with its cause", () => {
+    const w = weekOverWeek(TODAY);
+    const lines = [...daysOf(w.previous).map((d) => sale(d, 6_000)), ...daysOf(w.current).map((d) => sale(d, 6_600))];
+    const rows = warningRows(linesIn(lines, w.current), { previous: linesIn(lines, w.previous) });
+    const drop = rows.find((r) => r.code === "MARGIN_DROP")!;
+    expect(drop.title).toBe(MARGIN_WARNING_LABEL.MARGIN_DROP);
+    expect(drop.anchor).toBe("produk");
+    expect(drop.detail).toBe(
+      `Margin 7 hari terakhir turun 6 poin, dari 40% jadi 34% dibanding 7 hari sebelumnya. ` +
+        `Sebabnya: modal barang (HPP) makin besar dibanding harga jual, dari 60% jadi 66% penjualan kotor. ` +
+        `Akibatnya, dari setiap ${formatRupiah(100_000)} penjualan, untung kotormu berkurang ±${formatRupiah(6_000)} ` +
+        `(±${formatRupiah(42_000)} di periode ini).`,
+    );
+  });
+
+  it("a 3-point drop gives no MARGIN_DROP row", () => {
+    const w = weekOverWeek(TODAY);
+    const lines = [...daysOf(w.previous).map((d) => sale(d, 6_000)), ...daysOf(w.current).map((d) => sale(d, 6_300))];
+    const rows = warningRows(linesIn(lines, w.current), { previous: linesIn(lines, w.previous) });
+    expect(rows.map((r) => r.code)).not.toContain("MARGIN_DROP");
+  });
+
+  it("MISSING_COST narration says which products and why the margin is off", () => {
+    const cur = linesIn(LINES, current);
+    const row = warningRows(cur).find((r) => r.code === "MISSING_COST")!;
+    expect(row.title).toBe("HPP belum diisi");
+    expect(row.anchor).toBe("produk");
+    const core = marginWarnings(cur).find((w) => w.code === "MISSING_COST")!;
+    expect(row.detail).toBe(
+      `Masker Clay terjual ${formatRupiah(core.stats.R_missing)} tanpa HPP (modal). ` +
+        `Akibatnya margin dan untung terlihat lebih besar dari aslinya. Isi HPP-nya di Stok supaya angkanya akurat.`,
+    );
+  });
+
+  it("30-day period: windows, labels and totals cover exactly 30 days, compared with the 30 days before", () => {
+    expect(parseFinancePeriodDays(undefined)).toBe(7);
+    expect(parseFinancePeriodDays("30")).toBe(30);
+    expect(parseFinancePeriodDays("90")).toBe(7);
+    expect(periodLabels(30)).toEqual({ current: "30 hari terakhir", previous: "30 hari sebelumnya" });
+    expect(periodLabels(7)).toEqual({ current: "7 hari terakhir", previous: "7 hari sebelumnya" });
+
+    const p = periodComparison(TODAY, 30);
+    expect(p.current).toEqual({ from: "2026-09-16", to: TODAY });
+    expect(p.previous).toEqual({ from: "2026-08-17", to: "2026-09-15" });
+    expect(periodComparison(TODAY, 7)).toEqual(weekOverWeek(TODAY));
+
+    // Margin slid 40% → 34% three weeks ago: a 7-vs-7 view can't see it, 30-vs-30 can.
+    const lines: RawLine[] = [];
+    for (const d of daysOf({ from: "2026-08-17", to: TODAY })) lines.push(sale(d, d < "2026-09-16" ? 6_000 : 6_600));
+    const w7 = weekOverWeek(TODAY);
+    expect(marginWarnings(linesIn(lines, w7.current), { previous: linesIn(lines, w7.previous) }).map((x) => x.code)).not.toContain("MARGIN_DROP");
+    const drop = marginWarnings(linesIn(lines, p.current), { previous: linesIn(lines, p.previous), days: 30 }).find((x) => x.code === "MARGIN_DROP")!;
+    expect(drop.stats).toMatchObject({ margin_before: 40, margin_now: 34, drop_pts: 6, days: 30, R: 30 * 100_000, lost_gp: 30 * 6_000 });
+    const res = periodResult(lines as FinLine[], [], p.current);
+    expect(res.totals.q).toBe(300);
+    expect(res.totals.R).toBe(3_000_000);
+    expect(warningRows(linesIn(lines, p.current), { previous: linesIn(lines, p.previous), days: 30 }).find((r) => r.code === "MARGIN_DROP")?.detail).toMatch(
+      /^Margin 30 hari terakhir turun 6 poin, .* dibanding 30 hari sebelumnya\./,
+    );
   });
 });
