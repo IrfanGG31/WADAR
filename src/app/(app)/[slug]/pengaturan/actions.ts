@@ -1,9 +1,12 @@
 "use server";
 
-import { getAi } from "@/ai";
+import { redirect } from "next/navigation";
+import { getAi, getConsult } from "@/ai";
 import { FaqInput, faqChunk } from "@/core/chat/kb";
 import { StoreProfileInput } from "@/core/chat/store-policies";
+import { interpretReset } from "@/core/demo-reset";
 import { getShop } from "@/db/shop";
+import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ActionResult {
@@ -83,4 +86,21 @@ export async function deleteFaq(slug: string, documentId: string): Promise<Actio
   const supabase = await createClient();
   const { error } = await supabase.from("kb_documents").delete().eq("tenant_id", shop.id).eq("id", documentId).eq("kind", "faq");
   return error ? { error: "FAQ belum terhapus. Coba lagi sebentar." } : {};
+}
+
+/**
+ * Reset demo (SPRINT-8D §5): one action puts the demo shop back to its seed state
+ * (`reset_demo_shop` archives the old copy and seeds a fresh one under the same slug).
+ * Demo shops only; the RPC re-checks membership and `is_demo` itself.
+ */
+export async function resetDemoShop(slug: string): Promise<ActionResult> {
+  const shop = await getShop(slug);
+  if (!shop.is_demo) return { error: "Hanya toko demo yang bisa di-reset." };
+
+  const supabase = await createClient();
+  const result = interpretReset(await supabase.rpc("reset_demo_shop", { p_tenant_id: shop.id }), slug);
+  if (!result.ok) return { error: result.error };
+
+  getConsult().clearCache();
+  redirect(shopPath(slug, "beranda"));
 }
