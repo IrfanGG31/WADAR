@@ -76,6 +76,24 @@ export function periodLabels(days: number): { current: string; previous: string 
   return { current: `${days} hari terakhir`, previous: `${days} hari sebelumnya` };
 }
 
+export interface FinancePeriodOption {
+  days: FinancePeriodDays;
+  label: string;
+  /** Search params for the link; the default (7) keeps the bare URL. */
+  query: { periode?: string };
+  active: boolean;
+}
+
+/** The "7 hari · 30 hari" switch on the Keuangan screens. */
+export function financePeriodOptions(active: FinancePeriodDays): FinancePeriodOption[] {
+  return FINANCE_PERIOD_DAYS.map((days) => ({
+    days,
+    label: `${days} hari`,
+    query: days === 7 ? {} : { periode: String(days) },
+    active: days === active,
+  }));
+}
+
 export function lineFromFinDaily(
   row: FinDailyRow,
   variants: ReadonlyMap<string, VariantLabel>,
@@ -267,6 +285,8 @@ export interface ProfitInsight {
   narrative: string;
   /** False when the previous window had no sales and no expenses — nothing to compare against. */
   comparable: boolean;
+  /** Window length the narration names ("7 hari terakhir" / "30 hari terakhir"). */
+  days: number;
 }
 
 /**
@@ -279,6 +299,7 @@ export function profitInsight(
   expenses: readonly ExpenseEntry[],
   current: PeriodWindow,
   previous: PeriodWindow,
+  days = 7,
 ): ProfitInsight {
   const cur = linesIn(lines, current);
   const prev = linesIn(lines, previous);
@@ -296,9 +317,10 @@ export function profitInsight(
     topProduct,
     topChannel,
     comparable,
+    days,
     narrative: comparable
-      ? narrateProfitChange(change, effects, topProduct, topChannel)
-      : `Belum ada data ${PREVIOUS_LABEL} untuk dibandingkan.`,
+      ? narrateProfitChange(change, effects, topProduct, topChannel, days)
+      : `Belum ada data ${periodLabels(days).previous} untuk dibandingkan.`,
   };
 }
 
@@ -308,10 +330,12 @@ export function narrateProfitChange(
   effects: readonly EffectRow[] = effectRows(change),
   topProduct: Contributor | null = null,
   topChannel: Contributor | null = null,
+  days = 7,
 ): string {
-  if (change.delta === 0) return `Untung bersih ${CURRENT_LABEL} sama dengan ${PREVIOUS_LABEL}.`;
+  const label = periodLabels(days);
+  if (change.delta === 0) return `Untung bersih ${label.current} sama dengan ${label.previous}.`;
   const dir = change.delta > 0 ? "naik" : "turun";
-  const sentences = [`Untung bersih ${CURRENT_LABEL} ${dir} ${formatRupiah(Math.abs(change.delta))} dibanding ${PREVIOUS_LABEL}.`];
+  const sentences = [`Untung bersih ${label.current} ${dir} ${formatRupiah(Math.abs(change.delta))} dibanding ${label.previous}.`];
   const top = effects.slice(0, 3);
   if (top.length > 0) {
     sentences.push(`Penyebab terbesar: ${top.map((e) => `${EFFECT_PHRASE[e.key]} ${formatSignedRupiah(e.amount)}`).join(", ")}.`);
@@ -325,10 +349,11 @@ export function narrateProfitChange(
 export function narrateProfitHeadline(insight: ProfitInsight): string {
   if (!insight.comparable) return insight.narrative;
   const { delta } = insight.change;
-  if (delta === 0) return `Untung bersih ${CURRENT_LABEL} sama dengan ${PREVIOUS_LABEL}.`;
+  const label = periodLabels(insight.days);
+  if (delta === 0) return `Untung bersih ${label.current} sama dengan ${label.previous}.`;
   const top = insight.effects[0];
   const cause = top ? `, terutama karena ${EFFECT_PHRASE[top.key]} (${formatSignedRupiah(top.amount)})` : "";
-  return `Untung bersih ${CURRENT_LABEL} ${delta > 0 ? "naik" : "turun"} ${formatRupiah(Math.abs(delta))}${cause}.`;
+  return `Untung bersih ${label.current} ${delta > 0 ? "naik" : "turun"} ${formatRupiah(Math.abs(delta))}${cause}.`;
 }
 
 /* ─── Donut: penjualan per kategori ────────────────────────────────────────── */

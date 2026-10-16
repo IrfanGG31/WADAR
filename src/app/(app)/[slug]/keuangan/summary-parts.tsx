@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Lightbulb, Minus } from "lucide-react";
 import {
   CURRENT_LABEL,
-  PREVIOUS_LABEL,
+  periodLabels,
   sumDailyRows,
   type CategorySlice,
   type DailyFinanceRow,
@@ -61,6 +61,7 @@ function Delta({ card }: { card: SummaryCard }) {
 /** "Kenapa untung berubah" — the FIN-5 decomposition, largest effect first, plus its template narrative. */
 export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
   const max = insight.effects.reduce((m, e) => Math.max(m, Math.abs(e.amount)), 0);
+  const label = periodLabels(insight.days);
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="kenapa-untung">
       <h2 id="kenapa-untung" className="flex items-center gap-2 text-sm font-semibold">
@@ -88,7 +89,7 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
           </ul>
           <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
             Jumlah semua efek = perubahan untung bersih ({formatSignedRupiah(insight.change.delta)}): dari{" "}
-            {formatRupiah(insight.change.np0)} ({PREVIOUS_LABEL}) ke {formatRupiah(insight.change.np1)} ({CURRENT_LABEL}).
+            {formatRupiah(insight.change.np0)} ({label.previous}) ke {formatRupiah(insight.change.np1)} ({label.current}).
           </p>
         </>
       )}
@@ -97,7 +98,7 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
 }
 
 /** Untung kotor per day of the current window — one horizontal bar row per day with full Rupiah amount, negative days in red. */
-export function ProfitTrend({ rows }: { rows: DailyFinanceRow[] }) {
+export function ProfitTrend({ rows, periodLabel = CURRENT_LABEL }: { rows: DailyFinanceRow[]; periodLabel?: string }) {
   const max = rows.reduce((m, r) => Math.max(m, Math.abs(r.GP)), 0);
   const total = sumDailyRows(rows);
   return (
@@ -109,7 +110,7 @@ export function ProfitTrend({ rows }: { rows: DailyFinanceRow[] }) {
         <p className="text-xs text-muted-foreground tabular-nums">Total {formatRupiah(total.GP)}</p>
       </div>
       {max === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Belum ada penjualan {CURRENT_LABEL}.</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">Belum ada penjualan {periodLabel}.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((r) => {
@@ -146,12 +147,22 @@ const CATEGORY_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"];
 const OTHER_COLOR = "#94a3b8";
 
 /** Penjualan bersih per kategori — donut plus a legend that doubles as the table view (label, %, rupiah). */
-export function CategoryDonut({ total, slices, otherLabel }: { total: number; slices: CategorySlice[]; otherLabel: string }) {
+export function CategoryDonut({
+  total,
+  slices,
+  otherLabel,
+  periodLabel = CURRENT_LABEL,
+}: {
+  total: number;
+  slices: CategorySlice[];
+  otherLabel: string;
+  periodLabel?: string;
+}) {
   if (slices.length === 0) {
     return (
       <section className="rounded-xl border border-border p-4">
         <h2 className="text-sm font-semibold">Penjualan per kategori</h2>
-        <p className="py-8 text-center text-sm text-muted-foreground">Belum ada penjualan {CURRENT_LABEL}.</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">Belum ada penjualan {periodLabel}.</p>
       </section>
     );
   }
@@ -182,7 +193,7 @@ export function CategoryDonut({ total, slices, otherLabel }: { total: number; sl
           viewBox="0 0 140 140"
           className="h-40 w-40 shrink-0"
           role="img"
-          aria-label={`Komposisi penjualan ${CURRENT_LABEL} per kategori, total ${formatRupiah(total)}`}
+          aria-label={`Komposisi penjualan ${periodLabel} per kategori, total ${formatRupiah(total)}`}
         >
           <g transform="rotate(-90 70 70)">
             {arcs.map(({ slice, dash, offset: o }) => (

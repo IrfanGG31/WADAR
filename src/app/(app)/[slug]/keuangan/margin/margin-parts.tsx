@@ -15,12 +15,12 @@ const SEVERITY: Record<WarningRow["severity"], { label: string; variant: "danger
   1: { label: "Info", variant: "muted" },
 };
 
-export function Warnings({ slug, rows }: { slug: string; rows: WarningRow[] }) {
+export function Warnings({ slug, rows, periodLabel = CURRENT_LABEL }: { slug: string; rows: WarningRow[]; periodLabel?: string }) {
   if (rows.length === 0) {
     return (
       <section className="flex items-center gap-3 rounded-xl border border-border p-4 text-sm">
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-        Tidak ada peringatan margin {CURRENT_LABEL}.
+        Tidak ada peringatan margin {periodLabel}.
       </section>
     );
   }

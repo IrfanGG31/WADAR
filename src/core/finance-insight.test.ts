@@ -20,6 +20,7 @@ import {
   narrateProfitChange,
   narrateProfitHeadline,
   OTHER_CATEGORY,
+  financePeriodOptions,
   parseFinancePeriodDays,
   periodLabels,
   periodResult,
@@ -414,5 +415,31 @@ describe("Peringatan margin tergerus (FIN-6 MARGIN_DROP, MISSING_COST)", () => {
     expect(warningRows(linesIn(lines, p.current), { previous: linesIn(lines, p.previous), days: 30 }).find((r) => r.code === "MARGIN_DROP")?.detail).toMatch(
       /^Margin 30 hari terakhir turun 6 poin, .* dibanding 30 hari sebelumnya\./,
     );
+  });
+});
+
+describe("Pemilih periode 7/30 hari (FIN-3)", () => {
+  it("offers 7 and 30; 7 is the default and keeps the bare URL", () => {
+    expect(financePeriodOptions(7)).toEqual([
+      { days: 7, label: "7 hari", query: {}, active: true },
+      { days: 30, label: "30 hari", query: { periode: "30" }, active: false },
+    ]);
+    expect(financePeriodOptions(30).map((o) => o.active)).toEqual([false, true]);
+    for (const o of financePeriodOptions(30)) expect(parseFinancePeriodDays(o.query.periode)).toBe(o.days);
+  });
+
+  it("30-day profit narration names 30-day windows, not 7", () => {
+    // The fixture spans 14 days, so reuse its windows; only the label length is under test here.
+    const insight = profitInsight(LINES, EXPENSES, current, previous, 30);
+    expect(insight.days).toBe(30);
+    expect(insight.narrative).toMatch(/^Untung bersih 30 hari terakhir (naik|turun) Rp/);
+    expect(narrateProfitHeadline(insight)).toMatch(/^Untung bersih 30 hari terakhir /);
+    const p = periodComparison(TODAY, 30);
+    const fresh = profitInsight([], [], p.current, p.previous, 30);
+    expect(fresh.narrative).toBe("Belum ada data 30 hari sebelumnya untuk dibandingkan.");
+    expect(narrateProfitChange(decomposeProfitChange([], [], 0, 0), undefined, null, null, 30)).toBe(
+      "Untung bersih 30 hari terakhir sama dengan 30 hari sebelumnya.",
+    );
+    expect(profitInsight(LINES, EXPENSES, current, previous).days).toBe(7);
   });
 });
