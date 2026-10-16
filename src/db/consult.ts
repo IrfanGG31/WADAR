@@ -11,8 +11,8 @@ import type {
 } from "@/core/consult/tools";
 import { addDays, isoDateInZone, lastDays, startOfDayUtc } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
+import { listCustomers } from "./customers";
 import { getFinanceData } from "./finance";
-import { fetchAllRows } from "./paginate";
 import type { Shop } from "./shop";
 import { listStockForecasts } from "./stock";
 
@@ -40,15 +40,7 @@ export async function loadConsultData(shop: Shop, today: string, opts: { history
   const [finance, stock, customers, memory, insights, escalated] = await Promise.all([
     getFinanceData(shop.id, lastDays(today, opts.historyDays ?? CONSULT_HISTORY_DAYS)),
     listStockForecasts(shop.id),
-    fetchAllRows<{ id: string; name: string | null; total_spent: number; orders_count: number; created_at: string; last_order_at: string | null }>(
-      (from, to) =>
-        supabase
-          .from("customers")
-          .select("id, name, total_spent, orders_count, created_at, last_order_at")
-          .eq("tenant_id", shop.id)
-          .order("id")
-          .range(from, to),
-    ),
+    listCustomers(shop),
     memoryQuery(supabase, shop.id),
     supabase
       .from("insights")
@@ -71,10 +63,10 @@ export async function loadConsultData(shop: Shop, today: string, opts: { history
       (c): CustomerRow => ({
         id: c.id,
         name: c.name,
-        total_spent: Number(c.total_spent),
-        orders_count: Number(c.orders_count),
-        first_day: localDay(c.created_at),
-        last_order_day: c.last_order_at ? localDay(c.last_order_at) : null,
+        total_spent: c.total_spent,
+        orders_count: c.orders_count,
+        first_day: c.first_day,
+        last_order_day: c.last_order_day,
       }),
     ),
     insights: (insights.data ?? []).map(
