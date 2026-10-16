@@ -1,3 +1,4 @@
+import { askCacheKey, createTtlCache, dataVersion, weeklyCacheKey } from "@/core/consult/cache";
 import {
   collectEvidence,
   groundAnswer,
@@ -31,6 +32,12 @@ import type { RunMeter } from "@/core/chat/pipeline";
  * key (or with DEMO_SAFE=1, an open circuit, a timeout) the answer is the
  * offline template and the result says `engine: "offline"` and why — it never
  * pretends a model answered. The model is injected so tests run offline.
+ *
+ * Cache (SPRINT-8D §5): a grounded model answer is kept per tenant + data
+ * fingerprint + question. It is read only when the model can't answer
+ * (DEMO_SAFE, no key, open circuit, timeout/error) — live answers stay live —
+ * and a hit is labelled `cached` and costs no `ai_runs` row. Under DEMO_SAFE the
+ * offline template is cached too, so repeated demo questions are instant.
  */
 export interface ConsultTurn {
   role: "user" | "assistant";
@@ -81,6 +88,8 @@ export interface ConsultOutcome {
   fallbackReason: string | null;
   toolsUsed: ToolName[];
   attempts: ConsultAttempt[];
+  /** True when this exact outcome was replayed from the cache (no model call, `attempts` empty). */
+  cached?: boolean;
 }
 
 export interface ConsultDeps {
@@ -89,6 +98,8 @@ export interface ConsultDeps {
   breaker?: CircuitBreaker;
   now?: () => number;
   timeoutMs?: number;
+  /** Lifetime of a cached outcome; default CONSULT_CACHE_TTL_MS. */
+  cacheTtlMs?: number;
 }
 
 export interface AskRequest {
@@ -97,6 +108,23 @@ export interface AskRequest {
   data: ConsultData;
   deepRequested: boolean;
   usage: { total: number; deep: number };
+  /** Tenant id. Without it nothing is cached or replayed for this request. */
+  cacheScope?: string;
+}
+
+export interface WeeklyNarration {
+  text: string;
+  engine: "llm" | "offline";
+  model: string;
+  source: GroundedSource | "offline";
+  fallbackReason: string | null;
+  attempts: ConsultAttempt[];
+  cached?: boolean;
+}
+
+/** A grounded model answer, or the demo_safe template. Never a template that replaced a failed draft. */
+function cacheable(o: { engine: "llm" | "offline"; source: GroundedSource | "offline"; fallbackReason: string | null }): boolean {
+  return o.source !== "template" && (o.engine === "llm" || o.fallbackReason === "demo_safe");
 }
 
 const HISTORY_TURNS = 8;
@@ -106,7 +134,10 @@ function errorText(e: unknown): string {
   return e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 500) : String(e).slice(0, 500);
 }
 
-export function createConsult({ env, model, breaker = new CircuitBreaker(), now = Date.now, timeoutMs = LLM_TIMEOUT_MS }: ConsultDeps) {
+export function createConsult({ env, model, breaker = new CircuitBreaker(), now = Date.now, timeoutMs = LLM_TIMEOUT_MS, cacheTtlMs }: ConsultDeps) {
+  const askCache = createTtlCache<ConsultOutcome>({ ttlMs: cacheTtlMs, now });
+  const weeklyCache = createTtlCache<WeeklyNarration>({ ttlMs: cacheTtlMs, now });
+
   /** First reason the LLM can't answer, or null. */
   function unavailable(): string | null {
     const off = offlineReason(env);
@@ -200,6 +231,18 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
       deepThisMonth: req.usage.deep,
     });
 
+    const cacheKey = req.cacheScope
+      ? askCacheKey({ scope: req.cacheScope, question: req.question, history: req.history.slice(-HISTORY_TURNS), deep: req.deepRequested, version: dataVersion(req.data) })
+      : null;
+    const replay = (): ConsultOutcome | null => {
+      const hit = cacheKey ? askCache.get(cacheKey) : undefined;
+      return hit ? { ...hit, cached: true } : null;
+    };
+    const keep = (o: ConsultOutcome): ConsultOutcome => {
+      if (cacheKey && cacheable(o)) askCache.set(cacheKey, { ...o, attempts: [], cached: undefined });
+      return o;
+    };
+
     const why = unavailable();
     const offline = (fallbackReason: string, error: string | null = null): ConsultOutcome => {
       const { text, runs } = answerOffline(req.question, req.data);
@@ -217,7 +260,7 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
         attempts: [{ model: "offline:template-v1", tier, meter: meterFor("offline", { inputTokens: 0, cachedTokens: 0, outputTokens: 0 }, 0, fallbackReason), error, rejected: [] }],
       };
     };
-    if (why) return offline(why);
+    if (why) return replay() ?? keep(offline(why));
 
     emit({ type: "status", text: "Membaca data tokomu…" });
     const snapshot = getBusinessSnapshot(req.data);
@@ -244,7 +287,7 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
         template: (r) => templateFromRuns(r.length ? r : runPlan([{ name: "get_business_snapshot", args: {} }], req.data)),
         emit,
       });
-      return {
+      return keep({
         kind: "answer",
         text: outcome.text,
         remember: null,
@@ -256,9 +299,10 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
         fallbackReason: null,
         toolsUsed: [...new Set(runs.map((r) => r.name))],
         attempts,
-      };
+      });
     } catch (e) {
-      return offline(/timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", errorText(e));
+      // A model that failed or timed out: replay an earlier grounded answer for the same data before degrading.
+      return replay() ?? offline(/timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", errorText(e));
     }
   }
 
@@ -267,11 +311,21 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
     selected: readonly InsightCandidate[],
     data: ConsultData,
     emit: (e: ConsultEvent) => void = () => {},
-  ): Promise<{ text: string; engine: "llm" | "offline"; model: string; source: GroundedSource | "offline"; fallbackReason: string | null; attempts: ConsultAttempt[] }> {
+    opts: { cacheScope?: string } = {},
+  ): Promise<WeeklyNarration> {
     const template = () => narrationText(narrateInsights(selected));
+    const cacheKey = opts.cacheScope && selected.length > 0 ? weeklyCacheKey({ scope: opts.cacheScope, version: dataVersion(data), selected }) : null;
+    const replay = (): WeeklyNarration | null => {
+      const hit = cacheKey ? weeklyCache.get(cacheKey) : undefined;
+      return hit ? { ...hit, cached: true } : null;
+    };
+    const keep = (n: WeeklyNarration): WeeklyNarration => {
+      if (cacheKey && cacheable(n)) weeklyCache.set(cacheKey, { ...n, attempts: [], cached: undefined });
+      return n;
+    };
     const why = unavailable();
     if (why || selected.length === 0) {
-      return { text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: why ?? "nothing_to_narrate", attempts: [] };
+      return replay() ?? keep({ text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: why ?? "nothing_to_narrate", attempts: [] });
     }
     try {
       // total_impact is precomputed so the model never has to add the impacts itself.
@@ -289,13 +343,19 @@ export function createConsult({ env, model, breaker = new CircuitBreaker(), now 
         template,
         emit,
       });
-      return { text: outcome.text, engine: "llm", model: modelId, source: outcome.source, fallbackReason: null, attempts };
+      return keep({ text: outcome.text, engine: "llm", model: modelId, source: outcome.source, fallbackReason: null, attempts });
     } catch (e) {
-      return { text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: /timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", attempts: [] };
+      return replay() ?? { text: template(), engine: "offline", model: "offline:template-v1", source: "offline", fallbackReason: /timeout|abort/i.test(errorText(e)) ? "timeout" : "provider_error", attempts: [] };
     }
   }
 
-  return { ask, narrateWeekly, unavailable, providerOfTier: (t: Tier) => providerOf(ROUTES[t][0]) };
+  /** Forget every cached outcome (demo reset; data changes already miss on their own). */
+  function clearCache(): void {
+    askCache.clear();
+    weeklyCache.clear();
+  }
+
+  return { ask, narrateWeekly, unavailable, clearCache, providerOfTier: (t: Tier) => providerOf(ROUTES[t][0]) };
 }
 
 export type Consult = ReturnType<typeof createConsult>;

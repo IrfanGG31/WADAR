@@ -169,3 +169,87 @@ describe("weekly narration (narrate task)", () => {
     expect(r.text.split("\n")).toHaveLength(4); // summary + 3 points
   });
 });
+
+describe("cache (DEMO_SAFE, SPRINT-8D §5)", () => {
+  const SCOPE = { cacheScope: "tenant-1" };
+
+  it("DEMO_SAFE: the second identical question is replayed — labelled cached, no attempts/cost", async () => {
+    const c = createConsult({ env: { ...KEY, DEMO_SAFE: "1" } });
+    const first = await c.ask(req(SCOPE));
+    const second = await c.ask(req({ ...SCOPE, question: "  kenapa UNTUNGKU turun minggu ini ?" }));
+    expect(first.cached).toBeUndefined();
+    expect(second).toMatchObject({ cached: true, engine: "offline", fallbackReason: "demo_safe", text: first.text });
+    expect(second.attempts).toEqual([]);
+  });
+
+  it("a changed data fingerprint (new sale) or another tenant misses", async () => {
+    const c = createConsult({ env: { ...KEY, DEMO_SAFE: "1" } });
+    await c.ask(req(SCOPE));
+    const sold = makeData({ lines: data.lines.map((l, i) => (i === 0 ? { ...l, qty: l.qty + 1 } : l)) });
+    expect((await c.ask(req({ ...SCOPE, data: sold }))).cached).toBeUndefined();
+    expect((await c.ask(req({ cacheScope: "tenant-2" }))).cached).toBeUndefined();
+  });
+
+  it("expires after the TTL", async () => {
+    let t = 0;
+    const c = createConsult({ env: { ...KEY, DEMO_SAFE: "1" }, now: () => t, cacheTtlMs: 1000 });
+    await c.ask(req(SCOPE));
+    t = 999;
+    expect((await c.ask(req(SCOPE))).cached).toBe(true);
+    t = 2500;
+    expect((await c.ask(req(SCOPE))).cached).toBeUndefined();
+  });
+
+  it("without cacheScope nothing is cached, and clearCache() forgets", async () => {
+    const c = createConsult({ env: { ...KEY, DEMO_SAFE: "1" } });
+    await c.ask(req());
+    expect((await c.ask(req())).cached).toBeUndefined();
+    await c.ask(req(SCOPE));
+    c.clearCache();
+    expect((await c.ask(req(SCOPE))).cached).toBeUndefined();
+  });
+
+  it("live: a configured model is called every time (no replay while it works)", async () => {
+    const { model, calls } = scripted(["Untungmu turun Rp77.340 minggu ini."], { tools: ["explain_profit_change"] });
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker() });
+    const a = await c.ask(req(SCOPE));
+    const b = await c.ask(req(SCOPE));
+    expect(calls).toHaveLength(2);
+    expect(a.engine).toBe("llm");
+    expect(b.cached).toBeUndefined();
+  });
+
+  it("a model that later fails replays the earlier grounded answer instead of the template", async () => {
+    let fail = false;
+    const ok = scripted(["Untungmu turun Rp77.340 minggu ini."], { tools: ["explain_profit_change"] }).model;
+    const model: ConsultModel = { generate: (call) => (fail ? Promise.reject(new Error("503")) : ok.generate(call)) };
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker() });
+    const live = await c.ask(req(SCOPE));
+    expect(live).toMatchObject({ engine: "llm", source: "model" });
+    fail = true;
+    const replayed = await c.ask(req(SCOPE));
+    expect(replayed).toMatchObject({ cached: true, engine: "llm", text: live.text });
+    expect(replayed.attempts).toEqual([]);
+    // a different question has nothing cached → honest offline fallback
+    expect((await c.ask(req({ ...SCOPE, question: "Stok apa yang menipis?" }))).fallbackReason).toBe("provider_error");
+  });
+
+  it("a draft that failed grounding and became the template is never cached", async () => {
+    const { model } = scripted(["Untungmu turun Rp999.999.999."], { tools: ["explain_profit_change"] });
+    const c = createConsult({ env: KEY, model, breaker: new CircuitBreaker() });
+    expect((await c.ask(req(SCOPE))).source).toBe("template");
+    const fail: ConsultModel = { generate: async () => { throw new Error("503"); } };
+    const c2 = createConsult({ env: KEY, model: fail, breaker: new CircuitBreaker() });
+    expect((await c2.ask(req(SCOPE))).cached).toBeUndefined();
+  });
+
+  it("weekly narration is cached the same way", async () => {
+    const selected = selectInsights(weeklyCandidates(data), new Set());
+    const c = createConsult({ env: { ...KEY, DEMO_SAFE: "1" } });
+    const first = await c.narrateWeekly(selected, data, undefined, SCOPE);
+    const second = await c.narrateWeekly(selected, data, undefined, SCOPE);
+    expect(second).toMatchObject({ cached: true, text: first.text });
+    expect((await c.narrateWeekly(selected.slice(1), data, undefined, SCOPE)).cached).toBeUndefined();
+    expect((await c.narrateWeekly(selected, data)).cached).toBeUndefined();
+  });
+});

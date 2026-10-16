@@ -75,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
       emit({ type: "status", text: "Menyusun insight minggu ini…" });
       const data = await loadConsultData(shop, today);
       const weekly = await getWeeklyInsights(shop, data, { persist: true });
-      const narration = await consult.narrateWeekly(weekly.selected, data);
+      const narration = await consult.narrateWeekly(weekly.selected, data, undefined, { cacheScope: shop.id });
       await recordConsultRuns(shop.id, { attempts: narration.attempts, source: narration.source, tierReason: "weekly", fallbackReason: narration.fallbackReason });
       emit({
         type: "weekly",
@@ -85,6 +85,7 @@ export async function POST(request: Request): Promise<Response> {
         model: narration.model,
         fallbackReason: narration.fallbackReason,
         grounding: narration.source,
+        cached: narration.cached ?? false,
       });
     });
   }
@@ -93,7 +94,7 @@ export async function POST(request: Request): Promise<Response> {
     emit({ type: "status", text: "Memikirkan pertanyaanmu…" });
     const [data, usage] = await Promise.all([loadConsultData(shop, today), consultUsageThisMonth(shop.id, today)]);
     const outcome = await consult.ask(
-      { question: body.question, history: body.history, data, deepRequested: body.deep, usage },
+      { question: body.question, history: body.history, data, deepRequested: body.deep, usage, cacheScope: shop.id },
       (e: ConsultEvent) => emit(e),
     );
     await recordConsultRuns(shop.id, outcome).catch((e) => console.error("[consult] ai_runs", e));
@@ -109,6 +110,7 @@ export async function POST(request: Request): Promise<Response> {
       grounding: outcome.source,
       fallbackReason: outcome.fallbackReason,
       toolsUsed: outcome.toolsUsed,
+      cached: outcome.cached ?? false,
     });
   });
 }

@@ -14,6 +14,8 @@ interface Meta {
   grounding?: string;
   fallbackReason?: string | null;
   toolsUsed?: string[];
+  /** Replayed from the server cache, not freshly generated. */
+  cached?: boolean;
 }
 
 interface Message {
@@ -101,6 +103,7 @@ export function ConsultClient({ slug, offlineReason }: { slug: string; offlineRe
               grounding: String(e.grounding),
               fallbackReason: (e.fallbackReason as string | null) ?? null,
               toolsUsed: (e.toolsUsed as string[]) ?? [],
+              cached: e.cached === true,
             },
             remember: e.kind === "remember" && e.remember ? { content: (e.remember as { content: string }).content, state: "pending" } : undefined,
           });
@@ -109,7 +112,7 @@ export function ConsultClient({ slug, offlineReason }: { slug: string; offlineRe
             text: String(e.text),
             draft: false,
             status: undefined,
-            meta: { engine: e.engine as Meta["engine"], model: String(e.model), tier: "narrate", grounding: String(e.grounding), fallbackReason: (e.fallbackReason as string | null) ?? null },
+            meta: { engine: e.engine as Meta["engine"], model: String(e.model), tier: "narrate", grounding: String(e.grounding), fallbackReason: (e.fallbackReason as string | null) ?? null, cached: e.cached === true },
           });
         } else if (e.type === "remembered") {
           patch(id, { text: `Oke, sudah kuingat: "${String(e.content)}".`, status: undefined, draft: false });
@@ -226,6 +229,7 @@ export function ConsultClient({ slug, offlineReason }: { slug: string; offlineRe
                       <Badge variant={m.meta.engine === "llm" ? "default" : "muted"}>
                         {m.meta.engine === "llm" ? `AI · ${m.meta.model}` : "Offline · templat"}
                       </Badge>
+                      {m.meta.cached ? <span className="text-xs text-muted-foreground">Jawaban tersimpan · data belum berubah</span> : null}
                       {m.meta.grounding && GROUNDING_LABEL[m.meta.grounding] ? (
                         <span className="text-xs text-muted-foreground">{GROUNDING_LABEL[m.meta.grounding]}</span>
                       ) : null}
