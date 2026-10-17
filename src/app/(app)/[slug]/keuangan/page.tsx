@@ -18,6 +18,7 @@ import { getShop } from "@/db/shop";
 import { formatIsoDate } from "@/lib/format-date";
 import { shopToday } from "@/lib/shop-today";
 import { shopPath } from "@/lib/routes";
+import { ExportReportButton } from "./export-report-button";
 import { KeuanganHeader } from "./keuangan-header";
 import { PeriodPicker, PeriodPickerSkeleton } from "./period-picker";
 import { CategoryDonut, ProfitChangeCard, ProfitTrend, SummaryCards } from "./summary-parts";
@@ -52,7 +53,12 @@ async function Summary({ params, searchParams }: { params: Params; searchParams:
   const today = await shopToday(shop.timezone);
   const { current, previous } = periodComparison(today, days);
   const { lines, expenses } = await getFinanceData(shop.id, { from: previous.from, to: current.to });
-  const picker = <PeriodPicker slug={slug} page="keuangan" days={days} />;
+  const picker = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <PeriodPicker slug={slug} page="keuangan" days={days} />
+      <ExportReportButton slug={slug} days={days} />
+    </div>
+  );
 
   if (lines.length === 0 && expenses.length === 0) {
     return (

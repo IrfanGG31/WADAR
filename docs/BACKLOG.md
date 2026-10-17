@@ -7,7 +7,7 @@ Dicatat saat menolak/menunda fitur selama sprint (CLAUDE.md "Cara kerja"). Sumbe
 - Struk publik bertanda tangan (POS-3), void penjualan (POS-5), POS offline (POS-6).
 - Impor file marketplace asli (IMP-1..4).
 - Penyesuaian tanggal kembar (STK-6), risiko kedaluwarsa (STK-5).
-- Ekspor laporan (FIN-7).
+- ~~Ekspor laporan (FIN-7)~~ — **selesai (17 Okt, U3)**: tombol "Unduh laporan (CSV)" di Keuangan › Ringkasan mengikuti periode terpilih (`?periode=7|30`, berakhir hari ini menurut zona waktu toko): satu baris per hari (qty, penjualan bersih, HPP, komisi, subsidi ongkir, untung kotor, pengeluaran, untung bersih) + baris TOTAL, rupiah bulat, BOM UTF-8 (`src/core/finance-report.ts`, action `keuangan/export-actions.ts`, hanya peran pemilik). Sisa: PDF/XLSX, rincian per produk/kanal, rentang tanggal bebas.
 - WhatsApp produksi (CHT-1) — sprint: widget web saja.
 - ~~Insight mingguan terjadwal (CON-3)~~ — terjadwal + tersimpan selesai (GAP #5, lihat bawah); pengiriman email/WA belum.
 - Billing, kuota, APK TWA, panel admin, evals lengkap.
