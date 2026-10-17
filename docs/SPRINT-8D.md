@@ -60,7 +60,7 @@ supabase/migrations/*.sql   scripts/seed-demo.ts
 1. Buka PWA di HP → Beranda "Glow by Sari": penjualan hari ini, tren 7 hari, stok menipis.
 2. Kasir: jual 2 Serum Vit C → kartu Beranda & stok berubah.
 3. Stock Intelligence: "Serum Vit C habis ±3 hari lagi → pesan 40 pcs"; ada daftar barang lambat laku + modal tertahan.
-4. Financial Insight: margin per kanal (TikTok paling tipis) + "Untung minggu ini turun Rp…: komisi TikTok −…, diskon −…".
+4. Financial Insight: margin per kanal (TikTok paling tipis) + "Untung bersih 7 hari terakhir turun Rp…. Penyebab terbesar: diskon −…, komisi kanal −…" (TikTok sedang ramai, tapi diskon & komisi menggerus untung; hari ini belum dihitung).
 5. Widget chat (layar kedua/HP juri): "serum vit c ready? bisa COD?" → dijawab; "kasih diskon dong" → eskalasi muncul di inbox.
 6. Konsultasi: "Kenapa untungku turun minggu ini, harus ngapain?" → jawaban berbasis data + 2 saran.
 

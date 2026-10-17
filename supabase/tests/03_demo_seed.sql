@@ -37,6 +37,25 @@ begin
   assert slow_last < now() - interval '30 days', 'Hair Mist has not sold for 30 days';
   assert (select on_hand from public.variants v join public.products p on p.id = v.product_id
            where p.tenant_id = t and p.name = 'Hair Mist 100ml') > 10, 'Hair Mist still has stock';
+  -- Keuangan's story (SPRINT-8D §4 step 4) over the 7 closed days vs the 7 before:
+  -- more discount, a bigger TikTok share, the same weekly expenses.
+  declare
+    today date := (now() at time zone tz)::date;
+    w1_from date := today - 7; w0_from date := today - 14;
+  begin
+    assert (select sum(order_discount) from public.sales where tenant_id = t
+             and (occurred_at at time zone tz)::date between w1_from and today - 1)
+         > 3 * (select sum(order_discount) from public.sales where tenant_id = t
+             and (occurred_at at time zone tz)::date between w0_from and w1_from - 1), 'discounts jump in the story week';
+    assert (select avg((c.kind = 'tiktok_shop')::int) from public.sales s join public.channels c on c.id = s.channel_id
+             where s.tenant_id = t and (s.occurred_at at time zone tz)::date between w1_from and today - 1)
+         > 0.4, 'TikTok carries the story week';
+    assert (select sum(amount) from public.expenses where tenant_id = t and occurred_at between w1_from and today - 1)
+         = (select sum(amount) from public.expenses where tenant_id = t and occurred_at between w0_from and w1_from - 1),
+           'weekly expenses: no date-dependent bill in a 7-day comparison';
+  end;
+  -- A 4-day lead time makes the last 7 Serum (≈3 days of sales) read as kritis on Prediksi.
+  assert serum.lead_time_days = 4, 'Serum lead time';
 end $$;
 
 -- Reset builds a fresh copy under the same slug and archives the old shop (nothing deleted);
