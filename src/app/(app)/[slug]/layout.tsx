@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { Suspense } from "react";
+import { AccountLink } from "@/components/shell/account-link";
 import { NavSkeleton } from "@/components/shell/app-nav";
 import { RoleNav } from "@/components/shell/role-nav";
 import { ServiceWorkerRegister } from "@/components/shell/service-worker-register";
@@ -24,12 +25,17 @@ export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">)
           <Suspense fallback={<div className="h-5 w-40 animate-pulse rounded bg-muted" />}>
             <ShopName params={params} />
           </Suspense>
-          <form action={signOut}>
-            <Button type="submit" variant="ghost" size="sm" className="h-11 text-muted-foreground">
-              <LogOut className="h-4 w-4" />
-              Keluar
-            </Button>
-          </form>
+          <div className="flex shrink-0 items-center">
+            <Suspense fallback={<div className="h-11 w-11" aria-hidden />}>
+              <AccountLink params={params} />
+            </Suspense>
+            <form action={signOut}>
+              <Button type="submit" variant="ghost" size="sm" className="h-11 text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+                Keluar
+              </Button>
+            </form>
+          </div>
         </header>
         <main className="flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-10">{children}</main>
       </div>
