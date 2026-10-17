@@ -7,8 +7,8 @@ const listShopsForRollup = vi.fn(async (db: unknown) => {
   if (db !== admin) throw new Error("not service role");
   return [{ id: "t1", timezone: "Asia/Jakarta" }];
 });
-const rollupShopDays = vi.fn(async (db: unknown, _tenantId: string, _window: { from: string; to: string }) => {
-  if (db !== admin) throw new Error("not service role");
+const rollupShopDays = vi.fn(async (db: unknown, tenantId: string, window: { from: string; to: string }) => {
+  if (db !== admin || !tenantId || window.from > window.to) throw new Error("bad call");
   return { fin_rows: 2, stock_rows: 3 };
 });
 
