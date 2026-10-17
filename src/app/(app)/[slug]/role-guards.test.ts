@@ -33,7 +33,7 @@ vi.mock("@/db/access", async () => {
 const { deleteFaq, resetDemoShop } = await import("./pengaturan/actions");
 const { exportShopData, requestShopDeletion } = await import("./pengaturan/data-actions");
 const { sendReply, takeOver } = await import("./chat/actions");
-const { recordSale } = await import("./kasir/actions");
+const { recordSale, voidSale } = await import("./kasir/actions");
 const { archiveProduct, stockIn } = await import("./stok/actions");
 const { updateMemoryItem } = await import("./konsultasi/memory-actions");
 
@@ -43,6 +43,7 @@ const SALE = {
   payment_method: "tunai",
   idempotency_key: "cart-12345678",
 };
+const VOID = { sale_id: "00000000-0000-4000-8000-000000000003", reason: "salah input" };
 const STOCK_IN = { variant_id: "00000000-0000-4000-8000-000000000002", qty: 5, unit_cost: 10000 };
 
 beforeEach(() => {
@@ -71,6 +72,7 @@ describe("kasir (cashier)", () => {
     expect(await updateMemoryItem("kopi-dimas", "m1", "Toko buka jam 8")).toEqual({
       error: "Akun kasir tidak bisa memakai Konsultasi Bisnis. Minta pemilik toko melakukannya.",
     });
+    expect(await voidSale("kopi-dimas", VOID)).toEqual({ error: "Akun kasir tidak bisa membatalkan transaksi. Minta pemilik toko melakukannya." });
     expect(touched()).toBe(0);
     expect(updateMemory).not.toHaveBeenCalled();
   });
@@ -98,6 +100,8 @@ describe("pemilik (owner)", () => {
     expect(await takeOver("kopi-dimas", "c1")).toEqual({});
     expect(await updateMemoryItem("kopi-dimas", "m1", "Toko buka jam 8")).toEqual({});
     expect("filename" in (await exportShopData("kopi-dimas"))).toBe(true);
+    expect((await voidSale("kopi-dimas", VOID)).error).toBeUndefined();
+    expect(db.rpcs.at(-1)).toMatchObject({ fn: "void_sale", args: { p_sale_id: VOID.sale_id, p_reason: "salah input" } });
     await expect(archiveProduct("kopi-dimas", "p1")).rejects.toThrow("NEXT_REDIRECT:/kopi-dimas/stok");
   });
 });

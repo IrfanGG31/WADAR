@@ -8,6 +8,7 @@ export interface SaleListItem {
   order_discount: number;
   platform_fee: number;
   total: number;
+  status: string;
   payment_method: string | null;
   channel: { name: string; kind: string } | null;
   customer: { name: string | null; phone_e164: string | null } | null;
@@ -20,7 +21,7 @@ export async function listRecentSales(tenantId: string, limit = 30, opts: { cust
   let query = supabase
     .from("sales")
     .select(
-      "id, occurred_at, subtotal, order_discount, platform_fee, total, payment_method, " +
+      "id, occurred_at, subtotal, order_discount, platform_fee, total, status, payment_method, " +
         "channel:channels(name, kind), customer:customers(name, phone_e164), " +
         "items:sale_items(name_snapshot, qty, unit_price, line_discount)",
     )

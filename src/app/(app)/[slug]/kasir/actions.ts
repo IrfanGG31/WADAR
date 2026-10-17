@@ -2,6 +2,7 @@
 
 import { normalizePhone } from "@/core/phone";
 import { SaleInput } from "@/core/sale-schema";
+import { VoidSaleInput, voidResultNote, voidSaleError } from "@/core/sale-void";
 import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
@@ -48,4 +49,22 @@ export async function recordSale(slug: string, input: unknown): Promise<RecordSa
   }
   const result = data as { sale_id: string; total: number; duplicate: boolean };
   return { saleId: result.sale_id, total: Number(result.total), duplicate: result.duplicate };
+}
+
+export interface VoidSaleResult {
+  error?: string;
+  note?: string;
+}
+
+/** Batalkan transaksi (POS-5): owner only; the sale row stays, stock comes back, reports drop it. */
+export async function voidSale(slug: string, input: unknown): Promise<VoidSaleResult> {
+  const parsed = VoidSaleInput.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Transaksi tidak ditemukan." };
+  const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "void_sale");
+  if (denied) return { error: denied };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("void_sale", { p_sale_id: parsed.data.sale_id, p_reason: parsed.data.reason || null });
+  if (error) return { error: voidSaleError(error) };
+  return { note: voidResultNote((data ?? {}) as { already_void?: boolean; restocked?: number }) };
 }

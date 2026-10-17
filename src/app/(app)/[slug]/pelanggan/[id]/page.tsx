@@ -8,6 +8,7 @@ import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
 import { formatPhone } from "@/core/phone";
 import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
+import { saleStatusLabel } from "@/core/sale-void";
 import { getCustomer } from "@/db/customers";
 import { listRecentSales } from "@/db/sales";
 import { getShop } from "@/db/shop";
@@ -102,7 +103,12 @@ async function Detail({ params }: { params: Params }) {
                       {method && PAYMENT_LABEL[method] ? ` · ${PAYMENT_LABEL[method]}` : ""}
                     </span>
                   </div>
-                  <span className="shrink-0 font-semibold tabular-nums">{formatRupiah(Number(sale.total))}</span>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className={`font-semibold tabular-nums ${saleStatusLabel(sale.status) ? "text-muted-foreground line-through" : ""}`}>
+                      {formatRupiah(Number(sale.total))}
+                    </span>
+                    {saleStatusLabel(sale.status) && <Badge variant="outline">{saleStatusLabel(sale.status)}</Badge>}
+                  </div>
                 </li>
               );
             })}
