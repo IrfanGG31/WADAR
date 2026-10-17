@@ -1,5 +1,6 @@
 "use server";
 
+import { resolveOccurredAt } from "@/core/offline-sales";
 import { normalizePhone } from "@/core/phone";
 import { SaleInput } from "@/core/sale-schema";
 import { VoidSaleInput, voidResultNote, voidSaleError } from "@/core/sale-void";
@@ -12,9 +13,15 @@ export interface RecordSaleResult {
   saleId?: string;
   total?: number;
   duplicate?: boolean;
+  /** Temporary failure: an offline-queued sale stays queued (POS-6). */
+  retryable?: boolean;
 }
 
-/** Bayar (POS-1): one atomic, idempotent public.record_sale call. */
+/**
+ * Bayar (POS-1): one atomic, idempotent public.record_sale call. Also the
+ * resend target of the offline queue (POS-6): the same idempotency key
+ * returns the sale already stored, so a resend never records it twice.
+ */
 export async function recordSale(slug: string, input: unknown): Promise<RecordSaleResult> {
   const parsed = SaleInput.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Data transaksi belum lengkap." };
@@ -31,6 +38,7 @@ export async function recordSale(slug: string, input: unknown): Promise<RecordSa
   const denied = await permissionDenied(shop.id, "sell");
 
   if (denied) return { error: denied };
+  const when = resolveOccurredAt(sale.occurred_at, new Date());
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_sale", {
     p_tenant_id: shop.id,
@@ -41,11 +49,13 @@ export async function recordSale(slug: string, input: unknown): Promise<RecordSa
     p_payment_method: sale.payment_method,
     p_customer_phone: phone,
     p_customer_name: sale.customer_name || null,
+    ...(when.occurredAt ? { p_occurred_at: when.occurredAt } : {}),
+    ...(when.note ? { p_note: when.note } : {}),
   });
   if (error) {
     // Business rule messages from the function are written for the cashier ("Stok Serum tinggal 2").
     if (error.code === "P0001" || error.code === "22023" || error.code === "P0002") return { error: error.message };
-    return { error: "Transaksi belum tersimpan. Coba tekan Bayar lagi; tidak akan tercatat dobel." };
+    return { error: "Transaksi belum tersimpan. Coba tekan Bayar lagi; tidak akan tercatat dobel.", retryable: true };
   }
   const result = data as { sale_id: string; total: number; duplicate: boolean };
   return { saleId: result.sale_id, total: Number(result.total), duplicate: result.duplicate };

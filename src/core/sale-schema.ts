@@ -22,5 +22,7 @@ export const SaleInput = z.object({
   customer_name: z.string().trim().max(80).optional().default(""),
   /** Generated once per cart on the client; a retry or double tap reuses it (no duplicate sale). */
   idempotency_key: z.string().min(8).max(100),
+  /** Device time of a sale queued offline (POS-6); the action decides whether to keep it. */
+  occurred_at: z.string().max(40).optional(),
 });
 export type SaleInput = z.infer<typeof SaleInput>;

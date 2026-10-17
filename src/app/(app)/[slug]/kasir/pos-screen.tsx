@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Loader2, Minus, Plus, Search, ShoppingCart } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CloudOff, Loader2, Minus, Plus, Search, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { RupiahInput } from "@/components/rupiah-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { cartTotals, cashSuggestions, changeDue } from "@/core/cart";
 import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
+import { isNetworkFailure, pendingLabel, type OfflineSalePayload } from "@/core/offline-sales";
 import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
 import { cn } from "@/lib/utils";
 import { recordSale } from "./actions";
+import { useOfflineSales } from "./use-offline-sales";
 
 export interface PosItem {
   variantId: string;
@@ -40,6 +42,8 @@ interface Done {
   change: number | null;
   duplicate: boolean;
   items: number;
+  /** Kept on this device until the server is reachable (POS-6). */
+  offline: boolean;
 }
 
 /** Kasir (POS-1/2): tap products into the cart, pick channel and payment, Bayar. */
@@ -59,6 +63,8 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
   const [done, setDone] = useState<Done | null>(null);
   const [pending, startTransition] = useTransition();
   const saleKey = useRef<string | null>(null);
+  const refresh = useCallback(() => router.refresh(), [router]);
+  const offline = useOfflineSales(slug, refresh);
 
   const byId = useMemo(() => new Map(items.map((i) => [i.variantId, i])), [items]);
   const categories = useMemo(
@@ -109,21 +115,43 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
     // One key per sale attempt: a double tap or a retry after a lost response can't record it twice.
     saleKey.current ??= crypto.randomUUID();
     const paidChange = change;
+    const request = {
+      channel_id: channel.id,
+      items: lines.map((l) => ({ variant_id: l.variantId, qty: l.qty })),
+      order_discount: totals.orderDiscount,
+      payment_method: payment,
+      customer_phone: phone,
+      customer_name: customerName,
+      idempotency_key: saleKey.current,
+    };
     startTransition(async () => {
-      const result = await recordSale(slug, {
-        channel_id: channel.id,
-        items: lines.map((l) => ({ variant_id: l.variantId, qty: l.qty })),
-        order_discount: totals.orderDiscount,
-        payment_method: payment,
-        customer_phone: phone,
-        customer_name: customerName,
-        idempotency_key: saleKey.current,
-      });
+      let result: Awaited<ReturnType<typeof recordSale>>;
+      try {
+        result = await recordSale(slug, request);
+      } catch (err) {
+        if (!isNetworkFailure(err, navigator.onLine)) {
+          setError("Transaksi belum tersimpan. Coba tekan Bayar lagi; tidak akan tercatat dobel.");
+          return;
+        }
+        // No connection: keep the sale (same key) on this device and send it later.
+        const queued: OfflineSalePayload = { ...request, occurred_at: new Date().toISOString() };
+        const outcome = offline.enqueue(queued, { total: totals.total, items: totals.items });
+        if (outcome !== "queued") {
+          setError(
+            outcome === "full"
+              ? "Terlalu banyak transaksi menunggu sinkron. Sambungkan internet dulu."
+              : "Internet putus dan transaksi tidak bisa disimpan di HP ini. Coba lagi saat ada sinyal.",
+          );
+          return;
+        }
+        setDone({ total: totals.total, change: paidChange, duplicate: false, items: totals.items, offline: true });
+        return;
+      }
       if (result.error) {
         setError(result.error);
         return;
       }
-      setDone({ total: result.total ?? totals.total, change: paidChange, duplicate: !!result.duplicate, items: totals.items });
+      setDone({ total: result.total ?? totals.total, change: paidChange, duplicate: !!result.duplicate, items: totals.items, offline: false });
       router.refresh();
     });
   }
@@ -131,12 +159,24 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
   if (done) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border border-border px-6 py-10 text-center">
-        <CheckCircle2 className="h-14 w-14 text-success" aria-hidden />
+        {done.offline ? (
+          <CloudOff className="h-14 w-14 text-amber-700" aria-hidden />
+        ) : (
+          <CheckCircle2 className="h-14 w-14 text-success" aria-hidden />
+        )}
         <div className="flex flex-col gap-1">
-          <p className="text-lg font-semibold">{done.duplicate ? "Transaksi ini sudah tercatat" : "Transaksi tersimpan"}</p>
+          <p className="text-lg font-semibold">
+            {done.offline ? "Disimpan di HP ini, menunggu sinkron" : done.duplicate ? "Transaksi ini sudah tercatat" : "Transaksi tersimpan"}
+          </p>
           <p className="text-3xl font-semibold tabular-nums">{formatRupiah(done.total)}</p>
           <p className="text-sm text-muted-foreground">{formatCount(done.items)} barang · {PAYMENT_LABEL[payment]}</p>
         </div>
+        {done.offline && (
+          <p className="text-sm text-muted-foreground">
+            Internet sedang putus. Transaksi ini terkirim otomatis saat sinyal kembali atau saat Kasir dibuka lagi. Jangan hapus data browser
+            sebelum terkirim; stok dan laporan baru berubah setelah itu.
+          </p>
+        )}
         {done.change !== null && (
           <p className="rounded-lg bg-muted px-4 py-2 text-lg">
             Kembalian <span className="font-semibold tabular-nums">{formatRupiah(done.change)}</span>
@@ -309,9 +349,38 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
     </div>
   );
 
+  const waiting = pendingLabel(offline.queue);
+  const offlinePanel = (waiting || offline.queue.rejected.length > 0) && (
+    <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">
+      {waiting && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 font-medium">
+            <CloudOff className="h-4 w-4" aria-hidden />
+            {waiting}
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void offline.sync()} disabled={offline.syncing}>
+            {offline.syncing && <Loader2 className="h-4 w-4 animate-spin" />}
+            {offline.syncing ? "Mengirim..." : "Kirim sekarang"}
+          </Button>
+        </div>
+      )}
+      {offline.queue.rejected.map((r) => (
+        <div key={r.key} className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-200 pt-2">
+          <p className="min-w-0">
+            Transaksi offline {formatRupiah(r.total)} ({formatCount(r.items)} barang) ditolak: {r.reason}. Catat ulang bila perlu.
+          </p>
+          <Button type="button" variant="ghost" size="sm" onClick={() => offline.dismiss(r.key)}>
+            Tutup
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="md:grid md:grid-cols-[minmax(0,1fr)_22rem] md:items-start md:gap-6">
       <section className="flex flex-col gap-4">
+        {offlinePanel}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari produk" aria-label="Cari produk" className="pl-9" />
