@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { brand } from "@/brand";
 
 /**
  * Void penjualan (POS-5). The sale row stays (append-only); `public.void_sale` flips its
@@ -62,7 +63,7 @@ export function voidSaleError(error: { code?: string; message?: string } | null)
       return error.message || "Alasan pembatalan belum benar.";
     case "42883":
     case "PGRST202":
-      return "Fitur batalkan transaksi belum aktif di server. Hubungi admin WADAR.";
+      return `Fitur batalkan transaksi belum aktif di server. Hubungi admin ${brand.shortName}.`;
     default:
       return "Pembatalan belum berhasil. Transaksi tidak berubah, coba lagi sebentar.";
   }
