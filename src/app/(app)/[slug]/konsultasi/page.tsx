@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { getConsult } from "@/ai";
+import { listMemory } from "@/db/memory";
 import { getShop } from "@/db/shop";
 import { ConsultClient } from "./consult-client";
+import { MemoryList } from "./memory-list";
 
 export const metadata = { title: "Konsultasi Bisnis" };
 
@@ -34,6 +36,12 @@ export default function KonsultasiPage({ params }: PageProps<"/[slug]/konsultasi
 
 async function Body({ params }: { params: PageProps<"/[slug]/konsultasi">["params"] }) {
   const { slug } = await params;
-  await getShop(slug);
-  return <ConsultClient slug={slug} offlineReason={getConsult().unavailable()} />;
+  const shop = await getShop(slug);
+  const memory = await listMemory(shop.id);
+  return (
+    <>
+      <ConsultClient slug={slug} offlineReason={getConsult().unavailable()} />
+      <MemoryList slug={slug} items={memory} />
+    </>
+  );
 }
