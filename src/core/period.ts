@@ -65,15 +65,23 @@ export function inWindow(day: string, window: PeriodWindow): boolean {
 }
 
 /**
- * "Minggu ini vs minggu lalu" as rolling 7-day windows (TECH-SPEC §7.2 FIN-5):
- * current = today−6 … today, previous = today−13 … today−7.
+ * "Minggu ini vs minggu lalu" as rolling 7-day windows of closed days (TECH-SPEC §7.2 FIN-5):
+ * current = today−7 … today−1, previous = today−14 … today−8.
  */
 export function weekOverWeek(today: string): { current: PeriodWindow; previous: PeriodWindow } {
   return periodComparison(today, 7);
 }
 
-/** The last `days` days ending at `today`, and the `days` days right before them (FIN-3: 7 vs 7, 30 vs 30). */
+/**
+ * The last `days` closed days (ending yesterday). Today is still running: counting it
+ * against full days would show every shop a drop in sales until closing time.
+ */
+export function lastClosedDays(today: string, days: number): PeriodWindow {
+  return lastDays(addDays(today, -1), days);
+}
+
+/** The last `days` closed days, and the `days` days right before them (FIN-3: 7 vs 7, 30 vs 30). */
 export function periodComparison(today: string, days: number): { current: PeriodWindow; previous: PeriodWindow } {
-  const current = lastDays(today, days);
+  const current = lastClosedDays(today, days);
   return { current, previous: lastDays(addDays(current.from, -1), days) };
 }

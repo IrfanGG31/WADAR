@@ -18,7 +18,7 @@ import {
 } from "../finance-insight";
 import { formatRupiah } from "../money";
 import { formatPercent } from "../number-format";
-import { addDays, lastDays, type PeriodWindow } from "../period";
+import { addDays, lastClosedDays, lastDays, type PeriodWindow } from "../period";
 import {
   DEFAULT_FORECAST_FILTER,
   filterForecastRows,
@@ -113,10 +113,10 @@ export function resolvePeriod(period: PeriodArg, today: string): { window: Perio
         window = { from: addDays(today, -1), to: addDays(today, -1) };
         break;
       case "7d":
-        window = lastDays(today, 7);
+        window = lastClosedDays(today, 7);
         break;
       case "30d":
-        window = lastDays(today, 30);
+        window = lastClosedDays(today, 30);
         break;
       case "this_month":
         window = { from: monthStart, to: today };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, startOfDayUtc, daysOf, inWindow, isoDateInZone, lastDays, weekOverWeek } from "./period";
+import { addDays, startOfDayUtc, daysOf, inWindow, isoDateInZone, lastClosedDays, lastDays, periodComparison, weekOverWeek } from "./period";
 
 describe("isoDateInZone", () => {
   it("uses the shop's local day, not UTC", () => {
@@ -27,13 +27,21 @@ describe("windows", () => {
     expect(daysOf(lastDays("2026-10-15", 28))).toHaveLength(28);
   });
 
-  it("weekOverWeek gives two adjacent, non-overlapping 7-day windows", () => {
-    const { current, previous } = weekOverWeek("2026-10-15");
+  it("weekOverWeek gives two adjacent, non-overlapping 7-day windows of closed days", () => {
+    const { current, previous } = weekOverWeek("2026-10-16");
     expect(current).toEqual({ from: "2026-10-09", to: "2026-10-15" });
     expect(previous).toEqual({ from: "2026-10-02", to: "2026-10-08" });
     expect(daysOf(previous)).toHaveLength(7);
+    expect(inWindow("2026-10-16", current)).toBe(false);
     expect(inWindow("2026-10-08", current)).toBe(false);
     expect(inWindow("2026-10-08", previous)).toBe(true);
+  });
+
+  it("periodComparison leaves out today, which is still running", () => {
+    const { current, previous } = periodComparison("2026-10-01", 30);
+    expect(current).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(previous).toEqual({ from: "2026-08-02", to: "2026-08-31" });
+    expect(lastClosedDays("2026-10-01", 1)).toEqual({ from: "2026-09-30", to: "2026-09-30" });
   });
 });
 

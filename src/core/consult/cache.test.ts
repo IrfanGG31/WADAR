@@ -54,7 +54,7 @@ describe("dataVersion", () => {
     const remembered = makeData({ memory: [...base.memory, { id: "m2", kind: "fact", content: "modal Rp5 jt", pinned: true }] });
     expect(dataVersion(remembered)).not.toBe(dataVersion(base));
 
-    expect(dataVersion({ ...makeData(), today: "2026-10-16" })).not.toBe(dataVersion(base));
+    expect(dataVersion({ ...makeData(), today: "2026-10-17" })).not.toBe(dataVersion(base));
   });
 });
 

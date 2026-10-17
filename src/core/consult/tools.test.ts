@@ -22,8 +22,9 @@ const data = makeData();
 describe("resolvePeriod", () => {
   it("builds same-length previous windows", () => {
     expect(resolvePeriod("7d", TODAY)).toMatchObject({ window: { from: "2026-10-09", to: "2026-10-15" }, previous: { from: "2026-10-02", to: "2026-10-08" } });
-    expect(resolvePeriod("today", TODAY).previous).toEqual({ from: "2026-10-14", to: "2026-10-14" });
-    expect(resolvePeriod("this_month", TODAY).window).toEqual({ from: "2026-10-01", to: "2026-10-15" });
+    expect(resolvePeriod("30d", TODAY).window).toEqual({ from: "2026-09-16", to: "2026-10-15" });
+    expect(resolvePeriod("today", TODAY)).toMatchObject({ window: { from: TODAY, to: TODAY }, previous: { from: "2026-10-15", to: "2026-10-15" } });
+    expect(resolvePeriod("this_month", TODAY).window).toEqual({ from: "2026-10-01", to: TODAY });
     expect(resolvePeriod("last_month", TODAY).window).toEqual({ from: "2026-09-01", to: "2026-09-30" });
     expect(resolvePeriod({ from: "2026-10-01", to: "2026-10-03" }, TODAY).previous).toEqual({ from: "2026-09-28", to: "2026-09-30" });
   });
@@ -124,7 +125,7 @@ describe("get_customer_stats", () => {
     expect(r.new_customers).toBe(1);
     expect(r.returning_customers).toBe(1);
     expect(r.top_customers.map((c) => [c.name, c.total_spent])).toEqual([["Sari Dewi", 3_000_000], ["Tono", 2_000_000], ["Budi", 1_500_000], ["Rina", 800_000]]);
-    expect(r.lapsed_top_customers.map((c) => [c.name, c.days_since_last_order])).toEqual([["Tono", 75]]);
+    expect(r.lapsed_top_customers.map((c) => [c.name, c.days_since_last_order])).toEqual([["Tono", 76]]);
   });
   it("idle_days 30 adds Sari Dewi (43 days)", () => {
     expect(getCustomerStats(data, { idle_days: 30 }).lapsed_top_customers.map((c) => c.name)).toEqual(["Sari Dewi", "Tono"]);

@@ -41,7 +41,9 @@ import { daysOf, periodComparison, weekOverWeek } from "./period";
 type RawLine = SaleItemLine & { day: string };
 
 const TODAY = "2026-10-15";
-const { current, previous } = weekOverWeek(TODAY);
+/** The report is read the morning after TODAY, the last closed day it covers. */
+const VIEW_DAY = "2026-10-16";
+const { current, previous } = weekOverWeek(VIEW_DAY);
 
 const VARIANTS = new Map<string, VariantLabel>([
   ["serum", { title: "Serum Vit C", category: "Serum" }],
@@ -358,7 +360,7 @@ describe("Peringatan margin tergerus (FIN-6 MARGIN_DROP, MISSING_COST)", () => {
   const sale = (day: string, unitCost: number): RawLine => ({ ...raw(day, "serum", "pos", 10), unit_price: 10_000, unit_cost: unitCost });
 
   it("warningRows with the previous period narrates a 6-point drop with its cause", () => {
-    const w = weekOverWeek(TODAY);
+    const w = weekOverWeek(VIEW_DAY);
     const lines = [...daysOf(w.previous).map((d) => sale(d, 6_000)), ...daysOf(w.current).map((d) => sale(d, 6_600))];
     const rows = warningRows(linesIn(lines, w.current), { previous: linesIn(lines, w.previous) });
     const drop = rows.find((r) => r.code === "MARGIN_DROP")!;
@@ -373,7 +375,7 @@ describe("Peringatan margin tergerus (FIN-6 MARGIN_DROP, MISSING_COST)", () => {
   });
 
   it("a 3-point drop gives no MARGIN_DROP row", () => {
-    const w = weekOverWeek(TODAY);
+    const w = weekOverWeek(VIEW_DAY);
     const lines = [...daysOf(w.previous).map((d) => sale(d, 6_000)), ...daysOf(w.current).map((d) => sale(d, 6_300))];
     const rows = warningRows(linesIn(lines, w.current), { previous: linesIn(lines, w.previous) });
     expect(rows.map((r) => r.code)).not.toContain("MARGIN_DROP");
@@ -398,15 +400,15 @@ describe("Peringatan margin tergerus (FIN-6 MARGIN_DROP, MISSING_COST)", () => {
     expect(periodLabels(30)).toEqual({ current: "30 hari terakhir", previous: "30 hari sebelumnya" });
     expect(periodLabels(7)).toEqual({ current: "7 hari terakhir", previous: "7 hari sebelumnya" });
 
-    const p = periodComparison(TODAY, 30);
+    const p = periodComparison(VIEW_DAY, 30);
     expect(p.current).toEqual({ from: "2026-09-16", to: TODAY });
     expect(p.previous).toEqual({ from: "2026-08-17", to: "2026-09-15" });
-    expect(periodComparison(TODAY, 7)).toEqual(weekOverWeek(TODAY));
+    expect(periodComparison(VIEW_DAY, 7)).toEqual(weekOverWeek(VIEW_DAY));
 
     // Margin slid 40% → 34% three weeks ago: a 7-vs-7 view can't see it, 30-vs-30 can.
     const lines: RawLine[] = [];
     for (const d of daysOf({ from: "2026-08-17", to: TODAY })) lines.push(sale(d, d < "2026-09-16" ? 6_000 : 6_600));
-    const w7 = weekOverWeek(TODAY);
+    const w7 = weekOverWeek(VIEW_DAY);
     expect(marginWarnings(linesIn(lines, w7.current), { previous: linesIn(lines, w7.previous) }).map((x) => x.code)).not.toContain("MARGIN_DROP");
     const drop = marginWarnings(linesIn(lines, p.current), { previous: linesIn(lines, p.previous), days: 30 }).find((x) => x.code === "MARGIN_DROP")!;
     expect(drop.stats).toMatchObject({ margin_before: 40, margin_now: 34, drop_pts: 6, days: 30, R: 30 * 100_000, lost_gp: 30 * 6_000 });
@@ -444,7 +446,7 @@ describe("Pemilih periode 7/30 hari (FIN-3)", () => {
     expect(insight.days).toBe(30);
     expect(insight.narrative).toMatch(/^Untung bersih 30 hari terakhir (naik|turun) Rp/);
     expect(narrateProfitHeadline(insight)).toMatch(/^Untung bersih 30 hari terakhir /);
-    const p = periodComparison(TODAY, 30);
+    const p = periodComparison(VIEW_DAY, 30);
     const fresh = profitInsight([], [], p.current, p.previous, 30);
     expect(fresh.narrative).toBe("Belum ada data 30 hari sebelumnya untuk dibandingkan.");
     expect(narrateProfitChange(decomposeProfitChange([], [], 0, 0), undefined, null, null, 30)).toBe(

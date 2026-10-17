@@ -5,6 +5,8 @@ import {
   parseFinancePeriodDays,
   periodLabels,
   productMarginRows,
+  TODAY_NOT_COUNTED,
+  TODAY_SALES_TOMORROW,
   warningRows,
 } from "@/core/finance-insight";
 import { periodComparison } from "@/core/period";
@@ -46,17 +48,19 @@ async function Margin({ params, searchParams }: { params: Params; searchParams: 
   const days = parseFinancePeriodDays((await searchParams).periode);
   const label = periodLabels(days);
   const shop = await getShop(slug);
-  const { current: window, previous } = periodComparison(await shopToday(shop.timezone), days);
+  const today = await shopToday(shop.timezone);
+  const { current: window, previous } = periodComparison(today, days);
   const data = await getFinanceData(shop.id, { from: previous.from, to: window.to });
   const lines = linesIn(data.lines, window);
   const picker = <PeriodPicker slug={slug} page="keuangan/margin" days={days} />;
 
   if (lines.length === 0) {
+    const soldToday = (await getFinanceData(shop.id, { from: today, to: today })).lines.length > 0;
     return (
       <>
         {picker}
         <p className="rounded-xl border border-dashed border-border px-6 py-16 text-center text-muted-foreground">
-          Belum ada penjualan {label.current}, jadi margin belum bisa dihitung.
+          {soldToday ? TODAY_SALES_TOMORROW : `Belum ada penjualan ${label.current}, jadi margin belum bisa dihitung.`}
         </p>
       </>
     );
@@ -66,7 +70,7 @@ async function Margin({ params, searchParams }: { params: Params; searchParams: 
     <>
       {picker}
       <p className="text-sm text-muted-foreground">
-        {label.current} ({formatIsoDate(window.from)}–{formatIsoDate(window.to)}), diurutkan dari margin paling tipis
+        {label.current} ({formatIsoDate(window.from)}–{formatIsoDate(window.to)}), diurutkan dari margin paling tipis. {TODAY_NOT_COUNTED}
       </p>
       <Warnings
         slug={slug}

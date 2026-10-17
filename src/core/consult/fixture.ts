@@ -3,14 +3,14 @@ import type { ForecastRow } from "../stock-insight";
 import type { ConsultData, CustomerRow } from "./tools";
 
 /**
- * A small shop with hand-checkable numbers (today = Thu 2026-10-15; 7d =
- * 10-09…10-15, previous 7d = 10-02…10-08). Tests assert exact rupiah, so the
- * arithmetic is written out here:
+ * A small shop with hand-checkable numbers (today = Fri 2026-10-16, still running;
+ * 7d = the closed days 10-09…10-15, previous 7d = 10-02…10-08). Tests assert exact
+ * rupiah, so the arithmetic is written out here:
  *   previous week  R 1.735.000  C 730.000  F 80.100  GP 924.900  expenses 200.000  NP 724.900
  *   this week      R 2.027.800  C 938.000  F 192.240 GP 897.560  expenses 250.000  NP 647.560
- *   today (10-15)  R 120.000 (2 pcs)  GP 70.000
+ *   today (10-16)  R 120.000 (2 pcs)  GP 70.000 — not part of "this week"
  */
-export const TODAY = "2026-10-15";
+export const TODAY = "2026-10-16";
 
 function line(p: Partial<FinLine> & Pick<FinLine, "day" | "variant_id" | "product_name" | "channel_id" | "channel_name" | "qty"> & { gross_total: number; cost_total: number }): FinLine {
   return {
@@ -42,6 +42,8 @@ export const LINES: FinLine[] = [
   line({ day: "2026-10-12", ...TONER, ...POS, qty: 4, gross_total: 320_000, cost_total: 128_000, line_discount: 32_000 }),
   line({ day: "2026-10-14", ...SERUM, ...TIKTOK, qty: 12, gross_total: 1_068_000, cost_total: 456_000, alloc_order_discount: 160_200, alloc_platform_fee: 192_240 }),
   line({ day: "2026-10-15", ...HAIR, ...POS, qty: 2, gross_total: 120_000, cost_total: 50_000 }),
+  // today
+  line({ day: "2026-10-16", ...HAIR, ...POS, qty: 2, gross_total: 120_000, cost_total: 50_000 }),
 ];
 
 function stockRow(p: Partial<ForecastRow> & Pick<ForecastRow, "variant_id" | "title" | "on_hand">): ForecastRow {

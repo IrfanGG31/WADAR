@@ -104,7 +104,7 @@ describe("recentKeys (7-day window)", () => {
     type: "x", title: "t", body: "b", severity: 1, dedupe_key, status: "new", created_day, period_start,
   });
   it("includes days today-6…today only", () => {
-    const keys = recentKeys([rec("in", "2026-10-09"), rec("out", "2026-10-08")], TODAY);
+    const keys = recentKeys([rec("in", "2026-10-10"), rec("out", "2026-10-09")], TODAY);
     expect([...keys]).toEqual(["in"]);
   });
   it("ignores the batch being regenerated (same period_start)", () => {

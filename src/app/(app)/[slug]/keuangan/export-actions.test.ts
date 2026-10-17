@@ -4,7 +4,7 @@ import type { MemberRole } from "@/core/roles";
 let role: MemberRole = "owner";
 type Window = { from: string; to: string };
 const getFinanceData = vi.fn<(tenantId: string, window: Window) => Promise<{ lines: never[]; expenses: { day: string; amount: number }[] }>>(
-  async () => ({ lines: [], expenses: [{ day: "2026-10-17", amount: 12000 }] }),
+  async () => ({ lines: [], expenses: [{ day: "2026-10-16", amount: 12000 }] }),
 );
 
 vi.mock("server-only", () => ({}));
@@ -30,25 +30,25 @@ describe("exportFinanceReport (FIN-7)", () => {
   it("downloads the default 7-day period of this shop as CSV rows", async () => {
     const r = await exportFinanceReport("kopi-dimas", undefined);
     if ("error" in r) throw new Error(r.error);
-    expect(getFinanceData).toHaveBeenCalledWith("tenant-of-kopi-dimas", { from: "2026-10-11", to: "2026-10-17" });
-    expect(r.filename).toBe("wadar-kopi-dimas-keuangan-20261011-20261017.csv");
+    expect(getFinanceData).toHaveBeenCalledWith("tenant-of-kopi-dimas", { from: "2026-10-10", to: "2026-10-16" });
+    expect(r.filename).toBe("wadar-kopi-dimas-keuangan-20261010-20261016.csv");
     const rows = r.csv.split("\r\n");
     expect(rows).toHaveLength(1 + 7 + 1 + 1);
-    expect(rows[1]).toBe("2026-10-11,0,0,0,0,0,0,0,0");
-    expect(rows[7]).toBe("2026-10-17,0,0,0,0,0,0,12000,-12000");
+    expect(rows[1]).toBe("2026-10-10,0,0,0,0,0,0,0,0");
+    expect(rows[7]).toBe("2026-10-16,0,0,0,0,0,0,12000,-12000");
     expect(rows[8]).toBe("TOTAL,0,0,0,0,0,0,12000,-12000");
   });
 
   it("follows the chosen period (?periode=30) and reads only the shop of the slug", async () => {
     const r = await exportFinanceReport("toko-lain", "30");
     if ("error" in r) throw new Error(r.error);
-    expect(getFinanceData).toHaveBeenCalledWith("tenant-of-toko-lain", { from: "2026-09-18", to: "2026-10-17" });
+    expect(getFinanceData).toHaveBeenCalledWith("tenant-of-toko-lain", { from: "2026-09-17", to: "2026-10-16" });
     expect(r.csv.split("\r\n")).toHaveLength(1 + 30 + 1 + 1);
   });
 
   it("an unknown period falls back to 7 days", async () => {
     await exportFinanceReport("kopi-dimas", "999");
-    expect(getFinanceData.mock.calls[0][1]).toEqual({ from: "2026-10-11", to: "2026-10-17" });
+    expect(getFinanceData.mock.calls[0][1]).toEqual({ from: "2026-10-10", to: "2026-10-16" });
   });
 
   it("a cashier is refused before anything is read", async () => {

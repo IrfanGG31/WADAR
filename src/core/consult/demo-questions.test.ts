@@ -29,7 +29,7 @@ const CASES: Array<{ q: string; tools: string[]; contains: string[] }> = [
   {
     q: "Produk apa yang paling laku bulan ini?",
     tools: ["get_sales_summary"],
-    contains: ["Penjualan bulan ini Rp3.762.800", "Serum Vit C Rp2.954.800 (35 pcs)", "Toner Rp688.000 (9 pcs)", "Hair Mist Rp120.000 (2 pcs)"],
+    contains: ["Penjualan bulan ini Rp3.882.800", "Serum Vit C Rp2.954.800 (35 pcs)", "Toner Rp688.000 (9 pcs)", "Hair Mist Rp240.000 (4 pcs)"],
   },
   {
     q: "Kanal mana yang margin-nya paling tipis?",
@@ -49,7 +49,7 @@ const CASES: Array<{ q: string; tools: string[]; contains: string[] }> = [
   {
     q: "Siapa pelanggan terbaik dan siapa yang lama tidak beli?",
     tools: ["get_customer_stats"],
-    contains: ["1 pelanggan baru, 1 kembali beli", "Sari Dewi Rp3.000.000; Tono Rp2.000.000; Budi Rp1.500.000", "Tono (75 hari)"],
+    contains: ["1 pelanggan baru, 1 kembali beli", "Sari Dewi Rp3.000.000; Tono Rp2.000.000; Budi Rp1.500.000", "Tono (76 hari)"],
   },
   {
     q: "Ada peringatan margin apa?",

@@ -11,6 +11,8 @@ import {
   periodResult,
   profitInsight,
   summaryCards,
+  TODAY_NOT_COUNTED,
+  TODAY_SALES_TOMORROW,
 } from "@/core/finance-insight";
 import { periodComparison } from "@/core/period";
 import { getFinanceData } from "@/db/finance";
@@ -31,7 +33,7 @@ type SearchParams = PageProps<"/[slug]/keuangan">["searchParams"];
 
 /**
  * Financial Insight — Ringkasan (TECH-SPEC §7.2, PRD §7.2): R/C/F/S/GP/NP for
- * the last 7 (default) or 30 days (`?periode=30`) vs the same length before, "kenapa untung berubah" (FIN-5
+ * the last 7 (default) or 30 closed days (`?periode=30`, up to yesterday) vs the same length before, "kenapa untung berubah" (FIN-5
  * decomposition), untung kotor per day and penjualan per kategori. Reads the
  * `fin_daily` aggregate; every number comes from src/core/finance*.ts.
  */
@@ -64,13 +66,14 @@ async function Summary({ params, searchParams }: { params: Params; searchParams:
   );
 
   if (lines.length === 0 && expenses.length === 0) {
+    const soldToday = (await getFinanceData(shop.id, { from: today, to: today })).lines.length > 0;
     return (
       <>
         {picker}
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
           <Wallet className="h-10 w-10 text-muted-foreground" aria-hidden />
           <p className="max-w-sm text-muted-foreground">
-            Belum ada penjualan {days * 2} hari terakhir.{" "}
+            {soldToday ? TODAY_SALES_TOMORROW : `Belum ada penjualan ${days * 2} hari terakhir.`}{" "}
             <Link
               href={shopPath(slug, "kasir")}
               className="rounded-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -90,7 +93,7 @@ async function Summary({ params, searchParams }: { params: Params; searchParams:
     <>
       {picker}
       <p className="text-sm text-muted-foreground">
-        {label.current} ({formatIsoDate(current.from)}–{formatIsoDate(current.to)}) dibanding {label.previous}
+        {label.current} ({formatIsoDate(current.from)}–{formatIsoDate(current.to)}) dibanding {label.previous}. {TODAY_NOT_COUNTED}
       </p>
       <SummaryCards cards={summaryCards(cur, prev)} />
       <ProfitChangeCard insight={profitInsight(lines, expenses, current, previous, days)} />

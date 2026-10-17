@@ -60,6 +60,9 @@ export interface FinLine extends SaleItemLine {
 
 export const OTHER_CATEGORY = "Lainnya";
 export const CURRENT_LABEL = "7 hari terakhir";
+/** Comparisons stop at yesterday (core/period periodComparison); the screens say so. */
+export const TODAY_NOT_COUNTED = "Hari ini belum ikut dihitung karena belum selesai.";
+export const TODAY_SALES_TOMORROW = "Penjualan hari ini masuk ke laporan besok, setelah harinya selesai.";
 export const PREVIOUS_LABEL = "7 hari sebelumnya";
 
 /** Period lengths the Keuangan screens can compare (FIN-3); 7 stays the default. */
