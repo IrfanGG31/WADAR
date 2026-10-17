@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { canResetDemo, RESET_DEMO_PARAM } from "@/core/demo-reset";
+import { deletionStage } from "@/core/shop-deletion";
 import { getStoreProfile, listFaqs } from "@/db/kb";
-import { getShop } from "@/db/shop";
+import { getShop, getShopDeletion } from "@/db/shop";
+import { DataPrivacy } from "./data-privacy";
 import { FaqManager } from "./faq-manager";
 import { ResetDemo } from "./reset-demo";
 import { StoreProfileForm } from "./store-profile-form";
@@ -26,7 +28,7 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
   const { slug } = await params;
   const query = await searchParams;
   const shop = await getShop(slug);
-  const [profile, faqs] = await Promise.all([getStoreProfile(shop.id), listFaqs(shop.id)]);
+  const [profile, faqs, deletion] = await Promise.all([getStoreProfile(shop.id), listFaqs(shop.id), getShopDeletion(shop.id)]);
   return (
     <>
       <section className="flex flex-col gap-2 rounded-xl border border-border p-4">
@@ -37,6 +39,7 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
       </section>
       <StoreProfileForm slug={slug} policies={profile.policies} persona={profile.persona} />
       <FaqManager slug={slug} faqs={faqs} />
+      <DataPrivacy slug={slug} deletion={deletionStage(deletion)} />
       {canResetDemo(shop, query[RESET_DEMO_PARAM]) && <ResetDemo slug={slug} />}
     </>
   );

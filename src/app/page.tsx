@@ -23,6 +23,9 @@ export default function LandingPage() {
           <Link href="/masuk">Sudah punya toko? Masuk</Link>
         </Button>
       </div>
+      <Link href="/privasi" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        Kebijakan privasi
+      </Link>
     </main>
   );
 }

@@ -9,8 +9,14 @@ export interface Chain {
   calls: Call[];
 }
 
-export function fakeSupabase(respond: (chain: Chain) => { data: unknown; error: unknown } = () => ({ data: null, error: null })) {
+type Response = { data: unknown; error: unknown };
+
+export function fakeSupabase(
+  respond: (chain: Chain) => Response = () => ({ data: null, error: null }),
+  respondRpc: (fn: string, args: unknown) => Response = () => ({ data: null, error: null }),
+) {
   const chains: Chain[] = [];
+  const rpcs: { fn: string; args: unknown }[] = [];
   const builder = (chain: Chain): unknown =>
     new Proxy(
       {},
@@ -38,8 +44,12 @@ export function fakeSupabase(respond: (chain: Chain) => { data: unknown; error: 
       chains.push(chain);
       return builder(chain);
     },
+    async rpc(fn: string, args?: unknown) {
+      rpcs.push({ fn, args });
+      return respondRpc(fn, args);
+    },
   };
-  return { client, chains };
+  return { client, chains, rpcs };
 }
 
 export const has = (chain: Chain, method: string, ...args: unknown[]) =>

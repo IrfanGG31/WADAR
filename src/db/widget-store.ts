@@ -10,6 +10,7 @@ import { sharedRateLimiter } from "@/db/rate-limit";
 import { RATE_LIMIT_WINDOW_MS, SESSION_WINDOW_MS } from "@/core/chat/widget";
 import type { PublicMessage, WidgetStore } from "@/core/chat/widget-service";
 import { tableAnswerStore } from "@/db/answer-cache";
+import { findOpenShop } from "@/db/open-shop";
 
 const MESSAGE_COLUMNS = "id, author, content, created_at";
 
@@ -24,8 +25,7 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
     answers: (tenantId) => layeredAnswerStore(answerMemory, tableAnswerStore(db, tenantId), WARM_TTL_MS),
 
     async findShop(slug) {
-      const { data: tenant, error } = await db.from("tenants").select("id, name").eq("slug", slug).maybeSingle();
-      if (error) throw error;
+      const tenant = await findOpenShop(db, slug);
       if (!tenant) return null;
       const { data: profile, error: pe } = await db
         .from("store_profile")

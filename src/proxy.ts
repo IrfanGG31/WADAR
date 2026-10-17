@@ -7,10 +7,15 @@ import { AFTER_SIGN_IN_PATH } from "@/lib/routes";
  * Pages anyone may open. /auth/callback must stay public: it runs right after
  * the Google/email-link redirect, before the session cookie exists.
  * /w/<slug> is the shop's public customer-chat widget; /api/widget/ is its anonymous API.
+ * /privasi is the privacy policy; /sw.js is the push service worker (fetched without a page).
  */
-const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/"];
+const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/privasi", "/sw.js"];
 /** Pages a signed-in user has no reason to see. */
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
+
+export function isPublicPath(pathname: string): boolean {
+  return pathname === "/" || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
 /**
  * Refreshes the Supabase session on every request (`getClaims()`, which
@@ -41,7 +46,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = data !== null;
   const pathname = request.nextUrl.pathname;
-  const isPublic = pathname === "/" || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isPublic = isPublicPath(pathname);
 
   if (!isAuthenticated && !isPublic) {
     const url = request.nextUrl.clone();

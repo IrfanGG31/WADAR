@@ -1,4 +1,5 @@
 import { isValidSessionId } from "@/core/chat/widget";
+import { findOpenShop } from "@/db/open-shop";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WIDGET_COOKIE } from "../session";
 
@@ -20,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   if (!isValidSessionId(sessionId)) return new Response("sesi tidak ada", { status: 401 });
 
   const db = createAdminClient();
-  const { data: tenant } = await db.from("tenants").select("id").eq("slug", slug).maybeSingle();
+  const tenant = await findOpenShop(db, slug);
   if (!tenant) return new Response("toko tidak ditemukan", { status: 404 });
   const { data: conv } = await db
     .from("conversations")
