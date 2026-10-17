@@ -2,13 +2,19 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isValidSlug } from "@/core/slug";
+import { slugProblem } from "@/core/slug";
 import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
 const CreateShopInput = z.object({
   name: z.string().trim().min(2, "Nama toko minimal 2 huruf.").max(80),
-  slug: z.string().trim().refine(isValidSlug, "Alamat toko 3–40 huruf kecil, angka, atau tanda minus."),
+  slug: z
+    .string()
+    .trim()
+    .superRefine((slug, ctx) => {
+      const problem = slugProblem(slug);
+      if (problem) ctx.addIssue({ code: "custom", message: problem });
+    }),
   businessType: z.enum(["fesyen", "fnb", "kecantikan", "lainnya"]),
 });
 
