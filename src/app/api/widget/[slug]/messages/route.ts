@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getAi } from "@/ai";
+import { getAi, getQueryEmbedder } from "@/ai";
 import { chatGenerator } from "@/ai/chat-generator";
 import { clientIp } from "@/core/rate-limit";
 import { isValidSessionId } from "@/core/chat/widget";
@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   try {
-    const result = await handleWidgetMessage(supabaseWidgetStore(createAdminClient()), chatGenerator(getAi()), {
+    const result = await handleWidgetMessage(supabaseWidgetStore(createAdminClient(), { embedQuery: getQueryEmbedder() }), chatGenerator(getAi()), {
       slug,
       sessionId,
       ip: clientIp(request.headers),

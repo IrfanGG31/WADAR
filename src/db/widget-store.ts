@@ -1,6 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryEmbedder } from "@/ai/query-embedding";
 import { fetchAllRows } from "@/db/paginate";
 import { layeredAnswerStore, memoryAnswerStore } from "@/core/answer-cache";
 import type { TurnOutcome } from "@/core/chat/pipeline";
@@ -23,8 +24,12 @@ const answerMemory = memoryAnswerStore();
 /** A row pulled from the shared table is kept locally only briefly. */
 const WARM_TTL_MS = 5 * 60 * 1000;
 
-/** Service-role implementation of `WidgetStore`: the only reader is the customer-safe view + KB RPC. */
-export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
+/**
+ * Service-role implementation of `WidgetStore`: the only reader is the customer-safe view + KB RPC.
+ * `embedQuery` adds the vector side of the KB search; without it (or when it yields null) the
+ * search is keyword-only.
+ */
+export function supabaseWidgetStore(db: SupabaseClient, { embedQuery }: { embedQuery?: QueryEmbedder } = {}): WidgetStore {
   return {
     answers: (tenantId) => layeredAnswerStore(answerMemory, tableAnswerStore(db, tenantId), WARM_TTL_MS),
 
@@ -98,6 +103,8 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
     },
 
     async loadTurnData({ tenantId, conversationId, text, before }) {
+      // Embedding runs alongside the catalog read; it never fails the turn (null = keyword only).
+      const embedding = embedQuery ? embedQuery(text) : Promise.resolve(null);
       const cards = await fetchAllRows<ProductCard>((from, to) =>
         db
           .from("chat_product_cards")
@@ -106,10 +113,11 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
           .order("variant_id")
           .range(from, to),
       );
+      const vector = await embedding;
       const { data: kb, error: ke } = await db.rpc("chat_kb_candidates", {
         p_tenant_id: tenantId,
         p_terms: searchTerms(text),
-        p_embedding: null,
+        p_embedding: vector ? JSON.stringify(vector) : null,
       });
       if (ke) throw ke;
       const kbCandidates: KbCandidate[] = ((kb ?? []) as Record<string, unknown>[])

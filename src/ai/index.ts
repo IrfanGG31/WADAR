@@ -3,6 +3,7 @@ import { CircuitBreaker } from "./breaker";
 import { googleProvider } from "./providers/google";
 import { createConsult, type Consult } from "./consult";
 import { googleConsultModel } from "./providers/google-consult";
+import { createQueryEmbedder, type QueryEmbedder } from "./query-embedding";
 import { createAi, offlineReason, type Ai } from "./run";
 
 /**
@@ -25,6 +26,14 @@ export function getAi(): Ai {
     breakers: { google: new CircuitBreaker() },
   });
   return instance;
+}
+
+let queryEmbedder: QueryEmbedder | undefined;
+
+/** Widget KB search vectors (cached per instance); null without a key, so retrieval stays keyword-only. */
+export function getQueryEmbedder(): QueryEmbedder {
+  queryEmbedder ??= createQueryEmbedder(getAi());
+  return queryEmbedder;
 }
 
 let consultInstance: Consult | undefined;
