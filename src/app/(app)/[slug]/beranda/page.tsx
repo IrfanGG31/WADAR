@@ -11,8 +11,10 @@ import { formatCount } from "@/core/number-format";
 import { getWeeklyInsights, loadConsultData } from "@/db/consult";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
 import { getShop } from "@/db/shop";
+import { getWeeklyDigest } from "@/db/weekly-digest";
 import { shopPath } from "@/lib/routes";
 import { shopToday } from "@/lib/shop-today";
+import { WeeklyDigestSummary } from "./weekly-digest";
 
 export const metadata = { title: "Beranda" };
 
@@ -184,7 +186,8 @@ const INSIGHT_LINK = {
  * "Insight untukmu" (PRD §7.2, CON-3): this week's top-3 — impact × urgency,
  * deduped over 7 days (src/core/consult/insights.ts), template narration, no
  * LLM on page load. When nothing qualifies it falls back to the one-line
- * Stock and Finance sentences (D5).
+ * Stock and Finance sentences (D5). The digest the Monday job stored (GAP #5)
+ * is shown on top; its insights are the stored rows getWeeklyInsights returns.
  */
 async function InsightSection({ params }: { params: Params }) {
   const { slug } = await params;
@@ -193,6 +196,7 @@ async function InsightSection({ params }: { params: Params }) {
   const { current, previous } = weekOverWeek(today);
   const data = await loadConsultData(shop, today, { historyDays: 14 });
   const weekly = await getWeeklyInsights(shop, data, { persist: false });
+  const digest = await getWeeklyDigest(shop.id, weekly.weekStart);
 
   const items =
     weekly.selected.length > 0
@@ -231,6 +235,7 @@ async function InsightSection({ params }: { params: Params }) {
         <Sparkles className="h-4 w-4 text-primary" aria-hidden />
         Insight untukmu
       </h2>
+      <WeeklyDigestSummary digest={digest} />
       <ul className="divide-y divide-border">
         {items.map(({ key, title, icon: Icon, text, href }) => (
           <li key={key}>

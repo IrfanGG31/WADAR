@@ -1,6 +1,7 @@
 import "server-only";
 import type { CustomerListRow } from "@/core/customers";
 import { isoDateInZone } from "@/core/period";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
 import type { Shop } from "./shop";
@@ -30,8 +31,8 @@ function toRow(c: CustomerDbRow, timeZone: string): CustomerListRow {
 }
 
 /** Every customer of the shop (Pelanggan, Konsultasi), as the signed-in owner (RLS applies). */
-export async function listCustomers(shop: Pick<Shop, "id" | "timezone">): Promise<CustomerListRow[]> {
-  const supabase = await createClient();
+export async function listCustomers(shop: Pick<Shop, "id" | "timezone">, db?: SupabaseClient): Promise<CustomerListRow[]> {
+  const supabase = db ?? (await createClient());
   const rows = await fetchAllRows<CustomerDbRow>((from, to) =>
     supabase.from("customers").select(COLUMNS).eq("tenant_id", shop.id).order("id").range(from, to),
   );

@@ -10,6 +10,7 @@ import type {
   MemoryItem,
 } from "@/core/consult/tools";
 import { addDays, isoDateInZone, lastDays, startOfDayUtc } from "@/core/period";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { listCustomers } from "./customers";
 import { getFinanceData } from "./finance";
@@ -19,7 +20,8 @@ import { listStockForecasts } from "./stock";
 /** Days of fin_daily loaded: enough for "bulan lalu" against the month before it. */
 export const CONSULT_HISTORY_DAYS = 90;
 
-type Db = Awaited<ReturnType<typeof createClient>>;
+/** The owner's client by default; the weekly cron passes the service-role client (no session). */
+type Db = SupabaseClient;
 
 /** Owner's saved notes for the prompt: pinned first, then newest — the cap drops the oldest, not the latest. */
 export function memoryQuery(supabase: Db, tenantId: string) {
@@ -33,14 +35,14 @@ export function memoryQuery(supabase: Db, tenantId: string) {
 }
 
 /** Everything the Konsultasi tools read, loaded as the signed-in owner (RLS applies). */
-export async function loadConsultData(shop: Shop, today: string, opts: { historyDays?: number } = {}): Promise<ConsultData> {
-  const supabase = await createClient();
+export async function loadConsultData(shop: Shop, today: string, opts: { historyDays?: number; db?: Db } = {}): Promise<ConsultData> {
+  const supabase = opts.db ?? (await createClient());
   const localDay = (iso: string) => isoDateInZone(new Date(iso), shop.timezone);
 
   const [finance, stock, customers, memory, insights, escalated] = await Promise.all([
-    getFinanceData(shop.id, lastDays(today, opts.historyDays ?? CONSULT_HISTORY_DAYS)),
-    listStockForecasts(shop.id),
-    listCustomers(shop),
+    getFinanceData(shop.id, lastDays(today, opts.historyDays ?? CONSULT_HISTORY_DAYS), opts.db),
+    listStockForecasts(shop.id, opts.db),
+    listCustomers(shop, opts.db),
     memoryQuery(supabase, shop.id),
     supabase
       .from("insights")
@@ -107,9 +109,13 @@ export async function consultUsageThisMonth(tenantId: string, today: string, tim
 }
 
 /** One ai_runs row per model attempt (tokens + cost from src/ai/meter.ts); grounding verdict in `guardrail`. */
-export async function recordConsultRuns(tenantId: string, outcome: Pick<ConsultOutcome, "attempts" | "source" | "tierReason" | "fallbackReason">): Promise<void> {
+export async function recordConsultRuns(
+  tenantId: string,
+  outcome: Pick<ConsultOutcome, "attempts" | "source" | "tierReason" | "fallbackReason">,
+  db?: Db,
+): Promise<void> {
   if (outcome.attempts.length === 0) return;
-  const supabase = await createClient();
+  const supabase = db ?? (await createClient());
   const rows = outcome.attempts.map((a: ConsultAttempt) => ({
     tenant_id: tenantId,
     feature: a.tier,
@@ -154,7 +160,7 @@ export interface WeeklyInsights {
  * Beranda agree); otherwise candidates are generated, deduped against the
  * last 7 days and — when `persist` — stored.
  */
-export async function getWeeklyInsights(shop: Shop, data: ConsultData, opts: { persist: boolean }): Promise<WeeklyInsights> {
+export async function getWeeklyInsights(shop: Shop, data: ConsultData, opts: { persist: boolean; db?: Db }): Promise<WeeklyInsights> {
   const ws = weekStart(data.today);
   const stored = data.insights.filter((i) => i.period_start === ws);
   if (stored.length > 0) {
@@ -168,7 +174,7 @@ export async function getWeeklyInsights(shop: Shop, data: ConsultData, opts: { p
   }
   const selected = selectInsights(weeklyCandidates(data), recentKeys(data.insights, data.today, ws));
   if (opts.persist && selected.length > 0) {
-    const supabase = await createClient();
+    const supabase = opts.db ?? (await createClient());
     const { error } = await supabase.from("insights").upsert(
       selected.map((c) => ({
         tenant_id: shop.id,

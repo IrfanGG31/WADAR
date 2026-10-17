@@ -8,8 +8,9 @@ import { AFTER_SIGN_IN_PATH } from "@/lib/routes";
  * the Google/email-link redirect, before the session cookie exists.
  * /w/<slug> is the shop's public customer-chat widget; /api/widget/ is its anonymous API.
  * /privasi is the privacy policy; /sw.js is the push service worker (fetched without a page).
+ * /api/cron/ is called by Vercel Cron (no session) and checks CRON_SECRET itself.
  */
-const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/privasi", "/sw.js"];
+const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/privasi", "/sw.js"];
 /** Pages a signed-in user has no reason to see. */
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
 

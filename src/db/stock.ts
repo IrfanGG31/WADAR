@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { forecastStock, type StockDailyRow } from "@/core/stock";
 import { toForecastRow, type ForecastRow, type StockItem } from "@/core/stock-insight";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
 
@@ -35,8 +36,8 @@ interface SeriesDbRow {
  * from {@link forecastStock}; the screens never re-derive them. Cached per
  * request: Beranda's low-stock list and insight card share one load.
  */
-export const listStockForecasts = cache(async (tenantId: string): Promise<ForecastRow[]> => {
-  const supabase = await createClient();
+export const listStockForecasts = cache(async (tenantId: string, db?: SupabaseClient): Promise<ForecastRow[]> => {
+  const supabase = db ?? (await createClient());
 
   const [variants, series] = await Promise.all([
     fetchAllRows<VariantDbRow>((from, to) =>

@@ -9,6 +9,7 @@ import {
 } from "@/core/finance-insight";
 import type { PeriodWindow } from "@/core/period";
 import { itemTitle } from "@/core/stock-insight";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
 
@@ -29,14 +30,14 @@ interface VariantNameRow {
  * with product title / category / channel name, plus expenses by day. All
  * arithmetic happens afterwards in src/core/finance*.ts.
  */
-export function getFinanceData(tenantId: string, window: PeriodWindow): Promise<FinanceData> {
-  return loadFinanceData(tenantId, window.from, window.to);
+export function getFinanceData(tenantId: string, window: PeriodWindow, db?: SupabaseClient): Promise<FinanceData> {
+  return loadFinanceData(tenantId, window.from, window.to, db);
 }
 
 /** Keyed by primitives so React's per-request cache can dedupe identical windows. */
-const loadFinanceData = cache(async (tenantId: string, fromDay: string, toDay: string): Promise<FinanceData> => {
+const loadFinanceData = cache(async (tenantId: string, fromDay: string, toDay: string, db?: SupabaseClient): Promise<FinanceData> => {
   const window = { from: fromDay, to: toDay };
-  const supabase = await createClient();
+  const supabase = db ?? (await createClient());
 
   const [rows, variants, channels, expenses] = await Promise.all([
     fetchAllRows<FinDailyRow>((from, to) =>

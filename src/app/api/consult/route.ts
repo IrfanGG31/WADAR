@@ -5,6 +5,7 @@ import { narrateInsights } from "@/core/consult/insights";
 import { detectRemember } from "@/core/consult/question";
 import { consultUsageThisMonth, getWeeklyInsights, loadConsultData, recordConsultRuns, saveMemory } from "@/db/consult";
 import { tableAnswerStore } from "@/db/answer-cache";
+import { saveDigest } from "@/db/weekly-digest";
 import { findShop } from "@/db/shop";
 import { isoDateInZone } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
@@ -84,10 +85,23 @@ export async function POST(request: Request): Promise<Response> {
         store: tableAnswerStore(supabase, shop.id),
       });
       await recordConsultRuns(shop.id, { attempts: narration.attempts, source: narration.source, tierReason: "weekly", fallbackReason: narration.fallbackReason });
+      const points = narrateInsights(weekly.selected).points;
+      // Same row the Monday job writes (GAP #5); a digest already stored this week is kept.
+      await saveDigest(supabase, {
+        tenant_id: shop.id,
+        week_start: weekly.weekStart,
+        text: narration.text,
+        points,
+        insight_keys: weekly.selected.map((c) => c.dedupe_key),
+        engine: narration.engine,
+        model: narration.model,
+        source: narration.source,
+        generated_by: "manual",
+      }).catch((e) => console.error("[consult] weekly digest", e));
       emit({
         type: "weekly",
         text: narration.text,
-        points: narrateInsights(weekly.selected).points,
+        points,
         engine: narration.engine,
         model: narration.model,
         fallbackReason: narration.fallbackReason,
