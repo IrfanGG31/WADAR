@@ -2,9 +2,12 @@ import { Suspense } from "react";
 import { canResetDemo, RESET_DEMO_PARAM } from "@/core/demo-reset";
 import { deletionStage } from "@/core/shop-deletion";
 import { getStoreProfile, listFaqs } from "@/db/kb";
+import { getNotificationPrefs } from "@/db/notifications";
 import { getShop, getShopDeletion } from "@/db/shop";
+import { vapidConfigFromEnv } from "@/lib/web-push";
 import { DataPrivacy } from "./data-privacy";
 import { FaqManager } from "./faq-manager";
+import { NotificationSettings } from "./notification-settings";
 import { ResetDemo } from "./reset-demo";
 import { StoreProfileForm } from "./store-profile-form";
 
@@ -28,7 +31,12 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
   const { slug } = await params;
   const query = await searchParams;
   const shop = await getShop(slug);
-  const [profile, faqs, deletion] = await Promise.all([getStoreProfile(shop.id), listFaqs(shop.id), getShopDeletion(shop.id)]);
+  const [profile, faqs, deletion, prefs] = await Promise.all([
+    getStoreProfile(shop.id),
+    listFaqs(shop.id),
+    getShopDeletion(shop.id),
+    getNotificationPrefs(shop.id),
+  ]);
   return (
     <>
       <section className="flex flex-col gap-2 rounded-xl border border-border p-4">
@@ -39,6 +47,14 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
       </section>
       <StoreProfileForm slug={slug} policies={profile.policies} persona={profile.persona} />
       <FaqManager slug={slug} faqs={faqs} />
+      {prefs && (
+        <NotificationSettings
+          slug={slug}
+          onEscalation={prefs.on_escalation}
+          pushEnabled={prefs.push_enabled}
+          pushKey={vapidConfigFromEnv()?.publicKey ?? null}
+        />
+      )}
       <DataPrivacy slug={slug} deletion={deletionStage(deletion)} />
       {canResetDemo(shop, query[RESET_DEMO_PARAM]) && <ResetDemo slug={slug} />}
     </>

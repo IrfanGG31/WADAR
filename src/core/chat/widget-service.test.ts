@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { glowContext } from "./fixtures/glow-by-sari";
 import type { Generate } from "./pipeline";
 import { WIDGET_IP_LIMIT, WIDGET_SESSION_LIMIT, WIDGET_TENANT_LIMIT } from "./widget";
 import type { ConversationRow, PublicMessage, WidgetShop, WidgetStore } from "./widget-service";
 import { handleWidgetMessage } from "./widget-service";
 import { memoryAnswerStore } from "@/core/answer-cache";
+import { notifyEscalation, type NotificationPrefs, type NotificationRow } from "@/core/notify";
 import { createMemoryRateLimiter, type RateLimiter } from "@/core/rate-limit";
 
 const ctx = glowContext("serum vit c ready?");
@@ -161,5 +162,77 @@ describe("handleWidgetMessage", () => {
     const r = await handleWidgetMessage(store, forbidden, req());
     expect(r.status === 200 && r.body.messages[0].content).not.toMatch(/modal/i);
     expect(r).toMatchObject({ status: 200, body: { mode: "human" } });
+  });
+});
+
+/** GAP #7: an escalated chat notifies the owner — through the store, with the shop's preferences. */
+describe("handleWidgetMessage → owner notification", () => {
+  function notifying(prefs: NotificationPrefs | null, over: { mode?: "ai" | "human" } = {}) {
+    const base = fakeStore(over);
+    const rows: NotificationRow[] = [];
+    const calls: { tenantId: string; conversationId: string; cause: string }[] = [];
+    base.store.notifyEscalation = async (args) => {
+      calls.push(args);
+      await notifyEscalation(
+        {
+          loadPrefs: async () => prefs,
+          insertNotification: async (row) => {
+            rows.push(row);
+          },
+          listPushSubscriptions: async () => [],
+          removePushSubscription: async () => undefined,
+        },
+        args,
+      );
+    };
+    return { ...base, rows, calls };
+  }
+  const ON = { on_escalation: true, push_enabled: false };
+  const askAdmin = req({ body: { text: "kak saya mau bicara dengan admin", client_id: "client-0002" } });
+
+  it("a buyer asking for a person → one notification row for this shop and conversation", async () => {
+    const { store, rows, calls } = notifying(ON);
+    const r = await handleWidgetMessage(store, good, askAdmin);
+    expect(r).toMatchObject({ status: 200, body: { mode: "human" } });
+    expect(calls).toEqual([{ tenantId: "t1", conversationId: "c1", cause: "human_requested" }]);
+    expect(rows).toEqual([expect.objectContaining({ tenant_id: "t1", kind: "chat_escalated", conversation_id: "c1" })]);
+  });
+
+  it("the AI can't answer safely (guardrail) → notified too", async () => {
+    const { store, rows } = notifying(ON);
+    await handleWidgetMessage(store, forbidden, req());
+    expect(rows).toHaveLength(1);
+  });
+
+  it("escalation with alerts switched off → no notification row", async () => {
+    const { store, rows, calls } = notifying({ on_escalation: false, push_enabled: false });
+    await handleWidgetMessage(store, good, askAdmin);
+    expect(calls).toHaveLength(1);
+    expect(rows).toEqual([]);
+  });
+
+  it("a normal answered chat → no notification", async () => {
+    const { store, rows, calls } = notifying(ON);
+    await handleWidgetMessage(store, good, req());
+    expect(calls).toEqual([]);
+    expect(rows).toEqual([]);
+  });
+
+  it("a conversation already with the owner (human mode) → no repeat notification", async () => {
+    const { store, calls } = notifying(ON, { mode: "human" });
+    await handleWidgetMessage(store, good, askAdmin);
+    expect(calls).toEqual([]);
+  });
+
+  it("a failing notification never costs the buyer their reply", async () => {
+    const { store } = fakeStore();
+    store.notifyEscalation = async () => {
+      throw new Error("push down");
+    };
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const r = await handleWidgetMessage(store, good, askAdmin);
+    expect(r).toMatchObject({ status: 200, body: { mode: "human" } });
+    expect(r.status === 200 && r.body.messages).toHaveLength(1);
+    spy.mockRestore();
   });
 });

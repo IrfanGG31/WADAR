@@ -6,10 +6,12 @@ import { conversationChip, inboxTab, escalationLabel } from "@/core/chat/inbox";
 import { visitorLabel } from "@/core/chat/widget";
 import { formatCount } from "@/core/number-format";
 import { listInbox } from "@/db/chat";
+import { listUnreadNotifications } from "@/db/notifications";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { NotificationList } from "./notification-list";
 
 export const metadata = { title: "Chat AI" };
 
@@ -34,13 +36,14 @@ async function Inbox({ params, searchParams }: Pick<PageProps<"/[slug]/chat">, "
   const { tab: rawTab } = await searchParams;
   const tab = rawTab === "belum" ? "belum" : "utama";
   const shop = await getShop(slug);
-  const all = await listInbox(shop.id);
+  const [all, notifications] = await Promise.all([listInbox(shop.id), listUnreadNotifications(shop.id)]);
   const waiting = all.filter((c) => inboxTab(c.status) === "belum");
   const rows = tab === "belum" ? waiting : all;
   const base = shopPath(slug, "chat");
 
   return (
     <>
+      <NotificationList slug={slug} items={notifications} times={notifications.map((n) => formatDateTime(n.created_at, shop.timezone))} />
       <nav aria-label="Daftar chat" className="flex flex-wrap gap-2">
         <TabLink href={base} active={tab === "utama"}>
           Semua ({formatCount(all.length)})

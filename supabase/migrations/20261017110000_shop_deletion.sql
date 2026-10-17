@@ -84,4 +84,6 @@ revoke execute on function public.request_shop_deletion(uuid, text), public.canc
   public.purge_shop(uuid, text), public.purge_due_shops() from public, anon;
 grant execute on function public.request_shop_deletion(uuid, text), public.cancel_shop_deletion(uuid),
   public.purge_shop(uuid, text) to authenticated;
+-- Supabase's default privileges grant EXECUTE to authenticated directly (not via public).
+revoke execute on function public.purge_due_shops() from authenticated;
 grant execute on function public.purge_due_shops() to service_role;

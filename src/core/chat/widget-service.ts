@@ -12,7 +12,8 @@ import { isValidSessionId, startsNewWindow, WidgetMessageInput } from "./widget"
 
 /**
  * One inbound widget message, end to end (CHT-8): validate → rate limit
- * (session + IP + shop, before any write) → store → the same `runTurn` pipeline as every other channel → store the reply.
+ * (session + IP + shop, before any write) → store → the same `runTurn` pipeline as every other channel → store the reply
+ * → on escalation, notify the owner (GAP #7).
  * All I/O goes through `WidgetStore`, so the rules below are unit-tested
  * without a database (`src/db/widget-store.ts` is the Supabase implementation).
  */
@@ -57,6 +58,8 @@ export interface WidgetStore {
   answers?(tenantId: string): AnswerStore;
   /** Stores ai_runs, the outgoing message and the escalation state; returns the visitor-visible messages. */
   saveOutcome(args: { shop: WidgetShop; conversationId: string; outcome: TurnOutcome }): Promise<PublicMessage[]>;
+  /** GAP #7: tell the owner a chat was handed to them (in-app row + web push, per the shop's preferences). */
+  notifyEscalation?(args: { tenantId: string; conversationId: string; cause: string }): Promise<void>;
 }
 
 export type WidgetResult =
@@ -125,5 +128,11 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
   const cache = store.answers ? { store: store.answers(shop.tenantId), scope: shop.tenantId } : undefined;
   const outcome = await runTurn({ text: parsed.data.text, mode: "ai", context }, generate, { cache });
   const messages = await store.saveOutcome({ shop, conversationId: conversation.id, outcome });
+  if (outcome.action === "escalate" && store.notifyEscalation) {
+    // The buyer's reply is already stored; a failing notification must not turn it into an error.
+    await store.notifyEscalation({ tenantId: shop.tenantId, conversationId: conversation.id, cause: outcome.cause }).catch((e: unknown) => {
+      console.error("escalation notification failed", e);
+    });
+  }
   return { status: 200, body: { messages, inbound: stored, mode: outcome.action === "escalate" ? "human" : "ai" } };
 }

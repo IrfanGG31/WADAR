@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllRows } from "@/db/paginate";
 import { layeredAnswerStore, memoryAnswerStore } from "@/core/answer-cache";
@@ -11,6 +12,9 @@ import { RATE_LIMIT_WINDOW_MS, SESSION_WINDOW_MS } from "@/core/chat/widget";
 import type { PublicMessage, WidgetStore } from "@/core/chat/widget-service";
 import { tableAnswerStore } from "@/db/answer-cache";
 import { findOpenShop } from "@/db/open-shop";
+import { notifyEscalation } from "@/core/notify";
+import { supabaseNotifyDeps } from "@/db/notifications";
+import { vapidConfigFromEnv } from "@/lib/web-push";
 
 const MESSAGE_COLUMNS = "id, author, content, created_at";
 
@@ -183,6 +187,15 @@ export function supabaseWidgetStore(db: SupabaseClient): WidgetStore {
         if (ce) throw ce;
       }
       return [data as PublicMessage];
+    },
+
+    // After the response: the buyer's holding message is not delayed by DB writes or push services.
+    async notifyEscalation(args) {
+      after(() =>
+        notifyEscalation(supabaseNotifyDeps(db, vapidConfigFromEnv()), args).catch((e: unknown) => {
+          console.error("escalation notification failed", e);
+        }),
+      );
     },
   };
 }
