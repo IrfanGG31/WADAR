@@ -1,10 +1,13 @@
 import "server-only";
 import { cache } from "react";
+import { daysWithRows, mergeDailyRows, planDailySource } from "@/core/daily-source";
+import { addDays, daysOf, lastDays } from "@/core/period";
 import { forecastStock, type StockDailyRow } from "@/core/stock";
 import { toForecastRow, type ForecastRow, type StockItem } from "@/core/stock-insight";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
+import { rollupRowsOrEmpty, shopTodayById } from "./rollup-read";
 
 /** Days of history fed to forecastStock (TECH-SPEC §7.1: 56 days, 28 valid days used). */
 export const STOCK_HISTORY_DAYS = 56;
@@ -31,15 +34,20 @@ interface SeriesDbRow {
 
 /**
  * Every active variant with its Stock Intelligence forecast. History comes
- * from `stock_daily_series` (56 days × variant — paged, it is well over
- * PostgREST's 1000-row cap for a 30-product shop) and the numbers come only
+ * from `stock_daily_rollup` for closed days that were rolled up and from
+ * `stock_daily_series` for the rest (today, days not rolled up yet) — 56 days
+ * × variant, paged: well over PostgREST's 1000-row cap for a 30-product shop.
+ * Both give the same opening/sold for a closed day. The numbers come only
  * from {@link forecastStock}; the screens never re-derive them. Cached per
  * request: Beranda's low-stock list and insight card share one load.
  */
 export const listStockForecasts = cache(async (tenantId: string, db?: SupabaseClient): Promise<ForecastRow[]> => {
   const supabase = db ?? (await createClient());
 
-  const [variants, series] = await Promise.all([
+  // The shop's date is unknown until its row is read, so the rollup query takes
+  // a little more than 56 days around UTC today; rows are cut to the window below.
+  const utcToday = new Date().toISOString().slice(0, 10);
+  const [variants, today, rollup] = await Promise.all([
     fetchAllRows<VariantDbRow>((from, to) =>
       supabase
         .from("variants")
@@ -53,15 +61,23 @@ export const listStockForecasts = cache(async (tenantId: string, db?: SupabaseCl
         .order("id")
         .range(from, to),
     ),
-    fetchAllRows<SeriesDbRow>((from, to) =>
-      supabase
-        .rpc("stock_daily_series", { p_tenant_id: tenantId, p_days: STOCK_HISTORY_DAYS })
-        .order("variant_id")
-        .order("day")
-        .range(from, to),
+    shopTodayById(supabase, tenantId),
+    rollupRowsOrEmpty("stock_daily_rollup", () =>
+      fetchAllRows<SeriesDbRow>((from, to) =>
+        supabase
+          .from("stock_daily_rollup")
+          .select("variant_id, day, opening, sold")
+          .eq("tenant_id", tenantId)
+          .gte("day", addDays(utcToday, -(STOCK_HISTORY_DAYS + 1)))
+          .lte("day", addDays(utcToday, 1))
+          .order("variant_id")
+          .order("day")
+          .range(from, to),
+      ),
     ),
   ]);
 
+  const series = await stockSeries(supabase, tenantId, today, rollup);
   const history = new Map<string, StockDailyRow[]>();
   for (const r of series) {
     const list = history.get(r.variant_id) ?? [];
@@ -95,3 +111,32 @@ export const listStockForecasts = cache(async (tenantId: string, db?: SupabaseCl
     return toForecastRow(item, forecast);
   });
 });
+
+/**
+ * 56 days × variant: rolled-up closed days from `stock_daily_rollup`, the
+ * rest from `stock_daily_series`. The RPC only takes "last N days", so it is
+ * asked for the days from the earliest one not rolled up through today.
+ */
+async function stockSeries(
+  supabase: SupabaseClient,
+  tenantId: string,
+  today: string | null,
+  rollup: SeriesDbRow[],
+): Promise<SeriesDbRow[]> {
+  const live = (days: number) =>
+    fetchAllRows<SeriesDbRow>((from, to) =>
+      supabase
+        .rpc("stock_daily_series", { p_tenant_id: tenantId, p_days: days })
+        .order("variant_id")
+        .order("day")
+        .range(from, to),
+    );
+  if (!today) return live(STOCK_HISTORY_DAYS);
+
+  const window = lastDays(today, STOCK_HISTORY_DAYS);
+  const plan = planDailySource(window, today, daysWithRows(rollup));
+  const liveRows = plan.live.length > 0 ? await live(daysOf({ from: plan.live[0].from, to: today }).length) : [];
+  return mergeDailyRows(plan, window, rollup, liveRows).sort(
+    (a, b) => (a.variant_id < b.variant_id ? -1 : a.variant_id > b.variant_id ? 1 : a.day < b.day ? -1 : a.day > b.day ? 1 : 0),
+  );
+}

@@ -7,11 +7,13 @@ import {
   type FinLine,
   type VariantLabel,
 } from "@/core/finance-insight";
+import { daysWithRows, mergeDailyRows, planDailySource } from "@/core/daily-source";
 import type { PeriodWindow } from "@/core/period";
 import { itemTitle } from "@/core/stock-insight";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
+import { rollupRowsOrEmpty, shopTodayById } from "./rollup-read";
 
 export interface FinanceData {
   lines: FinLine[];
@@ -24,9 +26,37 @@ interface VariantNameRow {
   products: { name: string; category: string | null } | null;
 }
 
+const FIN_COLUMNS =
+  "day, variant_id, channel_id, q, revenue_gross, line_discount, order_discount_alloc, cost, " +
+  "platform_fee_alloc, shipping_subsidy_alloc, cost_is_set";
+
+/** `fin_daily` and `fin_daily_rollup` have the same columns; same order as before so pages see the same rows. */
+function finRows(db: SupabaseClient, table: "fin_daily" | "fin_daily_rollup", tenantId: string, window: PeriodWindow) {
+  return fetchAllRows<FinDailyRow>((from, to) =>
+    db
+      .from(table)
+      .select(FIN_COLUMNS)
+      .eq("tenant_id", tenantId)
+      .gte("day", window.from)
+      .lte("day", window.to)
+      .order("day")
+      .order("variant_id")
+      .order("channel_id")
+      .range(from, to),
+  );
+}
+
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** The live query's ORDER BY (lower-case uuid text sorts like Postgres' uuid order). */
+function byDayVariantChannel(a: FinDailyRow, b: FinDailyRow): number {
+  return cmp(a.day, b.day) || cmp(a.variant_id, b.variant_id) || cmp(a.channel_id, b.channel_id);
+}
+
 /**
  * Keuangan input for one window: `fin_daily` rows (day × variant × channel,
- * TECH-SPEC §7.2 — the dashboard reads aggregates, not sale lines) labelled
+ * TECH-SPEC §7.2 — the dashboard reads aggregates, not sale lines; closed days
+ * that were rolled up come from `fin_daily_rollup`, see core/daily-source) labelled
  * with product title / category / channel name, plus expenses by day. All
  * arithmetic happens afterwards in src/core/finance*.ts.
  */
@@ -39,22 +69,9 @@ const loadFinanceData = cache(async (tenantId: string, fromDay: string, toDay: s
   const window = { from: fromDay, to: toDay };
   const supabase = db ?? (await createClient());
 
-  const [rows, variants, channels, expenses] = await Promise.all([
-    fetchAllRows<FinDailyRow>((from, to) =>
-      supabase
-        .from("fin_daily")
-        .select(
-          "day, variant_id, channel_id, q, revenue_gross, line_discount, order_discount_alloc, cost, " +
-            "platform_fee_alloc, shipping_subsidy_alloc, cost_is_set",
-        )
-        .eq("tenant_id", tenantId)
-        .gte("day", window.from)
-        .lte("day", window.to)
-        .order("day")
-        .order("variant_id")
-        .order("channel_id")
-        .range(from, to),
-    ),
+  const [today, rollup, variants, channels, expenses] = await Promise.all([
+    shopTodayById(supabase, tenantId),
+    rollupRowsOrEmpty("fin_daily_rollup", () => finRows(supabase, "fin_daily_rollup", tenantId, window)),
     // Archived products stay in history, so no deleted_at filter here.
     fetchAllRows<VariantNameRow>((from, to) =>
       supabase
@@ -79,6 +96,11 @@ const loadFinanceData = cache(async (tenantId: string, fromDay: string, toDay: s
         .range(from, to),
     ),
   ]);
+
+  // Without the shop's date nothing counts as closed: the live view answers every day.
+  const plan = planDailySource(window, today ?? window.from, today ? daysWithRows(rollup) : new Set());
+  const live = (await Promise.all(plan.live.map((w) => finRows(supabase, "fin_daily", tenantId, w)))).flat();
+  const rows = mergeDailyRows(plan, window, rollup, live).sort(byDayVariantChannel);
 
   const variantLabels = new Map<string, VariantLabel>(
     variants.map((v) => [
