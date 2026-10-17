@@ -14,6 +14,7 @@ import { formatDay, formatTime } from "@/lib/format-date";
 import { KasirTabs } from "../kasir-tabs";
 import { PageGate } from "@/components/shell/page-gate";
 import { Badge } from "@/components/ui/badge";
+import { ReceiptShareButton } from "../receipt-share-button";
 import { VoidSaleButton } from "./void-sale-button";
 
 export const metadata = { title: "Riwayat transaksi" };
@@ -85,11 +86,10 @@ async function History({ params }: { params: Params }) {
                         <span className="text-xs text-muted-foreground tabular-nums">diskon {formatRupiah(Number(sale.order_discount))}</span>
                       )}
                     </div>
-                    {canVoid && isVoidable(sale.status) && (
-                      <div className="flex basis-full justify-end">
-                        <VoidSaleButton slug={slug} saleId={sale.id} />
-                      </div>
-                    )}
+                    <div className="flex basis-full flex-wrap items-start justify-end gap-2">
+                      <ReceiptShareButton slug={slug} saleId={sale.id} className="flex flex-col items-end gap-1" />
+                      {canVoid && isVoidable(sale.status) && <VoidSaleButton slug={slug} saleId={sale.id} />}
+                    </div>
                   </li>
                 );
               })}

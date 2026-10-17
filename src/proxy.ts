@@ -11,8 +11,9 @@ import { OFFLINE_PATH } from "@/lib/service-worker";
  * /privasi is the privacy policy; /sw.js is the service worker (app shell + push, fetched without a page)
  * and /offline the page it precaches.
  * /api/cron/ is called by Vercel Cron (no session) and checks CRON_SECRET itself.
+ * /struk/<token> is a buyer's receipt: one sale behind a random token (POS-3).
  */
-const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/privasi", "/sw.js"];
+const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/privasi", "/sw.js", "/struk/"];
 /** Pages a signed-in user has no reason to see. */
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
 

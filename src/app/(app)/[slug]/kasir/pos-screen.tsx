@@ -14,6 +14,7 @@ import { isNetworkFailure, pendingLabel, type OfflineSalePayload } from "@/core/
 import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
 import { cn } from "@/lib/utils";
 import { recordSale } from "./actions";
+import { ReceiptShareButton } from "./receipt-share-button";
 import { useOfflineSales } from "./use-offline-sales";
 
 export interface PosItem {
@@ -44,6 +45,7 @@ interface Done {
   items: number;
   /** Kept on this device until the server is reachable (POS-6). */
   offline: boolean;
+  saleId?: string;
 }
 
 /** Kasir (POS-1/2): tap products into the cart, pick channel and payment, Bayar. */
@@ -151,7 +153,7 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
         setError(result.error);
         return;
       }
-      setDone({ total: result.total ?? totals.total, change: paidChange, duplicate: !!result.duplicate, items: totals.items, offline: false });
+      setDone({ total: result.total ?? totals.total, change: paidChange, duplicate: !!result.duplicate, items: totals.items, offline: false, saleId: result.saleId });
       router.refresh();
     });
   }
@@ -182,6 +184,7 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
             Kembalian <span className="font-semibold tabular-nums">{formatRupiah(done.change)}</span>
           </p>
         )}
+        {done.saleId && <ReceiptShareButton slug={slug} saleId={done.saleId} className="flex w-full flex-col items-center gap-1" />}
         <Button size="lg" className="w-full" onClick={reset} autoFocus>
           Transaksi baru
         </Button>
