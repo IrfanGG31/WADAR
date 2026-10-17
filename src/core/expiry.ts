@@ -7,6 +7,7 @@
  * known, the sentence says how much is likely still unsold on that day.
  */
 import { formatCount } from "./number-format";
+import { isoDateInZone } from "./period";
 
 /** Warn this many days ahead unless the screen asks otherwise. */
 export const DEFAULT_EXPIRY_WINDOW_DAYS = 30;
@@ -36,6 +37,14 @@ export function daysUntilExpiry(expiresOn: string, today: string): number | null
   return a === null || b === null ? null : a - b;
 }
 
+/**
+ * Same count from a clock instant: "today" is the shop's calendar date in its
+ * own timezone (tenants.timezone), not the server's UTC date.
+ */
+export function daysUntilExpiryAt(expiresOn: string, now: Date, timeZone: string): number | null {
+  return daysUntilExpiry(expiresOn, isoDateInZone(now, timeZone));
+}
+
 /** `?kedaluwarsa=` → window in days; default 30, 1…365. */
 export function parseExpiryWindow(raw: string | string[] | null | undefined): number {
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -54,7 +63,35 @@ export interface ExpiryItem {
   rate?: number | null;
 }
 
-export type ExpiryStatus = "lewat" | "segera";
+/** lewat = past the date; hampir = today … `windowDays` ahead (inclusive); aman = later. */
+export type ExpiryStatus = "lewat" | "hampir" | "aman";
+
+export function expiryStatus(days: number, windowDays = DEFAULT_EXPIRY_WINDOW_DAYS): ExpiryStatus {
+  if (days < 0) return "lewat";
+  return days <= windowDays ? "hampir" : "aman";
+}
+
+/** Days + status for one date; null without a (valid) date. */
+export function classifyExpiry(
+  expiresOn: string | null | undefined,
+  today: string,
+  windowDays = DEFAULT_EXPIRY_WINDOW_DAYS,
+): { days: number; status: ExpiryStatus } | null {
+  if (!expiresOn) return null;
+  const days = daysUntilExpiry(expiresOn, today);
+  return days === null ? null : { days, status: expiryStatus(days, windowDays) };
+}
+
+/**
+ * The date to keep after a stock-in (one date per variant = the nearest one
+ * for the stock on hand). With stock still on the shelf the earlier date
+ * stays; an empty shelf takes the new batch's date. No new date = unchanged.
+ */
+export function expiryAfterStockIn(current: string | null, onHandBefore: number, incoming: string | null): string | null {
+  if (!incoming) return current;
+  if (!current || onHandBefore <= 0) return incoming;
+  return incoming < current ? incoming : current;
+}
 
 export interface ExpiryRisk {
   variant_id: string;
@@ -64,21 +101,22 @@ export interface ExpiryRisk {
   expires_on: string;
   /** Negative = already past. */
   days: number;
-  status: ExpiryStatus;
+  status: Exclude<ExpiryStatus, "aman">;
   /** Units likely still on the shelf on the expiry day at the current rate; null without a rate. */
   unsold_at_expiry: number | null;
 }
 
 /**
- * Variants with stock that expire within `windowDays` (inclusive) or already
- * expired. Past dates first (longest overdue first), then the nearest dates.
+ * Variants with stock that are `lewat` or `hampir` (never `aman`), most
+ * urgent first: longest overdue, then the nearest dates; ties by name.
  */
 export function expiryRisks(items: readonly ExpiryItem[], today: string, windowDays = DEFAULT_EXPIRY_WINDOW_DAYS): ExpiryRisk[] {
   const risks: ExpiryRisk[] = [];
   for (const item of items) {
     if (!item.expires_on || item.on_hand <= 0) continue;
-    const days = daysUntilExpiry(item.expires_on, today);
-    if (days === null || days > windowDays) continue;
+    const c = classifyExpiry(item.expires_on, today, windowDays);
+    if (!c || c.status === "aman") continue;
+    const days = c.days;
     const rate = typeof item.rate === "number" && Number.isFinite(item.rate) && item.rate > 0 ? item.rate : null;
     const unsold =
       days < 0 ? item.on_hand : rate === null ? null : Math.max(0, Math.ceil(item.on_hand - rate * days - 1e-9));
@@ -89,7 +127,7 @@ export function expiryRisks(items: readonly ExpiryItem[], today: string, windowD
       on_hand: item.on_hand,
       expires_on: item.expires_on,
       days,
-      status: days < 0 ? "lewat" : "segera",
+      status: c.status,
       unsold_at_expiry: unsold,
     });
   }

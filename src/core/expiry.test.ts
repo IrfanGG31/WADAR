@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyExpiry,
   daysUntilExpiry,
+  daysUntilExpiryAt,
+  expiryAfterStockIn,
+  expiryStatus,
   DEFAULT_EXPIRY_WINDOW_DAYS,
   expiryRisks,
   formatExpiryDate,
@@ -52,6 +56,59 @@ describe("hari menuju kedaluwarsa (STK-5)", () => {
   });
 });
 
+describe("status lewat / hampir / aman", () => {
+  it("lewat before today, hampir from today through N days, aman after", () => {
+    expect(expiryStatus(-1)).toBe("lewat");
+    expect(expiryStatus(0)).toBe("hampir");
+    expect(expiryStatus(30)).toBe("hampir");
+    expect(expiryStatus(31)).toBe("aman");
+    expect(expiryStatus(7, 7)).toBe("hampir");
+    expect(expiryStatus(8, 7)).toBe("aman");
+  });
+
+  it("classifies a date, null without one", () => {
+    expect(classifyExpiry("2026-10-16", TODAY)).toEqual({ days: -1, status: "lewat" });
+    expect(classifyExpiry("2026-11-16", TODAY)).toEqual({ days: 30, status: "hampir" });
+    expect(classifyExpiry("2026-11-17", TODAY)).toEqual({ days: 31, status: "aman" });
+    expect(classifyExpiry("2026-11-17", TODAY, 60)).toEqual({ days: 31, status: "hampir" });
+    expect(classifyExpiry(null, TODAY)).toBeNull();
+    expect(classifyExpiry(undefined, TODAY)).toBeNull();
+    expect(classifyExpiry("", TODAY)).toBeNull();
+    expect(classifyExpiry("bukan tanggal", TODAY)).toBeNull();
+  });
+});
+
+describe("zona waktu toko", () => {
+  // 16 Okt 2026 17:30 UTC = 17 Okt 00:30 WIB = 01:30 WITA = 02:30 WIT.
+  const justAfterMidnightWib = new Date("2026-10-16T17:30:00Z");
+
+  it("counts from the shop's own date, not the server's UTC date", () => {
+    expect(daysUntilExpiryAt("2026-10-17", justAfterMidnightWib, "Asia/Jakarta")).toBe(0);
+    expect(daysUntilExpiryAt("2026-10-17", justAfterMidnightWib, "UTC")).toBe(1);
+    expect(daysUntilExpiryAt("2026-10-16", justAfterMidnightWib, "Asia/Jayapura")).toBe(-1);
+  });
+
+  it("a date turns lewat at the shop's midnight", () => {
+    const beforeMidnightWib = new Date("2026-10-17T16:59:00Z"); // 23:59 WIB, 17 Okt
+    const afterMidnightWib = new Date("2026-10-17T17:00:00Z"); // 00:00 WIB, 18 Okt
+    expect(daysUntilExpiryAt("2026-10-17", beforeMidnightWib, "Asia/Jakarta")).toBe(0);
+    expect(daysUntilExpiryAt("2026-10-17", afterMidnightWib, "Asia/Jakarta")).toBe(-1);
+    // 16:30 UTC = 23:30 WIB (still 17 Okt) but 00:30 WITA (already 18 Okt).
+    expect(daysUntilExpiryAt("2026-10-17", new Date("2026-10-17T16:30:00Z"), "Asia/Makassar")).toBe(-1);
+  });
+});
+
+describe("tanggal setelah stok masuk", () => {
+  it("keeps the nearest date while old stock remains; an empty shelf takes the new batch's date", () => {
+    expect(expiryAfterStockIn("2026-11-01", 5, "2027-03-01")).toBe("2026-11-01");
+    expect(expiryAfterStockIn("2026-11-01", 5, "2026-10-25")).toBe("2026-10-25");
+    expect(expiryAfterStockIn("2026-11-01", 0, "2027-03-01")).toBe("2027-03-01");
+    expect(expiryAfterStockIn(null, 5, "2027-03-01")).toBe("2027-03-01");
+    expect(expiryAfterStockIn("2026-11-01", 5, null)).toBe("2026-11-01");
+    expect(expiryAfterStockIn(null, 0, null)).toBeNull();
+  });
+});
+
 describe("daftar risiko kedaluwarsa", () => {
   it("warns for ≤ N days (inclusive) and past dates; skips no date, empty stock, later dates", () => {
     const risks = expiryRisks(
@@ -67,10 +124,23 @@ describe("daftar risiko kedaluwarsa", () => {
     );
     expect(risks.map((r) => [r.variant_id, r.days, r.status])).toEqual([
       ["past", -7, "lewat"],
-      ["today", 0, "segera"],
-      ["edge", 30, "segera"],
+      ["today", 0, "hampir"],
+      ["edge", 30, "hampir"],
     ]);
     expect(expiryRisks([item({ expires_on: "2026-10-25" })], TODAY, 7)).toEqual([]);
+  });
+
+  it("most urgent first: longest overdue, then nearest; same day by name", () => {
+    const risks = expiryRisks(
+      [
+        item({ variant_id: "b", title: "Toner", expires_on: "2026-10-20" }),
+        item({ variant_id: "a", title: "Lip balm", expires_on: "2026-10-20" }),
+        item({ variant_id: "c", expires_on: "2026-10-01" }),
+        item({ variant_id: "d", expires_on: "2026-10-15" }),
+      ],
+      TODAY,
+    );
+    expect(risks.map((r) => r.variant_id)).toEqual(["c", "d", "a", "b"]);
   });
 
   it("with a sell rate, estimates what is still unsold on the expiry day", () => {
