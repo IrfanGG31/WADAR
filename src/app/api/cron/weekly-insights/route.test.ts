@@ -9,7 +9,11 @@ const table = new Map<string, unknown>();
 const admin = { tag: "service-role" };
 const build = vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({ text: "Narasi", points: [], insight_keys: [], engine: "offline", model: "offline:template-v1", source: "offline" }));
 
+const continuations: (() => Promise<unknown>)[] = [];
+const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => new Response("{}"));
+
 vi.mock("server-only", () => ({}));
+vi.mock("next/server", () => ({ after: (fn: () => Promise<unknown>) => continuations.push(fn) }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => admin }));
 vi.mock("@/ai", () => ({ getConsult: () => ({ narrateWeekly: vi.fn() }) }));
 vi.mock("@/db/weekly-digest", () => ({
@@ -25,16 +29,21 @@ vi.mock("@/db/weekly-digest", () => ({
 }));
 
 const { GET } = await import("./route");
-const call = (auth?: string) => GET(new Request("https://wadar.test/api/cron/weekly-insights", { headers: auth ? { authorization: auth } : {} }));
+const call = (auth?: string, query = "") =>
+  GET(new Request(`https://wadar.test/api/cron/weekly-insights${query}`, { headers: auth ? { authorization: auth } : {} }));
 
 beforeEach(() => {
   table.clear();
   build.mockClear();
+  continuations.length = 0;
+  fetchMock.mockClear();
+  vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("CRON_SECRET", "s3cret");
   vi.useFakeTimers({ now: new Date("2026-10-19T00:00:00Z"), toFake: ["Date"] });
 });
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -58,6 +67,22 @@ describe("GET /api/cron/weekly-insights (Vercel Cron)", () => {
     const again = await call("Bearer s3cret");
     expect(await again.json()).toMatchObject({ created: 0, skipped: 2 });
     expect(build).toHaveBeenCalledTimes(2);
+  });
+
+  it("with a batch size, runs N shops and chains the next batch to itself after the response", async () => {
+    vi.stubEnv("WEEKLY_BATCH_SIZE", "1");
+    const first = await call("Bearer s3cret");
+    expect(await first.json()).toMatchObject({ shops: 1, created: 1, remaining: 1, next_cursor: "t1" });
+    expect(continuations).toHaveLength(1);
+    await continuations[0]();
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://wadar.test/api/cron/weekly-insights?after=t1");
+    expect(new Headers(init.headers).get("authorization")).toBe("Bearer s3cret");
+
+    const second = await call("Bearer s3cret", "?after=t1");
+    expect(await second.json()).toMatchObject({ shops: 1, created: 1, remaining: 0, next_cursor: null });
+    expect([...table.keys()]).toEqual(["t1:2026-10-19", "t2:2026-10-19"]);
+    expect(continuations).toHaveLength(1); // last batch: nothing chained
   });
 
   it("is reachable without a user session (the proxy does not send it to /masuk)", () => {

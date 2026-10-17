@@ -33,6 +33,41 @@ function deps(shops: DigestShop[], overrides: Partial<WeeklyJobDeps> = {}) {
   return { d, table };
 }
 
+describe("runWeeklyInsightJob in batches (GAP #5: stay under the 300 s function limit)", () => {
+  const SALON: DigestShop = { id: "t3", name: "Salon Rina", slug: "salon", timezone: "Asia/Jakarta" };
+
+  it("processes only `batchSize` shops (by id) and returns the cursor to continue from", async () => {
+    const { d, table } = deps([SALON, KOPI, GLOW]);
+    const report = await runWeeklyInsightJob(d, MONDAY_7_WIB, { batchSize: 2 });
+    expect(report).toMatchObject({ shops: 2, created: 2, remaining: 1, next_cursor: "t2" });
+    expect([...table.keys()]).toEqual(["t1:2026-10-19", "t2:2026-10-19"]);
+    expect(d.build).toHaveBeenCalledTimes(2);
+  });
+
+  it("the next call continues after the cursor and reports no cursor when every shop is done", async () => {
+    const { d, table } = deps([SALON, KOPI, GLOW]);
+    const first = await runWeeklyInsightJob(d, MONDAY_7_WIB, { batchSize: 2 });
+    const second = await runWeeklyInsightJob(d, MONDAY_7_WIB, { batchSize: 2, after: first.next_cursor });
+    expect(second).toMatchObject({ shops: 1, created: 1, remaining: 0, next_cursor: null });
+    expect(second.results.map((r) => r.tenant_id)).toEqual(["t3"]);
+    expect(table.size).toBe(3);
+  });
+
+  it("repeating a batch (retry with the same cursor) creates nothing new", async () => {
+    const { d, table } = deps([SALON, KOPI, GLOW]);
+    await runWeeklyInsightJob(d, MONDAY_7_WIB, { batchSize: 2 });
+    const retry = await runWeeklyInsightJob(d, MONDAY_7_WIB, { batchSize: 2 });
+    expect(retry).toMatchObject({ created: 0, skipped: 2, next_cursor: "t2" });
+    expect(table.size).toBe(2);
+    expect(d.build).toHaveBeenCalledTimes(2);
+  });
+
+  it("without a batch size every shop runs in one call (no cursor)", async () => {
+    const { d } = deps([SALON, KOPI, GLOW]);
+    expect(await runWeeklyInsightJob(d, MONDAY_7_WIB)).toMatchObject({ shops: 3, created: 3, remaining: 0, next_cursor: null });
+  });
+});
+
 describe("runWeeklyInsightJob", () => {
   it("stores exactly one digest per shop for the shop's current week", async () => {
     const { d, table } = deps([GLOW, KOPI]);

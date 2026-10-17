@@ -5,6 +5,8 @@
  * the same week is a no-op per shop; a shop that fails does not stop the others.
  * Sending (email / WhatsApp) goes through `deliver` — no channel is configured yet, so the
  * default hook only records "not_configured".
+ * Batches: with `batchSize`, one call handles at most that many shops (ordered by id) and
+ * returns `next_cursor`; the next call passes it as `after`. Repeating a batch is a no-op.
  */
 import { isoDateInZone } from "../period";
 import { weekStart } from "./insights";
@@ -53,9 +55,21 @@ export interface WeeklyJobResult {
   error?: string;
 }
 
+export interface WeeklyJobOptions {
+  /** Max shops handled by this call (default: all). */
+  batchSize?: number;
+  /** Continue with shops whose id sorts after this one (the previous call's `next_cursor`). */
+  after?: string | null;
+}
+
 export interface WeeklyJobReport {
   ran_at: string;
+  /** Shops handled by this call. */
   shops: number;
+  /** Shops left after this batch; 0 = the week is done. */
+  remaining: number;
+  /** Pass as `after` to run the next batch; null when nothing is left. */
+  next_cursor: string | null;
   created: number;
   skipped: number;
   failed: number;
@@ -64,9 +78,14 @@ export interface WeeklyJobReport {
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** Shops run one after another: a small shop count, and it keeps database and model load flat. */
-export async function runWeeklyInsightJob(deps: WeeklyJobDeps, now: Date): Promise<WeeklyJobReport> {
-  const shops = await deps.listShops();
+/** Shops run one after another (keeps database and model load flat); `batchSize` bounds one call. */
+export async function runWeeklyInsightJob(deps: WeeklyJobDeps, now: Date, { batchSize, after }: WeeklyJobOptions = {}): Promise<WeeklyJobReport> {
+  const pending = (await deps.listShops())
+    .filter((s) => !after || s.id > after)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const size = batchSize && batchSize > 0 ? Math.floor(batchSize) : pending.length;
+  const shops = pending.slice(0, size);
+  const remaining = pending.length - shops.length;
   const results: WeeklyJobResult[] = [];
   for (const shop of shops) {
     const today = isoDateInZone(now, shop.timezone);
@@ -95,7 +114,14 @@ export async function runWeeklyInsightJob(deps: WeeklyJobDeps, now: Date): Promi
     }
   }
   const count = (s: WeeklyJobResult["status"]) => results.filter((r) => r.status === s).length;
-  return { ran_at: now.toISOString(), shops: shops.length, created: count("created"), skipped: count("exists"), failed: count("failed"), results };
+  return {
+    ran_at: now.toISOString(),
+    shops: shops.length,
+    remaining,
+    next_cursor: remaining > 0 ? shops[shops.length - 1].id : null,
+    created: count("created"), skipped: count("exists"), failed: count("failed"),
+    results,
+  };
 }
 
 /** Delivery hook until email (Resend, verified domain) / WhatsApp (Cloud API) are configured: nothing is sent. */
