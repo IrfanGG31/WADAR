@@ -16,6 +16,7 @@ export const PERMISSIONS = [
   "finance", // Laporan & ekspor keuangan
   "settings", // Profil toko, FAQ, notifikasi, reset demo
   "shop_data", // Ekspor semua data, hapus toko
+  "team", // Undang staf, ubah peran, cabut akses
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -45,6 +46,7 @@ const ACTION: Record<Permission, string> = {
   finance: "melihat atau mengunduh laporan keuangan",
   settings: "mengubah pengaturan toko",
   shop_data: "mengekspor atau menghapus data toko",
+  team: "mengatur anggota tim",
 };
 
 /** The error shown when {@link can} says no. */
@@ -82,6 +84,7 @@ const PAGE_NAME: Record<Permission, string> = {
   finance: "Keuangan",
   settings: "Pengaturan",
   shop_data: "Data & privasi",
+  team: "Anggota tim",
 };
 
 /** The Beranda banner for `?ditolak=…`; null for an unknown value (a hand-typed URL shows nothing). */
