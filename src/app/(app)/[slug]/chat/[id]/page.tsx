@@ -11,13 +11,16 @@ import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { AutoRefresh, ThreadControls } from "../thread-controls";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Percakapan" };
 
 export default function ThreadPage({ params }: PageProps<"/[slug]/chat/[id]">) {
   return (
     <Suspense fallback={<PageSkeleton title="Percakapan" shape="thread" />}>
-      <Thread params={params} />
+      <PageGate params={params} permission="chat">
+        <Thread params={params} />
+      </PageGate>
     </Suspense>
   );
 }

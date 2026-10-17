@@ -6,10 +6,11 @@ import { useParams, usePathname } from "next/navigation";
 import { brand } from "@/brand";
 import { shopPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-import { DESKTOP_NAV, MOBILE_NAV, currentPage, isActive } from "./nav-items";
+import type { MemberRole } from "@/core/roles";
+import { DESKTOP_NAV, MOBILE_NAV, currentPage, isActive, navFor } from "./nav-items";
 
-/** Bottom tab bar, shown below the md breakpoint (≤ 768px). */
-export function BottomTabs() {
+/** Bottom tab bar, shown below the md breakpoint (≤ 768px). Only the pages `role` may open. */
+export function BottomTabs({ role }: { role: MemberRole | null }) {
   const { slug } = useParams<{ slug: string }>();
   const page = currentPage(usePathname());
 
@@ -18,7 +19,7 @@ export function BottomTabs() {
       aria-label="Navigasi utama"
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_8px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
     >
-      {MOBILE_NAV.map((item) => {
+      {navFor(MOBILE_NAV, role).map((item) => {
         const active = isActive(item, page);
         const Icon = item.icon;
         return (
@@ -40,8 +41,8 @@ export function BottomTabs() {
   );
 }
 
-/** Sidebar, shown from the md breakpoint up. */
-export function Sidebar() {
+/** Sidebar, shown from the md breakpoint up. Only the pages `role` may open. */
+export function Sidebar({ role }: { role: MemberRole | null }) {
   const { slug } = useParams<{ slug: string }>();
   const page = currentPage(usePathname());
 
@@ -54,7 +55,7 @@ export function Sidebar() {
         <Image src={brand.logo.src} alt={brand.logo.alt} width={140} height={140} className="h-auto w-28" priority />
       </div>
       <div className="flex flex-1 flex-col gap-1">
-        {DESKTOP_NAV.map((item) => {
+        {navFor(DESKTOP_NAV, role).map((item) => {
           const active = isActive(item, page);
           const Icon = item.icon;
           return (

@@ -7,6 +7,8 @@ import { STOCK_STATUS_LABEL } from "@/core/stock-level";
 import type { ForecastRow } from "@/core/stock-insight";
 import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
+import { can, DENIED_PARAM, deniedPageNotice } from "@/core/roles";
+import { getMyRole } from "@/db/access";
 import { getBerandaInsight } from "@/db/beranda-insight";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
 import { getShop } from "@/db/shop";
@@ -27,13 +29,16 @@ type Params = PageProps<"/[slug]/beranda">["params"];
  * (`fin_daily`, `beranda_summary`); the UI never computes KPIs from raw
  * transaction rows.
  */
-export default function BerandaPage({ params }: PageProps<"/[slug]/beranda">) {
+export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]/beranda">) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">Selamat datang</p>
         <h1 className="text-2xl font-semibold tracking-tight">Beranda</h1>
       </div>
+      <Suspense fallback={null}>
+        <DeniedNotice params={params} searchParams={searchParams} />
+      </Suspense>
 
       <Suspense fallback={<KpiSkeleton />}>
         <KpiCards params={params} />
@@ -48,6 +53,19 @@ export default function BerandaPage({ params }: PageProps<"/[slug]/beranda">) {
         <InsightSection params={params} />
       </Suspense>
     </div>
+  );
+}
+
+/** After a page guard refused a page (`?ditolak=finance`, src/db/access.ts): say why. */
+async function DeniedNotice({ params, searchParams }: { params: Params; searchParams: PageProps<"/[slug]/beranda">["searchParams"] }) {
+  const { slug } = await params;
+  const notice = deniedPageNotice(await getMyRole((await getShop(slug)).id), (await searchParams)[DENIED_PARAM]);
+  if (!notice) return null;
+  return (
+    <p role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      {notice}
+    </p>
   );
 }
 
@@ -195,6 +213,8 @@ const INSIGHT_LINK = {
 async function InsightSection({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
+  // Profit insights + the weekly digest come from Konsultasi: owner only (CON-6).
+  if (!can(await getMyRole(shop.id), "consult")) return null;
   const today = await shopToday(shop.timezone);
   const [insight, digest] = await Promise.all([getBerandaInsight(shop, today), getWeeklyDigest(shop.id, weekStart(today))]);
 

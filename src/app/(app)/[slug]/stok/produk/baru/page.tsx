@@ -7,6 +7,7 @@ import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { newVariant } from "../../product-draft";
 import { ProductForm } from "../../product-form";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Tambah produk" };
 
@@ -16,7 +17,9 @@ export default function NewProductPage({ params }: PageProps<"/[slug]/stok/produ
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <Suspense fallback={<PageSkeleton title="Tambah produk" shape="form" />}>
-        <NewProduct params={params} />
+        <PageGate params={params} permission="catalog">
+          <NewProduct params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

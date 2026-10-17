@@ -22,6 +22,7 @@ import { ExportReportButton } from "./export-report-button";
 import { KeuanganHeader } from "./keuangan-header";
 import { PeriodPicker, PeriodPickerSkeleton } from "./period-picker";
 import { CategoryDonut, ProfitChangeCard, ProfitTrend, SummaryCards } from "./summary-parts";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Keuangan" };
 
@@ -39,7 +40,9 @@ export default function KeuanganPage({ params, searchParams }: PageProps<"/[slug
     <div className="flex flex-col gap-6">
       <KeuanganHeader params={params} active="keuangan" />
       <Suspense fallback={<SummarySkeleton />}>
-        <Summary params={params} searchParams={searchParams} />
+        <PageGate params={params} permission="finance">
+          <Summary params={params} searchParams={searchParams} />
+        </PageGate>
       </Suspense>
     </div>
   );

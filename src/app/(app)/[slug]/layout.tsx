@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { Suspense } from "react";
-import { BottomTabs, NavSkeleton, Sidebar } from "@/components/shell/app-nav";
+import { NavSkeleton } from "@/components/shell/app-nav";
+import { RoleNav } from "@/components/shell/role-nav";
 import { ServiceWorkerRegister } from "@/components/shell/service-worker-register";
 import { ShopName } from "@/components/shell/shop-name";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,7 @@ export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">)
   return (
     <div className="min-h-dvh md:flex">
       <Suspense fallback={<NavSkeleton />}>
-        <Sidebar />
-        <BottomTabs />
+        <RoleNav params={params} />
         <ServiceWorkerRegister />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">

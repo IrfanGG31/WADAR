@@ -12,6 +12,7 @@ import { formatDateTime } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { NotificationList } from "./notification-list";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Chat AI" };
 
@@ -25,7 +26,9 @@ export default function ChatPage({ params, searchParams }: PageProps<"/[slug]/ch
         <h1 className="text-2xl font-semibold tracking-tight">Chat</h1>
       </div>
       <Suspense fallback={<InboxSkeleton />}>
-        <Inbox params={params} searchParams={searchParams} />
+        <PageGate params={params} permission="chat">
+          <Inbox params={params} searchParams={searchParams} />
+        </PageGate>
       </Suspense>
     </div>
   );

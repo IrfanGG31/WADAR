@@ -15,6 +15,7 @@ import { shopToday } from "@/lib/shop-today";
 import { KeuanganHeader } from "../keuangan-header";
 import { PeriodPicker, PeriodPickerSkeleton } from "../period-picker";
 import { ChannelMargins, ProductMargins, Warnings } from "./margin-parts";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Margin" };
 
@@ -32,7 +33,9 @@ export default function MarginPage({ params, searchParams }: PageProps<"/[slug]/
     <div className="flex flex-col gap-6">
       <KeuanganHeader params={params} active="keuangan/margin" />
       <Suspense fallback={<MarginSkeleton />}>
-        <Margin params={params} searchParams={searchParams} />
+        <PageGate params={params} permission="finance">
+          <Margin params={params} searchParams={searchParams} />
+        </PageGate>
       </Suspense>
     </div>
   );

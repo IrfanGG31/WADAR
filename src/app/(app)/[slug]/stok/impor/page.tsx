@@ -7,6 +7,7 @@ import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { ImportClient } from "./import-client";
 import { ImportHistory } from "./import-history";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Impor katalog" };
 
@@ -16,7 +17,9 @@ export default function ImportPage({ params }: PageProps<"/[slug]/stok/impor">) 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <Suspense fallback={<PageSkeleton title="Impor katalog" shape="form" />}>
-        <Import params={params} />
+        <PageGate params={params} permission="catalog">
+          <Import params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

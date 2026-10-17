@@ -10,6 +10,7 @@ import { FaqManager } from "./faq-manager";
 import { NotificationSettings } from "./notification-settings";
 import { ResetDemo } from "./reset-demo";
 import { StoreProfileForm } from "./store-profile-form";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Pengaturan" };
 
@@ -21,7 +22,9 @@ export default function PengaturanPage({ params, searchParams }: PageProps<"/[sl
         <h1 className="text-2xl font-semibold tracking-tight">Pengaturan toko</h1>
       </div>
       <Suspense fallback={<SettingsSkeleton />}>
-        <Content params={params} searchParams={searchParams} />
+        <PageGate params={params} permission="settings">
+          <Content params={params} searchParams={searchParams} />
+        </PageGate>
       </Suspense>
     </div>
   );

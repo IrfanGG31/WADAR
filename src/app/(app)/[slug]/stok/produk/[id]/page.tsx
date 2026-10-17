@@ -9,6 +9,7 @@ import { shopPath } from "@/lib/routes";
 import { ArchiveButton } from "../../archive-button";
 import { ProductForm } from "../../product-form";
 import { StockInForm } from "../../stock-in-form";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Ubah produk" };
 
@@ -20,7 +21,9 @@ export default function EditProductPage({ params }: PageProps<"/[slug]/stok/prod
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <Suspense fallback={<PageSkeleton title="Ubah produk" shape="form" />}>
-        <EditProduct params={params} />
+        <PageGate params={params} permission="catalog">
+          <EditProduct params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

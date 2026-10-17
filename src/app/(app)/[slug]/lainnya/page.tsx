@@ -1,7 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { MORE_NAV } from "@/components/shell/nav-items";
+import { MORE_NAV, navFor } from "@/components/shell/nav-items";
+import { getMyRole } from "@/db/access";
+import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 
 export const metadata = { title: "Lainnya" };
@@ -28,9 +30,10 @@ export default function LainnyaPage({ params }: PageProps<"/[slug]/lainnya">) {
 
 async function MoreLinks({ params }: { params: PageProps<"/[slug]/lainnya">["params"] }) {
   const { slug } = await params;
+  const role = await getMyRole((await getShop(slug)).id);
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-      {MORE_NAV.map(({ page, label, icon: Icon }) => (
+      {navFor(MORE_NAV, role).map(({ page, label, icon: Icon }) => (
         <li key={page}>
           <Link
             href={shopPath(slug, page)}

@@ -5,6 +5,7 @@ import { listChannels } from "@/db/channels";
 import { getShop } from "@/db/shop";
 import { KasirTabs } from "./kasir-tabs";
 import { type PosItem, PosScreen } from "./pos-screen";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Kasir" };
 
@@ -15,7 +16,9 @@ export default function KasirPage({ params }: PageProps<"/[slug]/kasir">) {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Transaksi</h1>
       <Suspense fallback={<PosSkeleton />}>
-        <Pos params={params} />
+        <PageGate params={params} permission="sell">
+          <Pos params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

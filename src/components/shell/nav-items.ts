@@ -12,6 +12,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { canOpenPage, type MemberRole } from "@/core/roles";
 
 export interface NavItem {
   /** Page under the shop slug: /<slug>/<page>. */
@@ -45,6 +46,11 @@ export const DESKTOP_NAV: NavItem[] = [
 
 /** Destinations listed on the mobile "Lainnya" page. */
 export const MORE_NAV: NavItem[] = DESKTOP_NAV.filter((item) => !MOBILE_NAV.some((tab) => tab.page === item.page));
+
+/** The items a role may open (CON-6): Keuangan, Konsultasi, Pengaturan… disappear for staff. */
+export function navFor(items: NavItem[], role: MemberRole | null): NavItem[] {
+  return items.filter((item) => canOpenPage(role, item.page));
+}
 
 /** The page segment of /<slug>/<page>/…, or undefined. */
 export function currentPage(pathname: string): string | undefined {

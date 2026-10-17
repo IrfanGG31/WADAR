@@ -6,6 +6,7 @@ import { getShop } from "@/db/shop";
 import { shopToday } from "@/lib/shop-today";
 import { KeuanganHeader } from "../keuangan-header";
 import { DailyFinanceTable, DETAIL_DAYS } from "./daily-table";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Detail keuangan" };
 
@@ -28,7 +29,9 @@ export default function DetailPage({ params }: PageProps<"/[slug]/keuangan/detai
           </div>
         }
       >
-        <Detail params={params} />
+        <PageGate params={params} permission="finance">
+          <Detail params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

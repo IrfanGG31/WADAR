@@ -4,6 +4,7 @@ import { listMemory } from "@/db/memory";
 import { getShop } from "@/db/shop";
 import { ConsultClient } from "./consult-client";
 import { MemoryList } from "./memory-list";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Konsultasi Bisnis" };
 
@@ -28,7 +29,9 @@ export default function KonsultasiPage({ params }: PageProps<"/[slug]/konsultasi
           </div>
         }
       >
-        <Body params={params} />
+        <PageGate params={params} permission="consult">
+          <Body params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );

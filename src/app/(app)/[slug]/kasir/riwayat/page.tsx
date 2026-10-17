@@ -9,6 +9,7 @@ import { listRecentSales } from "@/db/sales";
 import { getShop } from "@/db/shop";
 import { formatDay, formatTime } from "@/lib/format-date";
 import { KasirTabs } from "../kasir-tabs";
+import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Riwayat transaksi" };
 
@@ -19,7 +20,9 @@ export default function RiwayatPage({ params }: PageProps<"/[slug]/kasir/riwayat
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Transaksi</h1>
       <Suspense fallback={<HistorySkeleton />}>
-        <History params={params} />
+        <PageGate params={params} permission="sell">
+          <History params={params} />
+        </PageGate>
       </Suspense>
     </div>
   );
