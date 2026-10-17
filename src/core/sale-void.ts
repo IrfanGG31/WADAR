@@ -4,7 +4,7 @@ import { brand } from "@/brand";
 /**
  * Void penjualan (POS-5). The sale row stays (append-only); `public.void_sale` flips its
  * status to 'void', returns the stock and drops it from every report
- * (migration 20261017170000_sale_void). Pure helpers for the action and Riwayat.
+ * (migration 20261017070107_sale_void). Pure helpers for the action and Riwayat.
  */
 
 export type SaleStatus = "completed" | "void" | "canceled" | "returned";

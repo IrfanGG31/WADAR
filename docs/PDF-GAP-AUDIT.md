@@ -4,7 +4,7 @@ Audit selesai: hanya membaca, tidak ada file yang diubah, tidak ada commit, dan 
 
 **1. Stock Intelligence: ADA & LENGKAP (inti); tidak sinkron dengan marketplace**
 - **Kode:** rumus di `src/core/stock.ts:84-115` (`forecastStock`): laju jual per hari, sisa hari stok, titik pesan ulang, jumlah pesan ulang (baris 101), lambat laku (baris 104-108). Pembungkus untuk layar di `src/core/stock-insight.ts`.
-- **Dari DB?** Ya. `src/db/stock.ts:37-95` membaca `variants` dan RPC `stock_daily_series` (`supabase/migrations/20261015050000_fin_stock_views.sql:38`). Narasinya template, bukan buatan model (`stock.ts:118`).
+- **Dari DB?** Ya. `src/db/stock.ts:37-95` membaca `variants` dan RPC `stock_daily_series` (`supabase/migrations/20261017025122_fin_stock_views.sql:38`). Narasinya template, bukan buatan model (`stock.ts:118`).
 - **UI:** `stok/prediksi/page.tsx:63-91` dan kartu Beranda `beranda/page.tsx:213`.
 - **Tes:** `stock.test.ts` ±11, `stock-insight.test.ts` ±15, `stock-level.test.ts` ±3, plus SQL `supabase/tests/02_stock_sales.sql`.
 - **Kurang:** stok hanya satu angka per varian. Tidak ada sinkronisasi dengan marketplace (Tabel 3 "stok tidak sinkron antar-kanal"), jadi stok "sinkron" hanya kalau semua penjualan dicatat manual di Kasir.
@@ -53,7 +53,7 @@ Audit selesai: hanya membaca, tidak ada file yang diubah, tidak ada commit, dan 
 - **[ADA TAPI DANGKAL] Eskalasi chatbot (§C.3, §E.2).** Ambang keyakinan 0.6 ada (`src/core/chat/guardrails.ts:22,243`), tapi nilai keyakinannya dilaporkan sendiri oleh model (`src/ai/prompts/chat_reply.v1.ts:26`), bukan dari skor pencarian. Tidak ada notifikasi ke pemilik.
 - **[ADA TAPI DANGKAL] Waktu balas chatbot < 10 detik (§C.3).** Batas waktu 8 detik per percobaan (`models.ts:43`), tapi bisa ada 2 percobaan (`pipeline.ts:81`), jadi kasus terburuk ±16 detik + waktu pencarian. Belum diukur di produksi.
 - **[TIDAK ADA] Uji sampel mingguan oleh AI trainer (§E.2).** Tugas `judge` sudah ditulis (`src/ai/providers/google.ts:78`) tapi tidak dipanggil di mana pun. Golden set ditunda (`BACKLOG.md:17`).
-- **[ADA & LENGKAP] Isolasi antar-tenant (§C.3).** RLS aktif di semua tabel tenant (`core.sql:242-245`, `chat.sql:171-181`, `consult.sql:34-35`); tes `supabase/tests/01_rls_isolation.sql`. Masalah penyisipan cross-tenant yang sudah diketahui sedang diperbaiki agen lain (migrasi `20261017090100`).
+- **[ADA & LENGKAP] Isolasi antar-tenant (§C.3).** RLS aktif di semua tabel tenant (`core.sql:242-245`, `chat.sql:171-181`, `consult.sql:34-35`); tes `supabase/tests/01_rls_isolation.sql`. Masalah penyisipan cross-tenant yang sudah diketahui sedang diperbaiki agen lain (migrasi `20261016193700`).
 - **[TIDAK ADA] Data bisa diekspor/dihapus (§C.3).** Tidak ada aksi ekspor atau hapus toko/akun. Server action yang ada hanya profil, FAQ, reset demo, dan kendali chat. Ekspor laporan ditunda di `BACKLOG.md:10`.
 - **[Tidak yakin] Enkripsi, uptime ≥99,5%, backup harian 30 hari (§C.3).** Ini urusan infrastruktur Supabase/Vercel, tidak terlihat dari kode. Perlu dicek paket Supabase dan dashboard oleh manusia.
 - **[TIDAK ADA] Pentest tahunan, kebijakan privasi UU PDP (§E.2, Tabel 7).** Tidak ada halaman kebijakan privasi di `src/app`.

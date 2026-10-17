@@ -14,7 +14,7 @@ const TABLE = "weekly_insight_digests";
 
 /**
  * Shops the cron runs for: every shop not scheduled for deletion. `select("*")` so the job
- * still runs on a database without the deletion columns (migration 20261017110000).
+ * still runs on a database without the deletion columns (migration 20261017024527).
  */
 export async function listDigestShops(db: SupabaseClient): Promise<Shop[]> {
   const { data, error } = await db.from("tenants").select("*").order("id");

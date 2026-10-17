@@ -44,7 +44,7 @@ export async function findShop(slug: string): Promise<Shop | null> {
 
 /**
  * Stage of a scheduled shop deletion (GAP #6). Kept out of {@link getShop}: a database without
- * the deletion columns yet (migration 20261017110000 not applied) reads as "not scheduled"
+ * the deletion columns yet (migration 20261017024527 not applied) reads as "not scheduled"
  * instead of breaking every page.
  */
 export async function getShopDeletion(tenantId: string): Promise<ShopDeletionRow | null> {

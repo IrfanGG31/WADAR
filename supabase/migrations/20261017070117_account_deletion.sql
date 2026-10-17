@@ -1,5 +1,13 @@
+-- GAP #6 (sisa): a signed-in user deletes their own account's app data.
+--
+-- `delete_my_account` removes the caller's memberships, push devices and open invites
+-- addressed to them, and deletes demo shops only they own. It refuses — touching nothing —
+-- while the caller is the last owner of a real shop (delete the shop first or make another
+-- member owner). The `auth.users` row stays: deleting it needs the Auth admin API (service
+-- role), so the request is queued in `account_deletions` for that later step.
+
 create table public.account_deletions (
-  user_id uuid primary key,
+  user_id uuid primary key,              -- no FK: the row must outlive auth.users
   requested_at timestamptz not null default now(),
   auth_deleted_at timestamptz
 );
@@ -7,6 +15,8 @@ alter table public.account_deletions enable row level security;
 revoke all on public.account_deletions from public, anon, authenticated;
 grant all on public.account_deletions to service_role;
 
+-- p_confirm = the account's email (case-insensitive), or 'HAPUS' for accounts without one
+-- (anonymous demo sessions). Returns { deleted, blocked_shops: [{slug, name}], left_shops, deleted_demo_shops }.
 create or replace function public.delete_my_account(p_confirm text)
 returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -23,6 +33,8 @@ begin
     raise exception 'Konfirmasi tidak cocok' using errcode = '22023';
   end if;
 
+  -- Lock the memberships of every shop the caller belongs to, so a concurrent owner
+  -- change cannot leave a shop without one.
   perform 1 from public.memberships m
    where m.tenant_id in (select x.tenant_id from public.memberships x where x.user_id = v_uid)
    for update;
@@ -38,6 +50,7 @@ begin
     return jsonb_build_object('deleted', false, 'blocked_shops', v_blocked, 'left_shops', 0, 'deleted_demo_shops', 0);
   end if;
 
+  -- Demo shops (incl. archived resets) only this user owns go with the account; every tenant table cascades.
   with gone as (
     delete from public.tenants t
      where t.is_demo

@@ -12,7 +12,7 @@ const errorCode = (e: unknown) => (typeof e === "object" && e && "code" in e ? S
 /**
  * CON-4 "Yang WADAR tahu": the owner corrects or forgets a saved note. The Konsultasi cache
  * keys carry a fingerprint of the memory items, so the next answer already reads the change.
- * Before migration 20261017130000 (UPDATE/DELETE grants) is applied, both fail with a message.
+ * Before migration 20261017024634 (UPDATE/DELETE grants) is applied, both fail with a message.
  */
 export async function updateMemoryItem(slug: string, id: string, content: string): Promise<ActionResult> {
   const checked = validateMemoryContent(content);

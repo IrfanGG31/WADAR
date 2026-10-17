@@ -1,7 +1,7 @@
 /**
  * Struk publik (POS-3): a buyer opens `/struk/<token>` without logging in.
  * The token is the sale's random `receipt_token` (64 hex, migration
- * 20261017180000_public_receipt) — never the sale id — and the only reader is
+ * 20261017070118_public_receipt) — never the sale id — and the only reader is
  * `public.get_public_receipt(token)`, which returns that one sale. Pure helpers
  * for the page; the I/O is injected so "wrong token = 404" is testable.
  */

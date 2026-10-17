@@ -13,7 +13,7 @@ const memory = memoryAnswerStore();
 /**
  * Beranda "Insight untukmu" for the shop's day (CON-5): cached per tenant + day, so only the
  * first open of the day loads 14 days of data and ranks the insights. Before migration
- * 20261017100000 is applied the table layer is a miss and only the memory layer caches.
+ * 20261017024516 is applied the table layer is a miss and only the memory layer caches.
  */
 export async function getBerandaInsight(shop: Shop, today: string): Promise<BerandaInsight & { cached: boolean }> {
   const supabase = await createClient();

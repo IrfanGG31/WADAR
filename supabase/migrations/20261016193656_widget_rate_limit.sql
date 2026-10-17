@@ -1,13 +1,20 @@
 -- Widget rate limit shared by every serverless instance (security review P1).
-create table if not exists public.widget_rate_hits (
+-- The cookie session alone could be dropped by the client, so each widget
+-- message is counted in three buckets at once — session, client IP, whole shop
+-- — before any conversation row is written. One call = atomic check-and-record:
+-- the buckets are locked (sorted, no deadlock) so parallel requests cannot both
+-- take the last slot. Only the service role (the widget route) may call it.
+
+create table public.widget_rate_hits (
   bucket text not null,
   hit_at timestamptz not null default clock_timestamp()
 );
-create index if not exists widget_rate_hits_bucket_idx on public.widget_rate_hits (bucket, hit_at desc);
-create index if not exists widget_rate_hits_time_idx on public.widget_rate_hits (hit_at);
-alter table public.widget_rate_hits enable row level security;
+create index widget_rate_hits_bucket_idx on public.widget_rate_hits (bucket, hit_at desc);
+create index widget_rate_hits_time_idx on public.widget_rate_hits (hit_at);
+alter table public.widget_rate_hits enable row level security;   -- no policies: service role only
 revoke all on public.widget_rate_hits from public, anon, authenticated;
 
+-- Returns 0 when allowed (and records one hit per bucket), else the seconds to wait.
 create or replace function public.widget_rate_hit(p_buckets text[], p_limits int[], p_window_ms int default 60000)
 returns int
 language plpgsql security invoker set search_path = '' as $$
@@ -25,6 +32,7 @@ begin
     from (select distinct b from unnest(p_buckets) as b order by b) s;
 
   for i in 1 .. array_length(p_buckets, 1) loop
+    -- The limit-th newest hit inside the window: if it exists the bucket is full until it ages out.
     select h.hit_at into v_oldest
       from public.widget_rate_hits h
      where h.bucket = p_buckets[i] and h.hit_at > v_now - v_window

@@ -1,6 +1,6 @@
 /**
  * Risiko kedaluwarsa (STK-5). A variant may carry one optional expiry date
- * (`variants.expires_on`, migration 20261017190000_variant_expiry) — the
+ * (`variants.expires_on`, migration 20261017070121_variant_expiry) — the
  * nearest one for the stock on hand; batches are not tracked. Pure helpers:
  * whole-day counts on the shop's calendar date, which variants to warn about,
  * and a plain sentence for each. When the Stock Intelligence sell rate is

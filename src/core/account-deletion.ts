@@ -2,7 +2,7 @@ import { brand } from "@/brand";
 
 /**
  * Hapus akun (GAP #6, sisa): a user deletes their own account's app data through
- * `public.delete_my_account` (migration 20261017170100_account_deletion). Pure helpers
+ * `public.delete_my_account` (migration 20261017070117_account_deletion). Pure helpers
  * shared by the action, the page and the tests.
  */
 

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnswerStore } from "@/core/answer-cache";
 
 /**
- * `ai_answer_cache` (migration 20261017100000) as an `AnswerStore` for one
+ * `ai_answer_cache` (migration 20261017024516) as an `AnswerStore` for one
  * tenant. Works with the service role (widget) or the owner's client (RLS).
  * Errors are thrown; callers wrap the store with `safeGet`/`safeSet`, so a
  * missing table (migration not applied yet) is just a cache miss.

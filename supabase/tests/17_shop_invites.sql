@@ -120,7 +120,8 @@ end $$;
 -- an unknown token cannot be accepted
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000017c1"}', true);
 do $$ begin
-  perform public.accept_shop_invite((select token from public.shop_invite_preview('x') limit 1));
+  assert not exists (select 1 from public.shop_invite_preview('token-yang-tidak-ada')), 'unknown token previews nothing';
+  perform public.accept_shop_invite('token-yang-tidak-ada');
   assert false, 'unknown token refused';
 exception when no_data_found then null;
 end $$;

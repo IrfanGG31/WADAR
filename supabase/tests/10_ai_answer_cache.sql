@@ -6,7 +6,7 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000000e2', 'b@test.local');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e1"}', true);
-select public.create_shop('Toko A', 'toko-a-cache', 'fnb');
+select set_config('test.a', (public.create_shop('Toko A', 'toko-a-cache', 'fnb')).id::text, true);
 insert into public.ai_answer_cache (tenant_id, cache_key, value, expires_at)
   select id, 'weekly|a|k', '{"text":"A"}', now() + interval '1 hour' from public.tenants where slug = 'toko-a-cache';
 -- upsert by the owner (insert … on conflict do update) works
@@ -24,7 +24,7 @@ do $$ begin
 end $$;
 do $$ begin
   insert into public.ai_answer_cache (tenant_id, cache_key, value, expires_at)
-  select id, 'weekly|x|k', '{}', now() from public.tenants where slug = 'toko-a-cache';
+  values (current_setting('test.a')::uuid, 'weekly|x|k', '{}', now());
   assert false, 'writing into another shop''s cache must fail';
 exception when insufficient_privilege then null;
 end $$;

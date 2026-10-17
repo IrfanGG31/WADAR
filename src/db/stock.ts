@@ -160,7 +160,7 @@ export interface ExpiryVariant {
 /**
  * Active variants that carry an expiry date (STK-5) plus the shop's date.
  * Read on its own so the Stok screens keep working before migration
- * 20261017190000_variant_expiry is applied: a failed read = no warnings.
+ * 20261017070121_variant_expiry is applied: a failed read = no warnings.
  */
 export async function listExpiryVariants(tenantId: string): Promise<{ today: string | null; variants: ExpiryVariant[] }> {
   const supabase = await createClient();

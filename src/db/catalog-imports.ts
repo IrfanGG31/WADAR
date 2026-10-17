@@ -17,7 +17,7 @@ export interface CatalogImportRow {
 /**
  * Latest catalog imports of a shop (GAP #3 riwayat; RLS: members only), newest first.
  * The history is a side panel: a database without `catalog_imports` yet (migration
- * 20261017120000 not applied) or any read error shows as "no history".
+ * 20261017024611 not applied) or any read error shows as "no history".
  */
 export async function listCatalogImports(tenantId: string, limit = 10): Promise<CatalogImportRow[]> {
   const supabase = await createClient();

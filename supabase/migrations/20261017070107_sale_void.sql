@@ -1,8 +1,18 @@
+-- POS-5: void a wrongly entered sale (owner or service role only).
+--
+-- Sales stay append-only: the row is kept, only `status` flips to 'void' (+ who/when/why).
+-- Stock comes back through new `stock_movements` rows (kind 'void', ref = the sale), so
+-- `on_hand = Σ stock_movements` still holds. Finance already counts completed sales only
+-- (`fin_daily`, `beranda_summary`, and `rollup_daily` reads `fin_daily`). Stock history
+-- treats a voided sale and its void movement as if neither happened: both are dropped from
+-- `stock_daily_series` and `rollup_daily`, so demand forecasts do not see the mistaken sale.
+
 alter table public.sales
   add column voided_at timestamptz,
   add column voided_by uuid,
   add column void_reason text check (void_reason is null or length(void_reason) <= 200);
 
+-- Movements of voided sales (the original 'sale' rows and their 'void' returns).
 create or replace function app.is_voided_sale_movement(p_ref_type text, p_ref_id uuid) returns boolean
 language sql stable security invoker set search_path = '' as $$
   select p_ref_type = 'sale' and p_ref_id is not null
@@ -23,6 +33,7 @@ declare
 begin
   select * into s from public.sales where id = p_sale_id for update;
   if not found then raise exception 'Transaksi tidak ditemukan' using errcode = 'P0002'; end if;
+  -- No JWT user = service role / scripts. Signed-in users must own the shop (cashiers cannot void).
   if (select auth.uid()) is not null then
     perform app.assert_role(s.tenant_id, '{owner}');
   end if;
@@ -41,6 +52,7 @@ begin
      set status = 'void', voided_at = now(), voided_by = auth.uid(), void_reason = nullif(trim(p_reason), '')
    where id = s.id;
 
+  -- Return every line to stock; variants locked in id order (same order as record_sale).
   for it in
     select si.variant_id, sum(si.qty)::int as qty, max(si.unit_cost_snapshot) as unit_cost
       from public.sale_items si
@@ -51,6 +63,7 @@ begin
     perform 1 from public.variants where id = it.variant_id for update;
     insert into public.stock_movements (tenant_id, variant_id, qty, kind, unit_cost, ref_type, ref_id, created_by)
     values (s.tenant_id, it.variant_id, it.qty, 'void', it.unit_cost, 'sale', s.id, auth.uid());
+    -- avg_cost unchanged: the goods come back at the shop's current average cost.
     update public.variants set on_hand = on_hand + it.qty where id = it.variant_id;
     v_restocked := v_restocked + it.qty;
   end loop;
@@ -64,6 +77,7 @@ begin
      where c.id = s.customer_id;
   end if;
 
+  -- Days already frozen in the rollups (sale day … yesterday) are rebuilt so reports drop the sale now.
   select timezone into v_tz from public.tenants where id = s.tenant_id;
   v_from := (s.occurred_at at time zone v_tz)::date;
   v_to := least((now() at time zone v_tz)::date - 1, v_from + 92);
@@ -79,6 +93,7 @@ end $$;
 revoke execute on function public.void_sale(uuid, text) from public, anon;
 grant execute on function public.void_sale(uuid, text) to authenticated, service_role;
 
+-- Same function as 20261017024623 (service-role guard kept), minus voided-sale movements.
 create or replace function public.stock_daily_series(p_tenant_id uuid, p_days int default 56)
 returns table (variant_id uuid, day date, opening int, sold int)
 language plpgsql stable security invoker set search_path = '' as $$
@@ -111,6 +126,7 @@ begin
         and not app.is_voided_sale_movement(m.ref_type, m.ref_id)
     ),
     net_from as (
+      -- net qty with occurred_at::date >= d
       select vr.id as variant_id, d.d,
              coalesce((select sum(mv.qty) from mov mv where mv.variant_id = vr.id and mv.mday >= d.d), 0) as net_after,
              coalesce((select -sum(mv.qty) from mov mv
@@ -128,6 +144,8 @@ end $$;
 
 grant execute on function public.stock_daily_series(uuid, int) to authenticated, service_role;
 
+-- Same function as 20261017024644, minus voided-sale movements in the stock walk-back.
+-- (A voided sale and its return net to zero, so on_hand-based closing stays exact.)
 create or replace function public.rollup_daily(p_tenant_id uuid, p_from date, p_to date)
 returns table (fin_rows int, stock_rows int)
 language plpgsql security definer set search_path = '' as $$
@@ -142,6 +160,7 @@ begin
   select timezone into v_tz from public.tenants where id = p_tenant_id;
   if v_tz is null then raise exception 'Toko tidak ditemukan' using errcode = 'P0002'; end if;
 
+  -- Same rows as the live view for those days (completed sales only, shop-local day).
   delete from public.fin_daily_rollup r where r.tenant_id = p_tenant_id and r.day between p_from and p_to;
   insert into public.fin_daily_rollup (tenant_id, day, variant_id, channel_id, q, revenue_gross, line_discount,
                                        order_discount_alloc, cost, platform_fee_alloc, shipping_subsidy_alloc, cost_is_set)
@@ -151,6 +170,8 @@ begin
   where f.tenant_id = p_tenant_id and f.day between p_from and p_to;
   get diagnostics v_fin = row_count;
 
+  -- Stock walks back from on_hand (= Σ movements) like stock_daily_series:
+  -- closing(d) = on_hand - Σ movements after d; opening(d) = closing(d) - Σ movements on d.
   delete from public.stock_daily_rollup r where r.tenant_id = p_tenant_id and r.day between p_from and p_to;
   with
     days as (select gs::date as d from generate_series(p_from, p_to, interval '1 day') gs),

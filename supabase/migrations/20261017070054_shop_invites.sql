@@ -1,3 +1,10 @@
+-- TEAM-1: the owner invites staff by email, changes their role, revokes access.
+-- No transactional email yet (Resend unverified): the owner copies the invite link
+-- (/undangan/<token>) and sends it themselves. The invitee signs in with the invited
+-- email and accepts; that creates their membership.
+-- Every write goes through the security-definer functions below (owner only via
+-- app.assert_role from 20261017070042_role_rls); memberships stay read-only for the app.
+
 create table public.shop_invites (
   id uuid primary key default app.uuid_v7(),
   tenant_id uuid not null references public.tenants (id) on delete cascade,
@@ -12,6 +19,7 @@ create table public.shop_invites (
   revoked_at timestamptz
 );
 create index shop_invites_tenant_idx on public.shop_invites (tenant_id, created_at desc);
+-- One open invite per email and shop (a new invite revokes the old one).
 create unique index shop_invites_open_email_idx on public.shop_invites (tenant_id, email)
   where accepted_at is null and revoked_at is null;
 
@@ -22,12 +30,14 @@ revoke all on public.shop_invites from anon, authenticated;
 grant select on public.shop_invites to authenticated;
 grant all on public.shop_invites to service_role;
 
+-- Two v4 UUIDs = 244 random bits, hex only (safe in a URL path).
 create or replace function app.invite_token() returns text
 language sql volatile set search_path = '' as $$
   select replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
 $$;
 revoke execute on function app.invite_token() from public;
 
+-- ── Owner: invite / revoke ──────────────────────────────────────────────────
 create or replace function public.create_shop_invite(p_tenant_id uuid, p_email text, p_role public.member_role)
 returns public.shop_invites
 language plpgsql security definer set search_path = '' as $$
@@ -67,6 +77,8 @@ begin
   if not found then raise exception 'invite not found' using errcode = 'P0002'; end if;
 end $$;
 
+-- ── Owner: members ──────────────────────────────────────────────────────────
+-- Emails live in auth.users, which the app cannot read: owner-only definer listing.
 create or replace function public.list_shop_members(p_tenant_id uuid)
 returns table (user_id uuid, email text, role public.member_role, created_at timestamptz, is_me boolean)
 language plpgsql stable security definer set search_path = '' as $$
@@ -79,6 +91,7 @@ begin
    order by (m.role = 'owner') desc, m.created_at;
 end $$;
 
+-- The caller is an owner and may not change or remove themselves, so a shop always keeps one.
 create or replace function public.set_member_role(p_tenant_id uuid, p_user_id uuid, p_role public.member_role)
 returns void
 language plpgsql security definer set search_path = '' as $$
@@ -104,6 +117,8 @@ begin
   if not found then raise exception 'member not found' using errcode = 'P0002'; end if;
 end $$;
 
+-- ── Invitee: preview / accept ───────────────────────────────────────────────
+-- status: open | expired | used | revoked. Nothing about the shop beyond its name.
 create or replace function public.shop_invite_preview(p_token text)
 returns table (shop_name text, role public.member_role, email text, status text)
 language sql stable security definer set search_path = '' as $$
@@ -116,6 +131,7 @@ language sql stable security definer set search_path = '' as $$
    where i.token = p_token and (select auth.uid()) is not null
 $$;
 
+-- Only the invited email may accept. Already a member: the existing role stays.
 create or replace function public.accept_shop_invite(p_token text)
 returns text
 language plpgsql security definer set search_path = '' as $$

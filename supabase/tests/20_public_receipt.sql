@@ -65,7 +65,8 @@ end $$;
 
 -- A shop scheduled for deletion stops serving receipts.
 reset role;
-update public.tenants set deletion_requested_at = now() where id = current_setting('test.t')::uuid;
+update public.tenants set deletion_requested_at = now(), purge_after = now() + interval '7 days'
+ where id = current_setting('test.t')::uuid;
 set local role anon;
 do $$
 begin

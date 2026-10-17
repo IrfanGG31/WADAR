@@ -101,10 +101,10 @@ begin
     assert false, 'cashier must not delete the shop';
   exception when insufficient_privilege then null;
   end;
-  -- only purchase / sale movements for cashiers
+  -- movements are written only by the definer functions (no INSERT grant)
   begin
     insert into public.stock_movements (tenant_id, variant_id, qty, kind) values (t, '16000000-0000-4000-8000-000000000002', -3, 'adjustment');
-    assert false, 'cashier must not adjust stock';
+    assert false, 'no direct movement inserts';
   exception when insufficient_privilege then null;
   end;
 end $$;
@@ -155,12 +155,40 @@ begin
   update public.tenants set name = 'Toko Peran Baru' where id = t;
   get diagnostics n = row_count;
   assert n = 1, 'owner renames the shop';
-  insert into public.stock_movements (tenant_id, variant_id, qty, kind) values (t, '16000000-0000-4000-8000-000000000002', -1, 'adjustment');
   assert (select count(*) from public.sales where tenant_id = t) = 1, 'owner sees the cashier sale';
 end $$;
 
--- ── Server (no JWT user) is never blocked by the till trigger ───────────────
+-- ── The till trigger itself ─────────────────────────────────────────────────
+-- record_sale / stock_in insert movements as definer (grants and RLS bypassed), so only
+-- check_till_role stands between a member's JWT and the movement kinds.
 reset role;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000016b1"}', true);
+do $$
+declare t uuid := current_setting('test.t')::uuid;
+begin
+  insert into public.stock_movements (tenant_id, variant_id, qty, kind, unit_cost) values (t, '16000000-0000-4000-8000-000000000002', 1, 'purchase', 40000);
+  begin
+    insert into public.stock_movements (tenant_id, variant_id, qty, kind) values (t, '16000000-0000-4000-8000-000000000002', -3, 'adjustment');
+    assert false, 'cashier must not adjust stock';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000016c1"}', true);
+do $$
+declare t uuid := current_setting('test.t')::uuid;
+begin
+  insert into public.stock_movements (tenant_id, variant_id, qty, kind, unit_cost) values (t, '16000000-0000-4000-8000-000000000002', 1, 'purchase', 40000);
+  assert false, 'chat admin must not move stock';
+exception when insufficient_privilege then null;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000016a1"}', true);
+do $$
+declare t uuid := current_setting('test.t')::uuid;
+begin
+  insert into public.stock_movements (tenant_id, variant_id, qty, kind) values (t, '16000000-0000-4000-8000-000000000002', -1, 'adjustment');
+end $$;
+
+-- ── Server (no JWT user) is never blocked by the till trigger ───────────────
 select set_config('request.jwt.claims', '{}', true);
 do $$
 declare t uuid := current_setting('test.t')::uuid;

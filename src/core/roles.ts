@@ -2,7 +2,7 @@
  * Staff roles (CON-6 / TEAM-1): what each `public.member_role` may do in the app.
  * Pure — src/db/access.ts reads the signed-in user's role and the server actions /
  * API routes ask {@link can} before writing; RLS mirrors it with `app.has_shop_role`
- * (migration 20261017150000_role_rls).
+ * (migration 20261017070042_role_rls).
  */
 
 export type MemberRole = "owner" | "cashier" | "chat_admin";

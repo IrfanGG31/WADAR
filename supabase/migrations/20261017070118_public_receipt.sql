@@ -1,9 +1,19 @@
+-- POS-3: struk publik per penjualan. Each sale gets an unguessable receipt token
+-- (two v4 uuids = 244 random bits from pg_strong_random, 64 hex chars — not the
+-- sequential/time-ordered sale id). A buyer opens /struk/<token> without logging in;
+-- the only way in is public.get_public_receipt(token), which returns that one sale's
+-- receipt and nothing else. No RLS policy on sales/sale_items is opened to anon.
+
+-- Volatile default on ADD COLUMN = evaluated per existing row (table rewrite), so old
+-- sales get their own token too; record_sale / seeds pick it up from the default.
 alter table public.sales
   add column receipt_token text not null
     default (replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''));
 alter table public.sales add constraint sales_receipt_token_format check (receipt_token ~ '^[0-9a-f]{64}$');
 create unique index sales_receipt_token_key on public.sales (receipt_token);
 
+-- The receipt: what was printed at the till, for this sale only. Never cost/HPP, platform
+-- fee, customer, staff or other sales. Shops scheduled for deletion stop serving receipts.
 create or replace function public.get_public_receipt(p_token text)
 returns jsonb
 language sql stable security definer set search_path = '' as $$

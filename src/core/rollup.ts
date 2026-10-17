@@ -1,7 +1,7 @@
 /**
  * Daily rollups (TECH-SPEC §7.1/§7.2): `fin_daily_rollup` and `stock_daily_rollup` are
  * filled from the transactions by the SQL function `rollup_daily` (migration
- * 20261017140000). This module only decides which closed days each shop gets and
+ * 20261017024644). This module only decides which closed days each shop gets and
  * reports the run; the numbers are computed in SQL. Pure — the caller passes `now`.
  *
  * Idempotent: `rollup_daily` replaces the rows of a (shop, day range) in one transaction,

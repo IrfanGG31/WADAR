@@ -3,7 +3,7 @@ import { ROLE_LABEL, type MemberRole } from "./roles";
 
 /**
  * Team (TEAM-1): invite staff by link, change roles, revoke access. Pure — the server
- * actions in /<slug>/pengaturan/anggota call the SQL functions of 20261017160000_shop_invites.
+ * actions in /<slug>/pengaturan/anggota call the SQL functions of 20261017070054_shop_invites.
  */
 
 /** Roles an owner can hand out; a second owner is not part of the sprint. */

@@ -1,4 +1,4 @@
--- Re-apply of 20261016140903_demo_seed_today_fix after 20261015070000_demo_seed_story_cap,
+-- Re-apply of 20261016140903_demo_seed_today_fix after 20261016150112_demo_seed_story_cap,
 -- which rewrote app.seed_demo and dropped the "today < now" + "ends-at-7 on any date" fixes.
 -- This replays the same body as 20261016140903 so those fixes are the final definition.
 create or replace function app.seed_demo(p_tenant uuid, p_profile text) returns void

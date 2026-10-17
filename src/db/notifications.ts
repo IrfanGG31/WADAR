@@ -39,7 +39,7 @@ export interface NotificationItem {
 
 /**
  * Unread notifications of a shop, newest first. A database without the GAP #7 tables yet
- * (migration 20261017110100 not applied) reads as "none" instead of breaking the inbox.
+ * (migration 20261017024540 not applied) reads as "none" instead of breaking the inbox.
  */
 export async function listUnreadNotifications(tenantId: string, limit = 5): Promise<NotificationItem[]> {
   const supabase = await createClient();

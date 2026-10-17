@@ -11,7 +11,7 @@ export function listShopsForRollup(db: SupabaseClient): Promise<RollupShop[]> {
 
 /**
  * Rebuilds the shop's `fin_daily_rollup` / `stock_daily_rollup` rows for the window
- * (migration 20261017140000; EXECUTE granted to service_role only).
+ * (migration 20261017024644; EXECUTE granted to service_role only).
  */
 export async function rollupShopDays(db: SupabaseClient, tenantId: string, window: PeriodWindow): Promise<RollupCounts> {
   const { data, error } = await db.rpc("rollup_daily", { p_tenant_id: tenantId, p_from: window.from, p_to: window.to });

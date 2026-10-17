@@ -12,12 +12,14 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 select set_config('test.t', (public.create_shop('Toko Void', 'toko-void', 'kecantikan')).id::text, true);
 insert into public.products (id, tenant_id, name)
   values ('18000000-0000-4000-8000-000000000001', current_setting('test.t')::uuid, 'Serum');
-insert into public.variants (id, tenant_id, product_id, price, created_at)
+insert into public.variants (id, tenant_id, product_id, price)
   values ('18000000-0000-4000-8000-000000000002', current_setting('test.t')::uuid,
-          '18000000-0000-4000-8000-000000000001', 100000, now() - interval '10 days');
+          '18000000-0000-4000-8000-000000000001', 100000);
 select public.stock_in('18000000-0000-4000-8000-000000000002', 10, 40000);
 -- the stock-in is older than every sale below
 reset role;
+update public.variants set created_at = now() - interval '10 days'
+ where id = '18000000-0000-4000-8000-000000000002';
 update public.stock_movements set occurred_at = now() - interval '5 days'
  where variant_id = '18000000-0000-4000-8000-000000000002';
 insert into public.memberships (tenant_id, user_id, role)
