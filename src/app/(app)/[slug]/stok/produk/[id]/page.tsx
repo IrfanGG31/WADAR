@@ -5,8 +5,10 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/states/page-skeleton";
 import { getProduct, listCatalog, variantLabel } from "@/db/catalog";
 import { getShop } from "@/db/shop";
+import { getVariantExpiries } from "@/db/stock";
 import { shopPath } from "@/lib/routes";
 import { ArchiveButton } from "../../archive-button";
+import { ExpiryForm } from "../../expiry-form";
 import { ProductForm } from "../../product-form";
 import { StockInForm } from "../../stock-in-form";
 import { PageGate } from "@/components/shell/page-gate";
@@ -35,6 +37,7 @@ async function EditProduct({ params }: { params: Params }) {
   const shop = await getShop(slug);
   const [product, catalog] = await Promise.all([getProduct(shop.id, id), listCatalog(shop.id)]);
   if (!product) notFound();
+  const expiries = await getVariantExpiries(shop.id, product.variants.map((v) => v.id));
   const categories = [...new Set(catalog.map((p) => p.category).filter((c): c is string => !!c))].sort();
 
   return (
@@ -83,6 +86,10 @@ async function EditProduct({ params }: { params: Params }) {
             on_hand: v.on_hand,
           })),
         }}
+      />
+      <ExpiryForm
+        slug={slug}
+        variants={product.variants.map((v) => ({ id: v.id, label: variantLabel(product, v), expiresOn: expiries[v.id] ?? null }))}
       />
       <ArchiveButton slug={slug} productId={product.id} />
     </>

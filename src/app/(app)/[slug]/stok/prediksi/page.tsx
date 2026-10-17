@@ -13,8 +13,10 @@ import {
   type SlowMovingSummary,
 } from "@/core/stock-insight";
 import { getShop } from "@/db/shop";
-import { listStockForecasts } from "@/db/stock";
+import { DEFAULT_EXPIRY_WINDOW_DAYS } from "@/core/expiry";
+import { listExpiryVariants, listStockForecasts } from "@/db/stock";
 import { shopPath } from "@/lib/routes";
+import { ExpiryWarning } from "../expiry-warning";
 import { StokTabs, ToKeuanganLink } from "../stok-tabs";
 import { ForecastTable } from "./forecast-table";
 
@@ -60,7 +62,8 @@ async function Tabs({ params }: { params: Params }) {
 async function Prediction({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const rows = sortByUrgency(await listStockForecasts(shop.id));
+  const [forecasts, expiry] = await Promise.all([listStockForecasts(shop.id), listExpiryVariants(shop.id)]);
+  const rows = sortByUrgency(forecasts);
 
   if (rows.length === 0) {
     return (
@@ -91,6 +94,14 @@ async function Prediction({ params }: { params: Params }) {
           <p className="text-sm text-muted-foreground">{narrateStockOverview(rows)}</p>
         </div>
       </section>
+      <ExpiryWarning
+        slug={slug}
+        today={expiry.today}
+        variants={expiry.variants}
+        windowDays={DEFAULT_EXPIRY_WINDOW_DAYS}
+        rates={new Map(rows.map((r) => [r.variant_id, r.rate]))}
+        productIds={new Map(rows.map((r) => [r.variant_id, r.product_id]))}
+      />
       {slow.rows.length > 0 && <SlowMovers slow={slow} />}
       <ForecastTable slug={slug} rows={rows} categories={categoriesOf(rows)} />
     </>

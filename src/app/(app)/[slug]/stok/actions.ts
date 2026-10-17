@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { ProductInput, StockInInput } from "@/core/catalog-schema";
+import { isIsoDay } from "@/core/expiry";
 import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
@@ -77,4 +78,26 @@ export async function stockIn(slug: string, input: unknown): Promise<StockInResu
     .single<{ on_hand: number; avg_cost: number }>();
   if (error || !data) return { error: "Stok masuk belum tercatat. Coba lagi sebentar." };
   return { onHand: data.on_hand, avgCost: data.avg_cost };
+}
+
+/** Risiko kedaluwarsa (STK-5): set or clear one variant's expiry date (owner, like the rest of the catalog). */
+export async function setVariantExpiry(slug: string, variantId: string, expiresOn: string | null): Promise<ActionResult> {
+  if (!/^[0-9a-f-]{36}$/i.test(variantId)) return { error: "Varian tidak ditemukan." };
+  if (expiresOn !== null && !isIsoDay(expiresOn)) return { error: "Tanggal kedaluwarsa belum benar." };
+  const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "catalog");
+  if (denied) return { error: denied };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("variants")
+    .update({ expires_on: expiresOn })
+    .eq("tenant_id", shop.id)
+    .eq("id", variantId)
+    .select("id");
+  if (error) {
+    if (error.code === "42703" || error.code === "PGRST204") return { error: "Tanggal kedaluwarsa belum aktif di server." };
+    return { error: "Tanggal kedaluwarsa belum tersimpan. Coba lagi sebentar." };
+  }
+  if (!data || data.length === 0) return { error: "Varian tidak ditemukan." };
+  return {};
 }

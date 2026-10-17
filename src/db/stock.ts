@@ -3,7 +3,7 @@ import { cache } from "react";
 import { daysWithRows, mergeDailyRows, planDailySource } from "@/core/daily-source";
 import { addDays, daysOf, lastDays } from "@/core/period";
 import { forecastStock, type StockDailyRow } from "@/core/stock";
-import { toForecastRow, type ForecastRow, type StockItem } from "@/core/stock-insight";
+import { itemTitle, toForecastRow, type ForecastRow, type StockItem } from "@/core/stock-insight";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "./paginate";
@@ -139,4 +139,63 @@ async function stockSeries(
   return mergeDailyRows(plan, window, rollup, liveRows).sort(
     (a, b) => (a.variant_id < b.variant_id ? -1 : a.variant_id > b.variant_id ? 1 : a.day < b.day ? -1 : a.day > b.day ? 1 : 0),
   );
+}
+
+interface ExpiryDbRow {
+  id: string;
+  on_hand: number;
+  option_label: string | null;
+  expires_on: string;
+  products: { name: string; unit: string } | null;
+}
+
+export interface ExpiryVariant {
+  variant_id: string;
+  title: string;
+  unit: string;
+  on_hand: number;
+  expires_on: string;
+}
+
+/**
+ * Active variants that carry an expiry date (STK-5) plus the shop's date.
+ * Read on its own so the Stok screens keep working before migration
+ * 20261017190000_variant_expiry is applied: a failed read = no warnings.
+ */
+export async function listExpiryVariants(tenantId: string): Promise<{ today: string | null; variants: ExpiryVariant[] }> {
+  const supabase = await createClient();
+  const [today, result] = await Promise.all([
+    shopTodayById(supabase, tenantId),
+    supabase
+      .from("variants")
+      .select("id, on_hand, option_label, expires_on, products:products!inner(name, unit, is_active, deleted_at)")
+      .eq("tenant_id", tenantId)
+      .not("expires_on", "is", null)
+      .gt("on_hand", 0)
+      .is("products.deleted_at", null)
+      .eq("products.is_active", true)
+      .order("expires_on")
+      .limit(500),
+  ]);
+  if (result.error) return { today, variants: [] };
+  const rows = (result.data ?? []) as unknown as ExpiryDbRow[];
+  return {
+    today,
+    variants: rows.map((r) => ({
+      variant_id: r.id,
+      title: itemTitle({ product_name: r.products?.name ?? "Produk", option_label: r.option_label }),
+      unit: r.products?.unit ?? "pcs",
+      on_hand: Number(r.on_hand),
+      expires_on: r.expires_on,
+    })),
+  };
+}
+
+/** Expiry date per variant id for the product edit form; empty before the migration is applied. */
+export async function getVariantExpiries(tenantId: string, variantIds: string[]): Promise<Record<string, string | null>> {
+  if (variantIds.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("variants").select("id, expires_on").eq("tenant_id", tenantId).in("id", variantIds);
+  if (error) return {};
+  return Object.fromEntries(((data ?? []) as { id: string; expires_on: string | null }[]).map((r) => [r.id, r.expires_on]));
 }
