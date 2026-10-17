@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { brand } from "@/brand";
+import { privacyEmail, privacyMailto } from "@/core/privacy-contact";
 
 export const metadata = { title: "Kebijakan Privasi" };
 
@@ -10,6 +11,8 @@ const UPDATED = "17 Oktober 2026";
  * §E.2). Public: linked from the landing page and Pengaturan. No session, no data.
  */
 export default function PrivacyPage() {
+  // Inlined at build (NEXT_PUBLIC_*); unset or invalid → the "not set yet" text below.
+  const email = privacyEmail(process.env.NEXT_PUBLIC_PRIVACY_EMAIL);
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-sm leading-relaxed">
       <header className="flex flex-col gap-1">
@@ -47,6 +50,19 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="Pemroses data">
+        <p>Untuk menjalankan layanan, data diproses oleh penyedia berikut atas nama kami, sebatas yang dibutuhkan fiturnya:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Supabase: basis data dan login (server Singapura). Menyimpan akun dan semua data toko.</li>
+          <li>Vercel: hosting aplikasi dan fungsi server. Data toko melewatinya saat kamu memakai aplikasi, beserta catatan teknis akses.</li>
+          <li>
+            Penyedia model AI (saat ini Google Gemini): menerima isi chat pembeli, pertanyaan Konsultasi, dan hasil hitungan sistem yang
+            dibutuhkan untuk menyusun jawaban. Untuk chat pembeli, modal dan margin tidak pernah dikirim.
+          </li>
+          <li>Pengiriman email login (Resend): alamat email saat kamu meminta kode masuk.</li>
+        </ul>
+      </Section>
+
       <Section title="Data tidak dijual">
         <p>Kami tidak menjual atau menyewakan data toko maupun data pembelimu kepada siapa pun, dan tidak memakainya untuk iklan.</p>
       </Section>
@@ -66,6 +82,13 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="Hapus akun">
+        <p>
+          Kamu bisa menghapus akunmu sendiri dari menu Akun. Akunmu dikeluarkan dari semua toko dan toko demo milikmu ikut terhapus. Kalau
+          kamu satu-satunya pemilik sebuah toko, hapus toko itu dulu atau serahkan ke pemilik lain.
+        </p>
+      </Section>
+
       <Section title="Hakmu">
         <p>
           Sesuai UU PDP kamu berhak mengakses, memperbaiki, mengunduh, dan menghapus data pribadimu, serta menarik persetujuan. Sebagian besar
@@ -74,10 +97,20 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="Hubungi kami">
-        <p>
-          Pertanyaan atau permintaan soal data pribadi bisa dikirim ke tim {brand.name} dari email akunmu. Kami menanggapi paling lambat
-          24 jam.
-        </p>
+        {email ? (
+          <p>
+            Pertanyaan atau permintaan soal data pribadi (akses, perbaikan, penghapusan) kirim ke{" "}
+            <a href={privacyMailto(email)} className="font-medium text-primary underline-offset-4 hover:underline">
+              {email}
+            </a>
+            , sebaiknya dari email akunmu agar kami bisa memastikan pemiliknya. Kami menanggapi paling lambat 24 jam.
+          </p>
+        ) : (
+          <p>
+            Alamat email resmi untuk permintaan data pribadi belum ditetapkan. Sementara itu, kamu bisa mengunduh atau menghapus data toko di
+            Pengaturan → Data &amp; privasi, dan menghapus akunmu di menu Akun.
+          </p>
+        )}
       </Section>
 
       <p>
