@@ -1,7 +1,7 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { getConsult } from "@/ai";
 import { notConfiguredDelivery, runWeeklyInsightJob } from "@/core/consult/weekly-job";
 import { buildDigestContent, digestExists, listDigestShops, markDigestDelivery, saveDigest } from "@/db/weekly-digest";
+import { rejectCronRequest } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -12,17 +12,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 export const maxDuration = 300;
 
-const digest = (s: string) => createHash("sha256").update(s).digest();
-
-function authorized(request: Request, secret: string): boolean {
-  const given = request.headers.get("authorization") ?? "";
-  return timingSafeEqual(digest(given), digest(`Bearer ${secret}`));
-}
-
 export async function GET(request: Request): Promise<Response> {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return Response.json({ error: "CRON_SECRET belum diatur." }, { status: 503 });
-  if (!authorized(request, secret)) return Response.json({ error: "Tidak diizinkan." }, { status: 401 });
+  const rejected = rejectCronRequest(request);
+  if (rejected) return rejected;
 
   const db = createAdminClient();
   const consult = getConsult();
