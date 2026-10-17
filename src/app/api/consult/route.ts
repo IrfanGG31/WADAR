@@ -6,6 +6,7 @@ import { detectRemember } from "@/core/consult/question";
 import { consultUsageThisMonth, getWeeklyInsights, loadConsultData, recordConsultRuns, saveMemory } from "@/db/consult";
 import { tableAnswerStore } from "@/db/answer-cache";
 import { saveDigest } from "@/db/weekly-digest";
+import { permissionDenied } from "@/db/access";
 import { findShop } from "@/db/shop";
 import { isoDateInZone } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
@@ -64,6 +65,8 @@ export async function POST(request: Request): Promise<Response> {
   // RLS only returns the shop to its members.
   const shop = await findShop(body.slug);
   if (!shop) return Response.json({ error: "Toko tidak ditemukan." }, { status: 404 });
+  const denied = await permissionDenied(shop.id, "consult");
+  if (denied) return Response.json({ error: denied }, { status: 403 });
   const today = isoDateInZone(new Date(), shop.timezone);
   const consult = getConsult();
 

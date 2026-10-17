@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
 import { isPushEndpoint } from "@/lib/web-push";
@@ -20,6 +21,8 @@ export async function saveNotificationPrefs(slug: string, input: unknown): Promi
   const parsed = PrefsInput.safeParse(input);
   if (!parsed.success) return { error: "Isian belum lengkap." };
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "settings");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   // Every shop has its row (created on by the migration / trigger); the app may only update it.
   const { error } = await supabase
@@ -33,6 +36,8 @@ export async function savePushSubscription(slug: string, input: unknown): Promis
   const parsed = PushSubscriptionInput.safeParse(input);
   if (!parsed.success) return { error: "Perangkat ini belum bisa menerima notifikasi." };
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "chat");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase
     .from("push_subscriptions")
@@ -51,6 +56,8 @@ export async function savePushSubscription(slug: string, input: unknown): Promis
 
 export async function markNotificationsRead(slug: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "chat");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("tenant_id", shop.id).is("read_at", null);
   return error ? { error: "Belum tersimpan. Coba lagi sebentar." } : {};

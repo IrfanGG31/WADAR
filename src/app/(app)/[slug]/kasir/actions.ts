@@ -2,6 +2,7 @@
 
 import { normalizePhone } from "@/core/phone";
 import { SaleInput } from "@/core/sale-schema";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,10 @@ export async function recordSale(slug: string, input: unknown): Promise<RecordSa
   }
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "sell");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_sale", {
     p_tenant_id: shop.id,

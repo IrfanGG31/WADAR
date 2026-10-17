@@ -1,6 +1,7 @@
 "use server";
 
 import { OwnerReplyInput } from "@/core/chat/inbox";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,8 @@ export interface ActionResult {
 /** Ambil alih: the AI stops answering this conversation until it is handed back. */
 export async function takeOver(slug: string, conversationId: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "chat");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase
     .from("conversations")
@@ -23,6 +26,8 @@ export async function takeOver(slug: string, conversationId: string): Promise<Ac
 /** Kembalikan ke AI: back to automatic answers, no longer waiting for the owner. */
 export async function returnToAi(slug: string, conversationId: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "chat");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase
     .from("conversations")
@@ -38,6 +43,10 @@ export async function sendReply(slug: string, conversationId: string, input: unk
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Balasan belum valid." };
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "chat");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   // An id of another shop's conversation updates nothing (no error): require the row back before inserting.
   const { data: conv, error: ce } = await supabase

@@ -7,6 +7,8 @@ let rpcError: { code: string; message: string } | null = null;
 let db = fakeSupabase();
 
 vi.mock("server-only", () => ({}));
+// Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
+vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async (slug: string) => ({ id: "t1", slug, name: "Glow", is_demo: false }) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db.client }));
 

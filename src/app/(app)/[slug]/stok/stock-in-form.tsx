@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, PackagePlus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
 import { RupiahInput } from "@/components/rupiah-input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export interface StockInVariant {
 /** Stok masuk (STK-0): qty + unit cost per batch; HPP becomes the weighted average. */
 export function StockInForm({ variants }: { variants: StockInVariant[] }) {
   const router = useRouter();
+  const { slug } = useParams<{ slug: string }>();
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === variantId) ?? variants[0];
   const [qty, setQty] = useState(variant?.packSize ?? 1);
@@ -45,7 +46,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
     event.preventDefault();
     setMessage(undefined);
     startTransition(async () => {
-      const result = await stockIn({ variant_id: variant.id, qty, unit_cost: unitCost });
+      const result = await stockIn(slug, { variant_id: variant.id, qty, unit_cost: unitCost });
       if (result.error) {
         setMessage({ ok: false, text: result.error });
         return;

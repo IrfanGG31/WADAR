@@ -10,6 +10,7 @@ import {
   type RowError,
 } from "@/core/catalog-import";
 import { fetchAllRows } from "@/db/paginate";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,6 +42,8 @@ export async function previewCatalogImport(slug: string, text: string, overrides
   const prepared = prepare(text, overrides);
   if (!prepared.ok) return { error: prepared.error, headers: prepared.headers, unknown: prepared.unknown };
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "catalog");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   try {
     const existing = await fetchAllRows<{ sku: string | null }>((from, to) =>
@@ -60,6 +63,10 @@ export async function importCatalog(slug: string, fileName: string, text: string
   if (prepared.items.length === 0) return { created: 0, updated: 0, errors: prepared.errors };
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "catalog");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("import_catalog", {
     p_tenant_id: shop.id,

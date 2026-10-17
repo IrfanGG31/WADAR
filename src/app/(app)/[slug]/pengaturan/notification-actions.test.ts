@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeSupabase, has } from "@/test/fake-supabase";
 
 let db = fakeSupabase();
+// Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
+vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async (slug: string) => ({ id: "t1", slug }) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db.client }));
 

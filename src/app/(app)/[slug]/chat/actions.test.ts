@@ -3,6 +3,8 @@ import { fakeSupabase, has, type Chain } from "@/test/fake-supabase";
 
 const SHOP = { id: "tenant-a" };
 let db: ReturnType<typeof fakeSupabase>;
+// Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
+vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async () => SHOP }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db.client }));
 

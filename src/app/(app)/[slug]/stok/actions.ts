@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { ProductInput, StockInInput } from "@/core/catalog-schema";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -20,6 +21,10 @@ export async function saveProduct(slug: string, productId: string | null, input:
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "catalog");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase.rpc("save_product", {
     p_tenant_id: shop.id,
@@ -36,6 +41,8 @@ export async function saveProduct(slug: string, productId: string | null, input:
 /** Hide a product from the catalog and the cashier; its sales history stays. */
 export async function archiveProduct(slug: string, productId: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "catalog");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase
     .from("products")
@@ -52,10 +59,13 @@ export interface StockInResult extends ActionResult {
 }
 
 /** Stok masuk (STK-0): adds stock and updates the weighted-average HPP. */
-export async function stockIn(input: unknown): Promise<StockInResult> {
+export async function stockIn(slug: string, input: unknown): Promise<StockInResult> {
   const parsed = StockInInput.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "stock_in");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("stock_in", {

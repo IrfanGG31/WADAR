@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeSupabase } from "@/test/fake-supabase";
 
 const db = fakeSupabase((chain) => (chain.table === "kb_documents" && chain.calls.some(([m]) => m === "insert") ? { data: { id: "doc-1" }, error: null } : { data: null, error: null }));
+// Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
+vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async () => ({ id: "t1", is_demo: false }) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db.client }));
 vi.mock("@/ai", () => ({

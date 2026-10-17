@@ -5,6 +5,7 @@ import { getAi, getConsult } from "@/ai";
 import { FaqInput, faqChunk } from "@/core/chat/kb";
 import { StoreProfileInput } from "@/core/chat/store-policies";
 import { interpretReset } from "@/core/demo-reset";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,10 @@ export async function saveStoreProfile(slug: string, input: unknown): Promise<Ac
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Isian belum lengkap." };
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "settings");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase
     .from("store_profile")
@@ -38,6 +43,10 @@ export async function addFaq(slug: string, input: unknown): Promise<ActionResult
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Isian belum lengkap." };
 
   const shop = await getShop(slug);
+
+  const denied = await permissionDenied(shop.id, "settings");
+
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const chunk = faqChunk(parsed.data);
 
@@ -85,6 +94,8 @@ export async function addFaq(slug: string, input: unknown): Promise<ActionResult
 
 export async function deleteFaq(slug: string, documentId: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "settings");
+  if (denied) return { error: denied };
   const supabase = await createClient();
   const { error } = await supabase.from("kb_documents").delete().eq("tenant_id", shop.id).eq("id", documentId).eq("kind", "faq");
   return error ? { error: "FAQ belum terhapus. Coba lagi sebentar." } : {};
@@ -97,6 +108,8 @@ export async function deleteFaq(slug: string, documentId: string): Promise<Actio
  */
 export async function resetDemoShop(slug: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "settings");
+  if (denied) return { error: denied };
   if (!shop.is_demo) return { error: "Hanya toko demo yang bisa di-reset." };
 
   const supabase = await createClient();

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const updateMemory = vi.fn<(t: string, id: string, c: string) => Promise<boolean>>(async () => true);
 const deleteMemory = vi.fn<(t: string, id: string) => Promise<boolean>>(async () => true);
 vi.mock("server-only", () => ({}));
+// Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
+vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async (slug: string) => ({ id: `tenant-of-${slug}` }) }));
 vi.mock("@/db/memory", () => ({
   updateMemory: (...a: [string, string, string]) => updateMemory(...a),

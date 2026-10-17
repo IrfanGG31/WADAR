@@ -2,6 +2,7 @@
 
 import { validateMemoryContent } from "@/core/consult/memory";
 import { deleteMemory, updateMemory } from "@/db/memory";
+import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 
 type ActionResult = { error?: string };
@@ -17,6 +18,8 @@ export async function updateMemoryItem(slug: string, id: string, content: string
   const checked = validateMemoryContent(content);
   if (!checked.ok) return { error: checked.error };
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "consult");
+  if (denied) return { error: denied };
   try {
     if (!(await updateMemory(shop.id, id, checked.content))) return { error: "Catatan tidak ditemukan. Muat ulang halaman." };
   } catch (e) {
@@ -28,6 +31,8 @@ export async function updateMemoryItem(slug: string, id: string, content: string
 
 export async function deleteMemoryItem(slug: string, id: string): Promise<ActionResult> {
   const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "consult");
+  if (denied) return { error: denied };
   try {
     await deleteMemory(shop.id, id);
   } catch (e) {

@@ -2,7 +2,7 @@
 
 Dicatat saat menolak/menunda fitur selama sprint (CLAUDE.md "Cara kerja"). Sumber: SPRINT-8D §1 kolom "Ditunda".
 
-- Undang staf, peran kasir / admin chat (TEAM-1).
+- Undang staf (TEAM-1) belum. ~~Izin peran kasir / admin chat (CON-6)~~ — **selesai di server (17 Okt, U2)**: matriks `src/core/roles.ts` (pemilik = semua; kasir = catat penjualan + stok masuk; admin chat = chat + notifikasi eskalasi), peran dibaca dari `memberships` (`src/db/access.ts`, tanpa sesi/keanggotaan = ditolak, tidak pernah dianggap pemilik). Semua server action tulis + `POST /api/consult` (403) menolak dengan pesan jelas ("Akun kasir tidak bisa mengubah pengaturan toko. Minta pemilik toko melakukannya."). Tanpa migrasi (enum `member_role` sudah ada). Sisa: RLS/RPC masih hanya `is_member` (staf yang memanggil PostgREST langsung tidak dibatasi peran); menu/halaman (Keuangan, Konsultasi, Pengaturan) belum disembunyikan per peran; alur undang staf belum ada sehingga peran non-pemilik baru bisa dibuat manual di DB.
 - ~~Impor produk CSV (CAT-2)~~ — CSV selesai (GAP #3, lihat bawah); XLSX dan upload foto produk (sprint: emoji/URL) belum.
 - Struk publik bertanda tangan (POS-3), void penjualan (POS-5), POS offline (POS-6).
 - Impor file marketplace asli (IMP-1..4).
