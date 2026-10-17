@@ -1,7 +1,14 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { CURRENT_LABEL, type ChannelMarginRow, type ProductMarginRow, type WarningRow } from "@/core/finance-insight";
+import {
+  CURRENT_LABEL,
+  withFinancePeriod,
+  type ChannelMarginRow,
+  type FinancePeriodDays,
+  type ProductMarginRow,
+  type WarningRow,
+} from "@/core/finance-insight";
 import { formatRupiah } from "@/core/money";
 import { formatCount, formatPercent } from "@/core/number-format";
 import { shopPath } from "@/lib/routes";
@@ -15,7 +22,17 @@ const SEVERITY: Record<WarningRow["severity"], { label: string; variant: "danger
   1: { label: "Info", variant: "muted" },
 };
 
-export function Warnings({ slug, rows, periodLabel = CURRENT_LABEL }: { slug: string; rows: WarningRow[]; periodLabel?: string }) {
+export function Warnings({
+  slug,
+  rows,
+  periodLabel = CURRENT_LABEL,
+  days = 7,
+}: {
+  slug: string;
+  rows: WarningRow[];
+  periodLabel?: string;
+  days?: FinancePeriodDays;
+}) {
   if (rows.length === 0) {
     return (
       <section className="flex items-center gap-3 rounded-xl border border-border p-4 text-sm">
@@ -39,7 +56,7 @@ export function Warnings({ slug, rows, periodLabel = CURRENT_LABEL }: { slug: st
             </div>
             <p className="text-sm text-slate-700">{w.detail}</p>
             <Link
-              href={w.anchor ? `#${w.anchor}` : shopPath(slug, "keuangan/detail")}
+              href={w.anchor ? `#${w.anchor}` : withFinancePeriod(shopPath(slug, "keuangan/detail"), days)}
               className="inline-flex min-h-11 items-center self-start rounded-md text-xs font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Lihat datanya

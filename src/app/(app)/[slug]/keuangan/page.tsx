@@ -38,7 +38,7 @@ type SearchParams = PageProps<"/[slug]/keuangan">["searchParams"];
 export default function KeuanganPage({ params, searchParams }: PageProps<"/[slug]/keuangan">) {
   return (
     <div className="flex flex-col gap-6">
-      <KeuanganHeader params={params} active="keuangan" />
+      <KeuanganHeader params={params} searchParams={searchParams} active="keuangan" />
       <Suspense fallback={<SummarySkeleton />}>
         <PageGate params={params} permission="finance">
           <Summary params={params} searchParams={searchParams} />

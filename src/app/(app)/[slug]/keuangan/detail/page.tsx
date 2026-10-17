@@ -17,10 +17,10 @@ type Params = PageProps<"/[slug]/keuangan/detail">["params"];
  * `fin_daily` + expenses, each day's figures from totalsOverLines (core).
  * Cards on phones, a table from md up.
  */
-export default function DetailPage({ params }: PageProps<"/[slug]/keuangan/detail">) {
+export default function DetailPage({ params, searchParams }: PageProps<"/[slug]/keuangan/detail">) {
   return (
     <div className="flex flex-col gap-6">
-      <KeuanganHeader params={params} active="keuangan/detail" />
+      <KeuanganHeader params={params} searchParams={searchParams} active="keuangan/detail" />
       <Suspense
         fallback={
           <div className="flex flex-col gap-4" aria-hidden>

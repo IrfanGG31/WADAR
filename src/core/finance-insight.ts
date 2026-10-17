@@ -84,12 +84,23 @@ export interface FinancePeriodOption {
   active: boolean;
 }
 
+/** Search params that carry a period; the default (7) keeps the bare URL. */
+export function financePeriodQuery(days: FinancePeriodDays): { periode?: string } {
+  return days === 7 ? {} : { periode: String(days) };
+}
+
+/** A Keuangan link that keeps the chosen period: ("/toko/keuangan/margin", 30) → "/toko/keuangan/margin?periode=30". */
+export function withFinancePeriod(path: string, days: FinancePeriodDays): string {
+  const { periode } = financePeriodQuery(days);
+  return periode ? `${path}?periode=${periode}` : path;
+}
+
 /** The "7 hari · 30 hari" switch on the Keuangan screens. */
 export function financePeriodOptions(active: FinancePeriodDays): FinancePeriodOption[] {
   return FINANCE_PERIOD_DAYS.map((days) => ({
     days,
     label: `${days} hari`,
-    query: days === 7 ? {} : { periode: String(days) },
+    query: financePeriodQuery(days),
     active: days === active,
   }));
 }

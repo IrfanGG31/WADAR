@@ -22,6 +22,7 @@ import {
   OTHER_CATEGORY,
   financePeriodOptions,
   parseFinancePeriodDays,
+  withFinancePeriod,
   periodLabels,
   periodResult,
   productMarginRows,
@@ -426,6 +427,15 @@ describe("Pemilih periode 7/30 hari (FIN-3)", () => {
     ]);
     expect(financePeriodOptions(30).map((o) => o.active)).toEqual([false, true]);
     for (const o of financePeriodOptions(30)) expect(parseFinancePeriodDays(o.query.periode)).toBe(o.days);
+  });
+
+  it("tab links keep the chosen period (and the URL parses back to it)", () => {
+    expect(withFinancePeriod("/toko/keuangan/margin", 30)).toBe("/toko/keuangan/margin?periode=30");
+    expect(withFinancePeriod("/toko/keuangan/detail", 7)).toBe("/toko/keuangan/detail");
+    for (const days of [7, 30] as const) {
+      const periode = new URL(withFinancePeriod("/toko/keuangan", days), "https://x.test").searchParams.get("periode");
+      expect(parseFinancePeriodDays(periode ?? undefined)).toBe(days);
+    }
   });
 
   it("30-day profit narration names 30-day windows, not 7", () => {

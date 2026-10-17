@@ -31,7 +31,7 @@ type SearchParams = PageProps<"/[slug]/keuangan/margin">["searchParams"];
 export default function MarginPage({ params, searchParams }: PageProps<"/[slug]/keuangan/margin">) {
   return (
     <div className="flex flex-col gap-6">
-      <KeuanganHeader params={params} active="keuangan/margin" />
+      <KeuanganHeader params={params} searchParams={searchParams} active="keuangan/margin" />
       <Suspense fallback={<MarginSkeleton />}>
         <PageGate params={params} permission="finance">
           <Margin params={params} searchParams={searchParams} />
@@ -72,6 +72,7 @@ async function Margin({ params, searchParams }: { params: Params; searchParams: 
         slug={slug}
         rows={warningRows(lines, { previous: linesIn(data.lines, previous), days })}
         periodLabel={label.current}
+        days={days}
       />
       <ChannelMargins rows={channelMarginRows(lines)} />
       <ProductMargins rows={productMarginRows(lines)} />

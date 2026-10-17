@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageTabs } from "@/components/shell/page-tabs";
+import { withFinancePeriod, type FinancePeriodDays } from "@/core/finance-insight";
 import { shopPath } from "@/lib/routes";
 
 const TABS = [
@@ -8,9 +9,17 @@ const TABS = [
   { page: "keuangan/detail", label: "Detail" },
 ] as const;
 
-/** Financial Insight tabs (PRD §7.2): Ringkasan · Margin · Detail. */
-export function KeuanganTabs({ slug, active }: { slug: string; active: (typeof TABS)[number]["page"] }) {
-  return <PageTabs slug={slug} tabs={TABS} active={active} label="Keuangan" />;
+/** Financial Insight tabs (PRD §7.2): Ringkasan · Margin · Detail; every tab keeps the chosen `?periode=`. */
+export function KeuanganTabs({ slug, active, days }: { slug: string; active: (typeof TABS)[number]["page"]; days: FinancePeriodDays }) {
+  return (
+    <PageTabs
+      slug={slug}
+      tabs={TABS}
+      active={active}
+      label="Keuangan"
+      href={(page) => withFinancePeriod(shopPath(slug, page), days)}
+    />
+  );
 }
 
 /** On phones Keuangan sits under "Laporan" with Stok; one tap across. */

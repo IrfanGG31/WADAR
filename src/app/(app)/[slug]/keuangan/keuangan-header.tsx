@@ -1,12 +1,17 @@
 import { Suspense } from "react";
 import { PageTabsSkeleton } from "@/components/shell/page-tabs";
+import { parseFinancePeriodDays } from "@/core/finance-insight";
 import { KeuanganTabs, ToStokLink } from "./keuangan-tabs";
 
 type Params = Promise<{ slug: string }>;
+type SearchParams = Promise<{ periode?: string | string[] }>;
 type Active = Parameters<typeof KeuanganTabs>[0]["active"];
 
-/** Title + "Lihat stok" (phones) + Ringkasan · Margin · Detail tabs, shared by the three Keuangan pages. */
-export function KeuanganHeader({ params, active }: { params: Params; active: Active }) {
+/**
+ * Title + "Lihat stok" (phones) + Ringkasan · Margin · Detail tabs, shared by the three Keuangan pages.
+ * `searchParams` lets the tabs carry `?periode=` across (Detail itself always shows 28 days).
+ */
+export function KeuanganHeader({ params, searchParams, active }: { params: Params; searchParams: SearchParams; active: Active }) {
   return (
     <>
       <div className="flex items-center justify-between gap-3">
@@ -16,7 +21,7 @@ export function KeuanganHeader({ params, active }: { params: Params; active: Act
         </Suspense>
       </div>
       <Suspense fallback={<PageTabsSkeleton />}>
-        <Tabs params={params} active={active} />
+        <Tabs params={params} searchParams={searchParams} active={active} />
       </Suspense>
     </>
   );
@@ -27,7 +32,8 @@ async function StokLink({ params }: { params: Params }) {
   return <ToStokLink slug={slug} />;
 }
 
-async function Tabs({ params, active }: { params: Params; active: Active }) {
+async function Tabs({ params, searchParams, active }: { params: Params; searchParams: SearchParams; active: Active }) {
   const { slug } = await params;
-  return <KeuanganTabs slug={slug} active={active} />;
+  const days = parseFinancePeriodDays((await searchParams).periode);
+  return <KeuanganTabs slug={slug} active={active} days={days} />;
 }
