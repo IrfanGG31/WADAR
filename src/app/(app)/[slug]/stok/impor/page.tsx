@@ -2,8 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/states/page-skeleton";
+import { listCatalogImports } from "@/db/catalog-imports";
+import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { ImportClient } from "./import-client";
+import { ImportHistory } from "./import-history";
 
 export const metadata = { title: "Impor katalog" };
 
@@ -21,6 +24,8 @@ export default function ImportPage({ params }: PageProps<"/[slug]/stok/impor">) 
 
 async function Import({ params }: { params: Params }) {
   const { slug } = await params;
+  const shop = await getShop(slug);
+  const imports = await listCatalogImports(shop.id);
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -34,6 +39,7 @@ async function Import({ params }: { params: Params }) {
         <h1 className="text-2xl font-semibold tracking-tight">Impor katalog dari CSV</h1>
       </div>
       <ImportClient slug={slug} />
+      <ImportHistory imports={imports} timeZone={shop.timezone} />
     </>
   );
 }
