@@ -2,12 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import { AFTER_SIGN_IN_PATH } from "@/lib/routes";
+import { OFFLINE_PATH } from "@/lib/service-worker";
 
 /**
  * Pages anyone may open. /auth/callback must stay public: it runs right after
  * the Google/email-link redirect, before the session cookie exists.
  * /w/<slug> is the shop's public customer-chat widget; /api/widget/ is its anonymous API.
- * /privasi is the privacy policy; /sw.js is the push service worker (fetched without a page).
+ * /privasi is the privacy policy; /sw.js is the service worker (app shell + push, fetched without a page)
+ * and /offline the page it precaches.
  * /api/cron/ is called by Vercel Cron (no session) and checks CRON_SECRET itself.
  */
 const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/privasi", "/sw.js"];
@@ -15,7 +17,7 @@ const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/ap
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
 
 export function isPublicPath(pathname: string): boolean {
-  return pathname === "/" || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return pathname === "/" || pathname === OFFLINE_PATH || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 /**

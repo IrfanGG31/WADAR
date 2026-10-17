@@ -4,6 +4,7 @@ import { BellRing, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { serviceWorkerUrl } from "@/lib/service-worker";
 import { saveNotificationPrefs, savePushSubscription } from "./notification-actions";
 
 /**
@@ -42,7 +43,7 @@ export function NotificationSettings({
         setMessage({ error: "Izin notifikasi ditolak. Aktifkan lewat pengaturan browser." });
         return;
       }
-      const registration = await navigator.serviceWorker.register(`/sw.js?slug=${encodeURIComponent(slug)}`);
+      const registration = await navigator.serviceWorker.register(serviceWorkerUrl(slug));
       const subscription =
         (await registration.pushManager.getSubscription()) ??
         (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(pushKey) }));
