@@ -1,4 +1,5 @@
 import "server-only";
+import { storedRowErrors, type RowError } from "@/core/catalog-import";
 import { createClient } from "@/lib/supabase/server";
 
 export interface CatalogImportRow {
@@ -9,6 +10,8 @@ export interface CatalogImportRow {
   updated_count: number;
   failed_count: number;
   created_at: string;
+  /** Failed rows (CSV line + reason), oldest line first. */
+  errors: RowError[];
 }
 
 /**
@@ -20,7 +23,7 @@ export async function listCatalogImports(tenantId: string, limit = 10): Promise<
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("catalog_imports")
-    .select("id, file_name, rows_total, created_count, updated_count, failed_count, created_at")
+    .select("id, file_name, rows_total, created_count, updated_count, failed_count, created_at, errors")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -28,5 +31,8 @@ export async function listCatalogImports(tenantId: string, limit = 10): Promise<
     console.error("catalog import history unavailable", error.code);
     return [];
   }
-  return (data ?? []) as CatalogImportRow[];
+  return ((data ?? []) as (Omit<CatalogImportRow, "errors"> & { errors: unknown })[]).map((r) => ({
+    ...r,
+    errors: storedRowErrors(r.errors),
+  }));
 }

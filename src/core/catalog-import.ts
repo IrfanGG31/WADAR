@@ -226,6 +226,24 @@ export interface RowError {
   message: string;
 }
 
+/**
+ * The per-row errors kept in `catalog_imports.errors` (rows the app rejected +
+ * rows the RPC could not save), read back for the history: malformed entries
+ * are dropped, line order restored (rejected rows are stored first).
+ */
+export function storedRowErrors(raw: unknown): RowError[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RowError[] = [];
+  for (const e of raw) {
+    if (!e || typeof e !== "object") continue;
+    const { line, sku, message } = e as Record<string, unknown>;
+    const n = typeof line === "number" ? line : Number(line);
+    if (!Number.isInteger(n) || n < 1 || typeof message !== "string" || !message.trim()) continue;
+    out.push({ line: n, sku: typeof sku === "string" ? sku : "", message });
+  }
+  return out.sort((a, b) => a.line - b.line);
+}
+
 const LIMITS: Partial<Record<ImportField, number>> = { name: 120, option_label: 60, sku: 40, category: 60, unit: 20, description: 1000 };
 
 function validateRow(get: (f: ImportField) => string, line: number): ImportItem | string {

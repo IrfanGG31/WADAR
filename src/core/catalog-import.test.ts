@@ -6,6 +6,7 @@ import {
   parseRupiahCell,
   planImport,
   prepareImport,
+  storedRowErrors,
   MAX_IMPORT_ROWS,
   IMPORT_TEMPLATE_CSV,
 } from "./catalog-import";
@@ -163,5 +164,26 @@ describe("IMPORT_TEMPLATE_CSV", () => {
     if (!r.ok) throw new Error(r.error);
     expect(r.errors).toEqual([]);
     expect(r.items.length).toBeGreaterThan(0);
+  });
+});
+
+describe("storedRowErrors (riwayat impor: baris gagal)", () => {
+  it("reads what import_catalog stored — app-rejected rows and RPC failures — in line order", () => {
+    const prepared = prepareImport(`${HEADER}\nKopi,,KP-1,abc,1000,0,\nTeh,,TH-1,5000,2000,0,`);
+    expect(prepared.ok).toBe(true);
+    const rejected = prepared.ok ? prepared.errors : [];
+    expect(rejected.length).toBeGreaterThan(0);
+    const stored = [...rejected, { line: 1, sku: "X", message: "SKU sudah dipakai varian lain." }];
+    const read = storedRowErrors(JSON.parse(JSON.stringify(stored)));
+    expect(read[0]).toEqual({ line: 1, sku: "X", message: "SKU sudah dipakai varian lain." });
+    expect(read.slice(1)).toEqual(rejected);
+  });
+
+  it("tolerates anything else in the column", () => {
+    expect(storedRowErrors(null)).toEqual([]);
+    expect(storedRowErrors({})).toEqual([]);
+    expect(storedRowErrors([{ line: "4", message: "ok" }, { line: 0, message: "no" }, { line: 2, message: "  " }])).toEqual([
+      { line: 4, sku: "", message: "ok" },
+    ]);
   });
 });
