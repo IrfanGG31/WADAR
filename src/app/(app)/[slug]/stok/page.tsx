@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageTabsSkeleton } from "@/components/shell/page-tabs";
@@ -35,8 +35,14 @@ export default function StokPage({ params }: PageProps<"/[slug]/stok">) {
 async function AddProductButton({ params }: { params: Params }) {
   const { slug } = await params;
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-end gap-3">
       <ToKeuanganLink slug={slug} />
+      <Button asChild variant="outline">
+        <Link href={shopPath(slug, "stok/impor")}>
+          <FileUp className="h-4 w-4" aria-hidden />
+          Impor CSV
+        </Link>
+      </Button>
       <Button asChild>
         <Link href={shopPath(slug, "stok/produk/baru")}>
           <Plus className="h-4 w-4" aria-hidden />
