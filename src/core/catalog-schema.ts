@@ -34,4 +34,8 @@ export const StockInInput = z.object({
   qty: z.number().int().min(1, "Jumlah minimal 1.").max(1_000_000),
   unit_cost: rupiah("Harga modal per satuan wajib diisi."),
   note: z.string().trim().max(200).optional().default(""),
+  /** STK-5: optional expiry date of this batch (YYYY-MM-DD). */
+  expires_on: z
+    .preprocess((v) => (v === "" ? null : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal kedaluwarsa belum benar.").nullish())
+    .transform((v) => v ?? null),
 });

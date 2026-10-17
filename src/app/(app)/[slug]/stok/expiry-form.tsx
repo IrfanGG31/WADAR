@@ -36,6 +36,12 @@ export function ExpiryForm({ slug, variants }: { slug: string; variants: ExpiryF
 function ExpiryRow({ slug, variant }: { slug: string; variant: ExpiryFormVariant }) {
   const router = useRouter();
   const [value, setValue] = useState(variant.expiresOn ?? "");
+  // A stock-in on the same page can change the saved date: follow it after the refresh.
+  const [shown, setShown] = useState(variant.expiresOn);
+  if (shown !== variant.expiresOn) {
+    setShown(variant.expiresOn);
+    setValue(variant.expiresOn ?? "");
+  }
   const [message, setMessage] = useState<{ error?: string; ok?: string }>();
   const [pending, startTransition] = useTransition();
   const id = `exp-${variant.id}`;

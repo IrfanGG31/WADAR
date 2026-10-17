@@ -7,6 +7,7 @@ import { RupiahInput } from "@/components/rupiah-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatExpiryDate } from "@/core/expiry";
 import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
 import { stockIn } from "./actions";
@@ -20,7 +21,10 @@ export interface StockInVariant {
   packSize: number;
 }
 
-/** Stok masuk (STK-0): qty + unit cost per batch; HPP becomes the weighted average. */
+/**
+ * Stok masuk (STK-0): qty + unit cost per batch; HPP becomes the weighted average.
+ * Optional batch expiry date (STK-5); the variant keeps the nearest date for its stock.
+ */
 export function StockInForm({ variants }: { variants: StockInVariant[] }) {
   const router = useRouter();
   const { slug } = useParams<{ slug: string }>();
@@ -28,6 +32,7 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
   const variant = variants.find((v) => v.id === variantId) ?? variants[0];
   const [qty, setQty] = useState(variant?.packSize ?? 1);
   const [unitCost, setUnitCost] = useState<number | undefined>(variant?.costIsSet ? variant.avgCost : undefined);
+  const [expiresOn, setExpiresOn] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string }>();
   const [pending, startTransition] = useTransition();
 
@@ -46,15 +51,18 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
     event.preventDefault();
     setMessage(undefined);
     startTransition(async () => {
-      const result = await stockIn(slug, { variant_id: variant.id, qty, unit_cost: unitCost });
+      const result = await stockIn(slug, { variant_id: variant.id, qty, unit_cost: unitCost, expires_on: expiresOn || null });
       if (result.error) {
         setMessage({ ok: false, text: result.error });
         return;
       }
-      setMessage({
-        ok: true,
-        text: `Tercatat. Stok sekarang ${formatCount(result.onHand ?? 0)} ${variant.unit}, HPP rata-rata ${formatRupiah(result.avgCost ?? 0)}.`,
-      });
+      const text = `Tercatat. Stok sekarang ${formatCount(result.onHand ?? 0)} ${variant.unit}, HPP rata-rata ${formatRupiah(result.avgCost ?? 0)}.`;
+      if (result.expiryError) {
+        setMessage({ ok: false, text: `${text} ${result.expiryError}` });
+      } else {
+        setMessage({ ok: true, text: expiresOn ? `${text} Kedaluwarsa batch ini: ${formatExpiryDate(expiresOn)}.` : text });
+      }
+      setExpiresOn("");
       router.refresh();
     });
   }
@@ -94,6 +102,20 @@ export function StockInForm({ variants }: { variants: StockInVariant[] }) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="stock-in-cost">Modal per {variant.unit}</Label>
           <RupiahInput id="stock-in-cost" value={unitCost} onValueChange={setUnitCost} required />
+        </div>
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor="stock-in-expiry">Tanggal kedaluwarsa (opsional)</Label>
+          <Input
+            id="stock-in-expiry"
+            type="date"
+            value={expiresOn}
+            onChange={(e) => setExpiresOn(e.target.value)}
+            aria-describedby="stock-in-expiry-hint"
+            className="w-auto"
+          />
+          <p id="stock-in-expiry-hint" className="text-xs text-muted-foreground">
+            Kalau stok lama masih ada, tanggal yang lebih dekat yang dipakai untuk peringatan.
+          </p>
         </div>
       </div>
       {message && (
