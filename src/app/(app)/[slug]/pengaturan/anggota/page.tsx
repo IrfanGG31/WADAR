@@ -15,7 +15,9 @@ export default function AnggotaPage({ params }: PageProps<"/[slug]/pengaturan/an
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Suspense fallback={<div className="h-5 w-32" />}>
+          <Suspense fallback={<div className="h-11 w-28" aria-hidden />}>
           <BackLink params={params} />
+        </Suspense>
         </Suspense>
         <h1 className="text-2xl font-semibold tracking-tight">Anggota tim</h1>
         <p className="text-sm text-muted-foreground">Ajak kasir atau admin chat. Mereka hanya melihat menu sesuai perannya.</p>

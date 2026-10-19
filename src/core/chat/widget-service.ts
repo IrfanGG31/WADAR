@@ -22,6 +22,8 @@ export interface WidgetShop {
   name: string;
   persona: StorePersona;
   policies: StorePolicies;
+  /** Autopilot › "AI membalas chat": false = every message waits for the owner. Default true. */
+  autoReply?: boolean;
 }
 
 export interface ConversationRow {
@@ -47,7 +49,7 @@ export interface TurnData {
 
 export interface WidgetStore {
   findShop(slug: string): Promise<WidgetShop | null>;
-  ensureConversation(tenantId: string, sessionId: string): Promise<ConversationRow>;
+  ensureConversation(tenantId: string, sessionId: string, channel?: ChatChannel): Promise<ConversationRow>;
   /** Atomic check-and-record over all buckets (see `RateLimiter`). */
   hitRateLimit(buckets: ReturnType<typeof widgetBuckets>, nowMs: number): Promise<RateLimitResult>;
   /** null when this `providerMessageId` is already stored (retry / double tap). */
@@ -66,17 +68,35 @@ export type WidgetResult =
   | { status: 200; body: { messages: PublicMessage[]; inbound?: PublicMessage; duplicate?: boolean; mode: "ai" | "human" } }
   | { status: 400 | 404 | 429; body: { error: string; retryAfterSeconds?: number } };
 
+/** Where a buyer message came from: the web widget, or an outside app through the WADAR API. */
+export type ChatChannel = "widget" | "whatsapp" | "telegram" | "api";
+
+/** Buyer id from an outside app: a phone number, a Telegram chat id, any stable handle. */
+export function isValidExternalUserId(value: string | undefined | null): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9:+_.@-]{1,80}$/.test(value);
+}
+
+/** A ready `Generate`, or one picked per shop (its own model, Pusat Koneksi › Otak AI). */
+export type GenerateSource = Generate | { forTenant: (tenantId: string) => Promise<Generate> };
+
 export interface WidgetRequest {
   slug: string;
   sessionId: string | null;
+  /** Default "widget"; other channels identify the buyer by `sessionId` = their external id. */
+  channel?: ChatChannel;
   /** Client IP from the platform proxy (null when unknown, e.g. local dev). */
   ip: string | null;
   body: unknown;
   now: Date;
 }
 
-export async function handleWidgetMessage(store: WidgetStore, generate: Generate, req: WidgetRequest): Promise<WidgetResult> {
-  if (!isValidSessionId(req.sessionId)) return { status: 400, body: { error: "Sesi tidak valid. Muat ulang halaman." } };
+export async function handleWidgetMessage(store: WidgetStore, generateSource: GenerateSource, req: WidgetRequest): Promise<WidgetResult> {
+  const channel = req.channel ?? "widget";
+  const validId = channel === "widget" ? isValidSessionId(req.sessionId) : isValidExternalUserId(req.sessionId);
+  if (!validId || !req.sessionId) {
+    return { status: 400, body: { error: channel === "widget" ? "Sesi tidak valid. Muat ulang halaman." : "Id pembeli tidak valid." } };
+  }
+  const sessionId = req.sessionId;
   const parsed = WidgetMessageInput.safeParse(req.body);
   if (!parsed.success) return { status: 400, body: { error: parsed.error.issues[0]?.message ?? "Pesan tidak valid." } };
 
@@ -85,17 +105,17 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
 
   const nowMs = req.now.getTime();
   // Before anything is written: a rejected request must not create a conversation row.
-  const limit = await store.hitRateLimit(widgetBuckets({ tenantId: shop.tenantId, sessionId: req.sessionId, ip: req.ip }), nowMs);
+  const limit = await store.hitRateLimit(widgetBuckets({ tenantId: shop.tenantId, sessionId, ip: req.ip }), nowMs);
   if (limit.limited) {
     return { status: 429, body: { error: "Pesannya terlalu cepat. Tunggu sebentar ya.", retryAfterSeconds: limit.retryAfterSeconds } };
   }
 
-  const conversation = await store.ensureConversation(shop.tenantId, req.sessionId);
+  const conversation = await store.ensureConversation(shop.tenantId, sessionId, channel);
 
   const stored = await store.insertInbound({
     tenantId: shop.tenantId,
     conversationId: conversation.id,
-    providerMessageId: `widget:${req.sessionId}:${parsed.data.client_id}`,
+    providerMessageId: `${channel}:${sessionId}:${parsed.data.client_id}`,
     text: parsed.data.text,
   });
   if (!stored) return { status: 200, body: { messages: [], duplicate: true, mode: conversation.mode } };
@@ -109,6 +129,13 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
 
   // Human mode: the AI only stores the message; the owner answers from the inbox.
   if (conversation.mode === "human") return { status: 200, body: { messages: [], inbound: stored, mode: "human" } };
+  // Auto-reply switched off for the shop: same as human mode, and the owner is told a chat waits.
+  if (shop.autoReply === false) {
+    await store.notifyEscalation?.({ tenantId: shop.tenantId, conversationId: conversation.id, cause: "human_requested" }).catch((e: unknown) => {
+      console.error("escalation notification failed", e);
+    });
+    return { status: 200, body: { messages: [], inbound: stored, mode: "human" } };
+  }
 
   const data = await store.loadTurnData({
     tenantId: shop.tenantId,
@@ -126,6 +153,7 @@ export async function handleWidgetMessage(store: WidgetStore, generate: Generate
     history: data.history,
   });
   const cache = store.answers ? { store: store.answers(shop.tenantId), scope: shop.tenantId } : undefined;
+  const generate = typeof generateSource === "function" ? generateSource : await generateSource.forTenant(shop.tenantId);
   const outcome = await runTurn({ text: parsed.data.text, mode: "ai", context }, generate, { cache });
   const messages = await store.saveOutcome({ shop, conversationId: conversation.id, outcome });
   if (outcome.action === "escalate" && store.notifyEscalation) {

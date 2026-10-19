@@ -1,6 +1,6 @@
 import "server-only";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { stepCountIs, streamText, tool } from "ai";
+import { stepCountIs, streamText, tool, type LanguageModel } from "ai";
 import type { ConsultModel } from "../consult";
 import { TOOL_DEFS } from "../consult-tools";
 
@@ -11,6 +11,11 @@ import { TOOL_DEFS } from "../consult-tools";
  */
 export function googleConsultModel(apiKey: string): ConsultModel {
   const google = createGoogleGenerativeAI({ apiKey });
+  return sdkConsultModel((id) => google(id));
+}
+
+/** The same tool loop over any AI SDK model factory. */
+export function sdkConsultModel(model: (modelId: string) => LanguageModel): ConsultModel {
   return {
     async generate(call) {
       const tools = Object.fromEntries(
@@ -24,7 +29,7 @@ export function googleConsultModel(apiKey: string): ConsultModel {
         ]),
       );
       const result = streamText({
-        model: google(call.modelId),
+        model: model(call.modelId),
         system: call.system,
         messages: call.messages,
         tools,
@@ -43,6 +48,33 @@ export function googleConsultModel(apiKey: string): ConsultModel {
           outputTokens: usage.outputTokens ?? 0,
         },
       };
+    },
+  };
+}
+
+/**
+ * The shop's own model first (its model id replaces the route's), then the default model. A
+ * failure after text has streamed is not retried: the grounding step judges what was produced.
+ */
+export function fallbackConsultModel(primary: { model: ConsultModel; modelId: string }, fallback?: ConsultModel): ConsultModel {
+  return {
+    async generate(call) {
+      let streamed = false;
+      try {
+        return await primary.model.generate({
+          ...call,
+          modelId: primary.modelId,
+          onDelta: call.onDelta
+            ? (text) => {
+                streamed = true;
+                call.onDelta?.(text);
+              }
+            : undefined,
+        });
+      } catch (e) {
+        if (!fallback || streamed) throw e;
+        return fallback.generate(call);
+      }
     },
   };
 }

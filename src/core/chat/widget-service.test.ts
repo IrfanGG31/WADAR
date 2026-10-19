@@ -236,3 +236,35 @@ describe("handleWidgetMessage → owner notification", () => {
     spy.mockRestore();
   });
 });
+
+describe("handleWidgetMessage → outside channels and Autopilot", () => {
+  it("accepts a phone number as the buyer id on the WhatsApp channel and uses the shop's generator", async () => {
+    const { store, conversations } = fakeStore();
+    const forTenant = vi.fn(async () => good);
+    const r = await handleWidgetMessage(store, { forTenant }, req({ channel: "whatsapp", sessionId: "+6281234567890" }));
+    expect(r).toMatchObject({ status: 200, body: { mode: "ai" } });
+    expect(forTenant).toHaveBeenCalledWith("t1");
+    expect(conversations).toEqual(["+6281234567890"]);
+  });
+
+  it("refuses a widget-format check for outside ids and vice versa", async () => {
+    const { store } = fakeStore();
+    expect((await handleWidgetMessage(store, good, req({ channel: "api", sessionId: "bad id with spaces" }))).status).toBe(400);
+    expect((await handleWidgetMessage(store, good, req({ sessionId: "+6281234567890" }))).status).toBe(400);
+  });
+
+  it("auto-reply off: stores the message, tells the owner, no AI answer", async () => {
+    const base = fakeStore();
+    base.store.findShop = async () => ({ tenantId: "t1", name: "Glow by Sari", persona: ctx.persona, policies: ctx.policies, autoReply: false });
+    const calls: string[] = [];
+    base.store.notifyEscalation = async ({ cause }) => {
+      calls.push(cause);
+    };
+    const generate = vi.fn(good);
+    const r = await handleWidgetMessage(base.store, generate, req());
+    expect(r).toMatchObject({ status: 200, body: { mode: "human", messages: [] } });
+    expect(generate).not.toHaveBeenCalled();
+    expect(calls).toEqual(["human_requested"]);
+    expect(base.saved).toEqual([]);
+  });
+});

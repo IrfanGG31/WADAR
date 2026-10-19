@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { getConsult } from "@/ai";
 import type { ConsultEvent } from "@/ai/consult";
 import { narrateInsights } from "@/core/consult/insights";
 import { detectRemember } from "@/core/consult/question";
@@ -10,6 +9,7 @@ import { permissionDenied } from "@/db/access";
 import { findShop } from "@/db/shop";
 import { isoDateInZone } from "@/core/period";
 import { createClient } from "@/lib/supabase/server";
+import { getTenantConsult } from "@/lib/tenant-ai";
 
 /**
  * POST /api/consult (TECH-SPEC §5, §7.4) — owner-only, NDJSON stream:
@@ -68,7 +68,7 @@ export async function POST(request: Request): Promise<Response> {
   const denied = await permissionDenied(shop.id, "consult");
   if (denied) return Response.json({ error: denied }, { status: 403 });
   const today = isoDateInZone(new Date(), shop.timezone);
-  const consult = getConsult();
+  const consult = await getTenantConsult(shop.id);
 
   if (body.action === "remember") {
     const intent = detectRemember(body.content) ?? { kind: "fact" as const, content: body.content };

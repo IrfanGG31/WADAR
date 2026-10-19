@@ -36,25 +36,25 @@ export function supabaseWidgetStore(db: SupabaseClient, { embedQuery }: { embedQ
     async findShop(slug) {
       const tenant = await findOpenShop(db, slug);
       if (!tenant) return null;
-      const { data: profile, error: pe } = await db
-        .from("store_profile")
-        .select("policies, persona")
-        .eq("tenant_id", tenant.id)
-        .maybeSingle();
+      const [{ data: profile, error: pe }, { data: agent }] = await Promise.all([
+        db.from("store_profile").select("policies, persona").eq("tenant_id", tenant.id).maybeSingle(),
+        db.from("agent_settings").select("auto_reply").eq("tenant_id", tenant.id).maybeSingle(),
+      ]);
       if (pe) throw pe;
       return {
         tenantId: tenant.id as string,
         name: tenant.name as string,
         persona: parsePersona(profile?.persona ?? {}),
         policies: parsePolicies(profile?.policies ?? {}),
+        autoReply: agent ? Boolean(agent.auto_reply) : true,
       };
     },
 
-    async ensureConversation(tenantId, sessionId) {
+    async ensureConversation(tenantId, sessionId, channel = "widget") {
       const { data, error } = await db
         .from("conversations")
         .upsert(
-          { tenant_id: tenantId, channel: "widget", external_user_id: sessionId },
+          { tenant_id: tenantId, channel, external_user_id: sessionId },
           { onConflict: "tenant_id,channel,external_user_id" },
         )
         .select("id, mode, status, last_inbound_at")

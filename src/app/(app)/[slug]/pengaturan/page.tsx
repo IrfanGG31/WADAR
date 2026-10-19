@@ -18,10 +18,10 @@ import { PageGate } from "@/components/shell/page-gate";
 export const metadata = { title: "Pengaturan" };
 
 const SETTINGS_LINKS = [
+  { page: "pengaturan/koneksi", title: "Pusat Koneksi", hint: "Otak AI, API WADAR, WhatsApp & Telegram, marketplace, Autopilot", icon: Plug },
   { page: "pengaturan/kanal", title: "Kanal & komisi", hint: "Shopee, TikTok, GoFood…: komisi per pesanan", icon: Store },
   { page: "pengaturan/anggota", title: "Anggota tim", hint: "Undang kasir atau admin chat, ubah peran, cabut akses", icon: Users },
   { page: "pengaturan/dokumen", title: "Dokumen asisten", hint: "Panduan, SOP, garansi — dibaca asisten saat menjawab pembeli", icon: FileText },
-  { page: "pengaturan/integrasi", title: "Integrasi", hint: "WhatsApp, Telegram, marketplace, QRIS", icon: Plug },
   { page: "pengaturan/aktivitas", title: "Riwayat aktivitas", hint: "Siapa membatalkan transaksi, ubah harga, atau sesuaikan stok", icon: History },
 ] as const;
 

@@ -16,7 +16,9 @@ export default function KanalPage({ params }: PageProps<"/[slug]/pengaturan/kana
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <BackLink params={params} />
+        <Suspense fallback={<div className="h-11 w-28" aria-hidden />}>
+          <BackLink params={params} />
+        </Suspense>
         <h1 className="text-2xl font-semibold tracking-tight">Kanal & komisi</h1>
         <p className="text-sm text-muted-foreground">
           Komisi dipakai untuk menghitung untung per kanal. Nilai awal hanya perkiraan, cek tarif sebenarnya di akun seller-mu.

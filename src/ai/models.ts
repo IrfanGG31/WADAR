@@ -13,7 +13,8 @@ export type Task = "chat_reply" | "intent" | "narrate" | "consult_fast" | "consu
 /** Tasks the chat pipeline runs through `run()`. consult_fast / consult_deep / narrate run through `createConsult` (src/ai/consult.ts). */
 export type ChatTask = Extract<Task, "chat_reply" | "intent" | "embed" | "judge">;
 
-export type ModelRef = `google:${string}` | "offline:template-v1";
+/** `custom:<model>` = the shop's own OpenAI-compatible endpoint (Pusat Koneksi › Otak AI). */
+export type ModelRef = `google:${string}` | `custom:${string}` | "offline:template-v1";
 
 export const OFFLINE_MODEL: ModelRef = "offline:template-v1";
 
@@ -43,8 +44,26 @@ export const MAX_OUTPUT_TOKENS: Partial<Record<Task, number>> = {
 /** SPRINT-8D §5: an LLM slower than this is abandoned and the fallback answers. */
 export const LLM_TIMEOUT_MS = 8_000;
 
-export function providerOf(ref: ModelRef): "google" | "offline" {
-  return ref.startsWith("google:") ? "google" : "offline";
+export function providerOf(ref: ModelRef): "google" | "custom" | "offline" {
+  return ref.startsWith("google:") ? "google" : ref.startsWith("custom:") ? "custom" : "offline";
+}
+
+/**
+ * Routes for a shop with its own model: that model first for every chat task, then the default
+ * route (Gemini, then the offline engine). Embeddings keep the default route — the vector column is
+ * 768-dimensional and one shop's KB must stay in one vector space.
+ */
+export function routesWithCustom(chatModel: string): Record<Task, readonly ModelRef[]> {
+  const custom: ModelRef = `custom:${chatModel}`;
+  return {
+    chat_reply: [custom, ...ROUTES.chat_reply],
+    intent: [custom, ...ROUTES.intent],
+    narrate: [custom, ...ROUTES.narrate],
+    consult_fast: [custom, ...ROUTES.consult_fast],
+    consult_deep: [custom, ...ROUTES.consult_deep],
+    embed: ROUTES.embed,
+    judge: [custom, ...ROUTES.judge],
+  };
 }
 
 export function modelIdOf(ref: ModelRef): string {

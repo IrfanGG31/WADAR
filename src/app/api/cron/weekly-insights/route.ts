@@ -1,5 +1,6 @@
 import { after } from "next/server";
-import { getConsult } from "@/ai";
+import { consultFor } from "@/ai";
+import { loadCustomAi } from "@/db/ai-provider";
 import { notConfiguredDelivery, runWeeklyInsightJob } from "@/core/consult/weekly-job";
 import { buildDigestContent, digestExists, listDigestShops, markDigestDelivery, saveDigest } from "@/db/weekly-digest";
 import { rejectCronRequest } from "@/lib/cron-auth";
@@ -30,12 +31,12 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const cursor = url.searchParams.get("after")?.slice(0, 64) || null;
   const db = createAdminClient();
-  const consult = getConsult();
   const report = await runWeeklyInsightJob(
     {
       listShops: () => listDigestShops(db),
       hasDigest: (tenantId, weekStart) => digestExists(db, tenantId, weekStart),
-      build: (shop, today) => buildDigestContent(db, consult, { is_demo: false, business_type: null, ...shop }, today),
+      build: async (shop, today) =>
+        buildDigestContent(db, consultFor(await loadCustomAi(shop.id)), { is_demo: false, business_type: null, ...shop }, today),
       save: (d) => saveDigest(db, d),
       deliver: notConfiguredDelivery,
       markDelivery: (tenantId, weekStart, outcome) => markDigestDelivery(db, tenantId, weekStart, outcome),

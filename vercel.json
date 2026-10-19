@@ -4,6 +4,7 @@
   "crons": [
     { "path": "/api/cron/weekly-insights", "schedule": "0 0 * * 1" },
     { "path": "/api/cron/daily-cleanup", "schedule": "0 19 * * *" },
-    { "path": "/api/cron/daily-rollup", "schedule": "30 17 * * *" }
+    { "path": "/api/cron/daily-rollup", "schedule": "30 17 * * *" },
+    { "path": "/api/cron/agent", "schedule": "0 23 * * *" }
   ]
 }

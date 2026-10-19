@@ -1,12 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getAi, getQueryEmbedder } from "@/ai";
+import { getQueryEmbedder } from "@/ai";
 import { chatGenerator } from "@/ai/chat-generator";
 import { clientIp } from "@/core/rate-limit";
 import { isValidSessionId } from "@/core/chat/widget";
 import { handleWidgetMessage } from "@/core/chat/widget-service";
 import { supabaseWidgetStore } from "@/db/widget-store";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantAi } from "@/lib/tenant-ai";
 import { WIDGET_COOKIE, WIDGET_COOKIE_OPTIONS } from "../session";
 
 /** One model call plus a regeneration must fit; the default limit can cut a slow answer off. */
@@ -27,7 +28,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   try {
-    const result = await handleWidgetMessage(supabaseWidgetStore(createAdminClient(), { embedQuery: getQueryEmbedder() }), chatGenerator(getAi()), {
+    const generate = { forTenant: async (tenantId: string) => chatGenerator(await getTenantAi(tenantId)) };
+    const result = await handleWidgetMessage(supabaseWidgetStore(createAdminClient(), { embedQuery: getQueryEmbedder() }), generate, {
       slug,
       sessionId,
       ip: clientIp(request.headers),

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getConsult } from "@/ai";
+import { getTenantConsult } from "@/lib/tenant-ai";
 import { listMemory } from "@/db/memory";
 import { getShop } from "@/db/shop";
 import { ConsultClient } from "./consult-client";
@@ -43,7 +43,7 @@ async function Body({ params }: { params: PageProps<"/[slug]/konsultasi">["param
   const memory = await listMemory(shop.id);
   return (
     <>
-      <ConsultClient slug={slug} offlineReason={getConsult().unavailable()} />
+      <ConsultClient slug={slug} offlineReason={(await getTenantConsult(shop.id)).unavailable()} />
       <MemoryList slug={slug} items={memory} />
     </>
   );

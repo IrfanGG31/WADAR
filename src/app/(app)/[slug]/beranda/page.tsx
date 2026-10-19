@@ -16,6 +16,7 @@ import { getWeeklyDigest } from "@/db/weekly-digest";
 import { formatIsoWeekday } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { shopToday } from "@/lib/shop-today";
+import { AutopilotCard } from "./autopilot-card";
 import { SetupChecklist } from "./setup-checklist";
 import { WeeklyDigestSummary } from "./weekly-digest";
 
@@ -40,6 +41,9 @@ export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]
       </Suspense>
       <Suspense fallback={null}>
         <SetupChecklist params={params} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <AutopilotCard params={params} />
       </Suspense>
 
       <Suspense fallback={<KpiSkeleton />}>

@@ -15,7 +15,8 @@ const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(a
 vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({ after: (fn: () => Promise<unknown>) => continuations.push(fn) }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => admin }));
-vi.mock("@/ai", () => ({ getConsult: () => ({ narrateWeekly: vi.fn() }) }));
+vi.mock("@/ai", () => ({ getConsult: () => ({ narrateWeekly: vi.fn() }), consultFor: () => ({ narrateWeekly: vi.fn() }) }));
+vi.mock("@/db/ai-provider", () => ({ loadCustomAi: async () => null }));
 vi.mock("@/db/weekly-digest", () => ({
   listDigestShops: async (db: unknown) => (db === admin ? shops : []),
   digestExists: async (_db: unknown, t: string, w: string) => table.has(`${t}:${w}`),

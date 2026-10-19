@@ -4,7 +4,7 @@ import type { Engine, RunMeter } from "@/core/chat/pipeline";
 import type { ChatIntent, ChatReply } from "@/core/chat/schema";
 import { CircuitBreaker } from "./breaker";
 import { meterFor, type Usage } from "./meter";
-import { LLM_TIMEOUT_MS, modelIdOf, providerOf, ROUTES, type ChatTask, type ModelRef } from "./models";
+import { LLM_TIMEOUT_MS, modelIdOf, providerOf, ROUTES, type ChatTask, type ModelRef, type Task } from "./models";
 import { normalizeSourceId } from "./prompts/chat_reply.v1";
 
 /**
@@ -57,12 +57,14 @@ export type OfflineReason = "no_api_key" | "demo_safe";
 export interface AiEnv {
   GOOGLE_GENERATIVE_AI_API_KEY?: string;
   DEMO_SAFE?: string;
+  /** "1" when the shop has its own model configured (Pusat Koneksi › Otak AI). */
+  CUSTOM_AI?: string;
 }
 
-/** Why the LLM is off for this deployment, or null when it may be called. */
+/** Why the LLM is off for this deployment/shop, or null when it may be called. */
 export function offlineReason(env: AiEnv): OfflineReason | null {
   if (env.DEMO_SAFE === "1") return "demo_safe";
-  if (!env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()) return "no_api_key";
+  if (!env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() && env.CUSTOM_AI !== "1") return "no_api_key";
   return null;
 }
 
@@ -85,8 +87,10 @@ export class AiUnavailableError extends Error {
 
 export interface AiDeps {
   env: AiEnv;
-  providers: { google?: Provider };
-  breakers?: { google?: CircuitBreaker };
+  providers: { google?: Provider; custom?: Provider };
+  breakers?: { google?: CircuitBreaker; custom?: CircuitBreaker };
+  /** Per-shop routing (routesWithCustom); defaults to ROUTES. */
+  routes?: Record<Task, readonly ModelRef[]>;
   now?: () => number;
   timeoutMs?: number;
 }
@@ -105,8 +109,8 @@ function cleanChatReply(reply: ChatReply | null): ChatReply | null {
   return { ...reply, sources: reply.sources.map((s) => ({ ...s, id: normalizeSourceId(s.id) })) };
 }
 
-export function createAi({ env, providers, breakers = {}, now = Date.now, timeoutMs = LLM_TIMEOUT_MS }: AiDeps) {
-  const breaker = { google: breakers.google ?? new CircuitBreaker({ now }) };
+export function createAi({ env, providers, breakers = {}, routes = ROUTES, now = Date.now, timeoutMs = LLM_TIMEOUT_MS }: AiDeps) {
+  const breaker = { google: breakers.google ?? new CircuitBreaker({ now }), custom: breakers.custom ?? new CircuitBreaker({ now }) };
 
   /** `opts.timeoutMs` can only shorten the model timeout (e.g. to what is left of a chat turn). */
   async function run<T extends ChatTask>(task: T, input: TaskInput<T>, opts: { timeoutMs?: number } = {}): Promise<RunResult<T>> {
@@ -115,7 +119,7 @@ export function createAi({ env, providers, breakers = {}, now = Date.now, timeou
     let fallbackReason: string | null = offline;
     let lastError: string | null = null;
 
-    for (const ref of ROUTES[task]) {
+    for (const ref of routes[task]) {
       const provider = providerOf(ref);
       if (provider === "offline") {
         const output = OFFLINE[task](input);
