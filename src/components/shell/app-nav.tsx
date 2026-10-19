@@ -52,7 +52,8 @@ export function Sidebar({ role }: { role: MemberRole | null }) {
       className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-background p-4 md:flex"
     >
       <div className="mb-6 mt-2 flex items-center px-2">
-        <Image src={brand.logo.src} alt={brand.logo.alt} width={140} height={140} className="h-auto w-28" priority />
+        <Image src={brand.mark.src} alt="" width={brand.mark.width} height={brand.mark.height} className="h-6 w-auto" priority />
+        <span className="ml-2 font-display text-lg font-extrabold tracking-tight text-navy">{brand.name}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1">
         {navFor(DESKTOP_NAV, role).map((item) => {

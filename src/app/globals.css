@@ -5,15 +5,21 @@
  * src/brand.test.ts fails if they drift apart.
  */
 @theme {
-  --color-primary: #2563eb;
+  /* Sampled from the WADAR logo: navy wordmark, mid blue ribbon, light blue spark. */
+  --color-primary: #1f5fbf;
+  --color-primary-hover: #194f9f;
   --color-primary-foreground: #ffffff;
-  --color-accent: #f59e0b;
+  --color-navy: #082a5c;
+  --color-sky: #3793f2;
+  --color-accent: #3793f2;
   --color-background: #ffffff;
-  --color-foreground: #0f172a;
+  --color-foreground: #0b1d3a;
+  /* Page wash behind white cards (landing sections, auth panel). */
+  --color-surface: #f4f7fb;
 
-  --color-border: #e2e8f0;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
+  --color-border: #dfe6ef;
+  --color-muted: #eef3f9;
+  --color-muted-foreground: #556179;
   --color-destructive: #dc2626;
   --color-destructive-foreground: #fef2f2;
   --color-success: #16a34a;
@@ -21,6 +27,8 @@
 
   /* --font-inter is set by next/font on <html> (src/app/layout.tsx). */
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  /* Headings: Plus Jakarta Sans (--font-jakarta from next/font). */
+  --font-display: var(--font-jakarta), var(--font-inter), system-ui, sans-serif;
 }
 
 :root {
@@ -34,4 +42,5 @@ body {
   font-family: var(--font-sans);
   /* NFR-A11Y: body text ≥ 16px. */
   font-size: 16px;
+  -webkit-font-smoothing: antialiased;
 }

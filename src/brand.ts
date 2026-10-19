@@ -9,16 +9,23 @@ export const brand = {
   shortName: "WADAR",
   tagline: "Asisten AI yang ngerti tokomu: bukan sekadar mencatat, tetapi memperingatkan dan menjawab.",
   colors: {
-    primary: "#2563EB",
+    primary: "#1F5FBF",
     primaryForeground: "#FFFFFF",
-    accent: "#F59E0B",
+    navy: "#082A5C",
+    accent: "#3793F2",
     background: "#FFFFFF",
-    foreground: "#0F172A",
+    foreground: "#0B1D3A",
   },
   /** Served from /public. */
   logo: {
     src: "/wadar-logo.png",
     alt: "Logo WADAR",
+  },
+  /** The W symbol alone (cropped from the logo), for headers next to the name. 168×99. */
+  mark: {
+    src: "/wadar-mark.png",
+    width: 168,
+    height: 99,
   },
 } as const;
 

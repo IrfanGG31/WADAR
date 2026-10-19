@@ -21,11 +21,14 @@ function DemoSubmit({ profile, label, icon: Icon, variant }: {
   );
 }
 
-/** "Coba demo": a fresh sample shop with 90 days of data, no sign-up needed. */
-export function DemoButtons() {
+/**
+ * "Coba demo": a fresh sample shop with 90 days of data, no sign-up needed.
+ * `secondary` when it sits under a sign-in form, so it does not compete with the main action.
+ */
+export function DemoButtons({ variant = "primary" }: { variant?: "primary" | "secondary" }) {
   return (
     <form action={startDemo} className="flex flex-col gap-2">
-      <DemoSubmit profile="skincare" label="Coba demo: toko skincare" icon={Sparkles} variant="default" />
+      <DemoSubmit profile="skincare" label="Coba demo: toko skincare" icon={Sparkles} variant={variant === "primary" ? "default" : "outline"} />
       <DemoSubmit profile="kopi" label="Coba demo: kedai kopi" icon={Coffee} variant="outline" />
     </form>
   );

@@ -1,33 +1,46 @@
-import { Radar } from "lucide-react";
-import Image from "next/image";
+import { AlertTriangle, MessageCircle, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { brand } from "@/brand";
+import { BrandLockup } from "@/components/ui/saa-s-template";
 
-/** Two-column sign-in layout: brand panel on wide screens, form on the right. */
+/** What the product does, shown as the notices an owner actually gets — sample shop wording, no stock art. */
+const SAMPLES = [
+  { icon: AlertTriangle, tone: "text-red-700 bg-red-50", title: "Serum Vit C habis ±3 hari lagi", body: "Pesan ulang 40 pcs sebelum Kamis." },
+  { icon: TrendingUp, tone: "text-emerald-700 bg-emerald-50", title: "Untung bersih minggu ini Rp5,7 jt", body: "Setelah modal, komisi Shopee, dan pengeluaran." },
+  { icon: MessageCircle, tone: "text-primary bg-muted", title: "12 chat pembeli dijawab hari ini", body: "2 diteruskan ke kamu: minta diskon grosir." },
+] as const;
+
+/** Two-column sign-in layout: product panel on wide screens, form on the right. */
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <main className="grid min-h-dvh md:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground md:flex">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
-        <div className="relative flex items-center gap-2 text-lg font-semibold">
-          <Radar className="h-6 w-6" />
-          {brand.name}
+    <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <aside className="hidden flex-col justify-between border-r border-border bg-surface p-10 lg:flex xl:p-14">
+        <BrandLockup />
+        <div className="flex max-w-md flex-col gap-8">
+          <p className="font-display text-3xl font-bold leading-tight tracking-tight text-navy">{brand.tagline}</p>
+          <ul className="flex flex-col gap-3" aria-label="Contoh pemberitahuan">
+            {SAMPLES.map((s) => (
+              <li key={s.title} className="flex items-start gap-3 rounded-xl border border-border bg-background p-4 shadow-sm">
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.tone}`}>
+                  <s.icon className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold">{s.title}</span>
+                  <span className="text-sm text-muted-foreground">{s.body}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="relative max-w-sm text-2xl font-medium leading-snug">{brand.tagline}</p>
-        <p className="relative text-sm text-primary-foreground/70">
-          Stok tidak bolong, untung riil kelihatan, dan pembeli terjawab 24 jam — dari data tokomu sendiri.
-        </p>
-      </div>
+        <p className="text-sm text-muted-foreground">Contoh dari toko contoh. Angka tokomu dihitung dari transaksimu sendiri.</p>
+      </aside>
 
-      <div className="flex items-center justify-center bg-background px-4 py-12">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 flex flex-col gap-1.5 md:mb-10">
-            <div className="mb-2 flex items-center md:hidden">
-              <Image src={brand.logo.src} alt={brand.logo.alt} width={120} height={120} className="h-auto w-24" priority />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+      <div className="flex flex-col px-4 py-6 sm:px-8 lg:justify-center lg:py-12">
+        <BrandLockup className="mb-10 lg:hidden" />
+        <div className="mx-auto w-full max-w-sm">
+          <div className="mb-8 flex flex-col gap-2">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-navy">{title}</h1>
+            <p className="text-muted-foreground">{subtitle}</p>
           </div>
           {children}
         </div>
