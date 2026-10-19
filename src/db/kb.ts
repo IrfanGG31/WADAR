@@ -42,3 +42,33 @@ export async function listFaqs(tenantId: string): Promise<FaqRow[]> {
     };
   });
 }
+
+export interface DocRow {
+  id: string;
+  title: string;
+  status: KbStatus;
+  error: string | null;
+  chunks: number;
+  created_at: string;
+}
+
+/** KB-2: the owner's uploaded documents with their processing state. */
+export async function listDocs(tenantId: string): Promise<DocRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("kb_documents")
+    .select("id, title, status, error, created_at, kb_chunks(count)")
+    .eq("tenant_id", tenantId)
+    .eq("kind", "doc")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []).map((d) => ({
+    id: d.id as string,
+    title: (d.title as string | null) ?? "Dokumen",
+    status: d.status as KbStatus,
+    error: d.error as string | null,
+    chunks: ((d.kb_chunks as { count: number }[] | null)?.[0]?.count as number) ?? 0,
+    created_at: d.created_at as string,
+  }));
+}

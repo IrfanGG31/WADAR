@@ -59,12 +59,18 @@ export async function SetupChecklist({ params }: { params: Promise<{ slug: strin
             </Link>
           </li>
         ))}
-        <li className="flex min-h-14 items-center gap-3 px-3 py-2">
-          <MessageCircle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-sm font-medium">Hubungkan WhatsApp & Telegram</span>
-            <span className="text-xs text-muted-foreground">Menyusul. Sementara bagikan tautan chat toko dari Pengaturan.</span>
-          </span>
+        <li>
+          <Link
+            href={shopPath(slug, "pengaturan/integrasi")}
+            className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <MessageCircle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-sm font-medium">Hubungkan WhatsApp & Telegram</span>
+              <span className="text-xs text-muted-foreground">Menyusul. Sementara bagikan tautan chat toko dari Pengaturan.</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
         </li>
       </ol>
     </section>

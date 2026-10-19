@@ -1,4 +1,4 @@
-import { ChevronRight, History, Store, Users } from "lucide-react";
+import { ChevronRight, FileText, History, Plug, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { canResetDemo, RESET_DEMO_PARAM } from "@/core/demo-reset";
@@ -20,6 +20,8 @@ export const metadata = { title: "Pengaturan" };
 const SETTINGS_LINKS = [
   { page: "pengaturan/kanal", title: "Kanal & komisi", hint: "Shopee, TikTok, GoFood…: komisi per pesanan", icon: Store },
   { page: "pengaturan/anggota", title: "Anggota tim", hint: "Undang kasir atau admin chat, ubah peran, cabut akses", icon: Users },
+  { page: "pengaturan/dokumen", title: "Dokumen asisten", hint: "Panduan, SOP, garansi — dibaca asisten saat menjawab pembeli", icon: FileText },
+  { page: "pengaturan/integrasi", title: "Integrasi", hint: "WhatsApp, Telegram, marketplace, QRIS", icon: Plug },
   { page: "pengaturan/aktivitas", title: "Riwayat aktivitas", hint: "Siapa membatalkan transaksi, ubah harga, atau sesuaikan stok", icon: History },
 ] as const;
 

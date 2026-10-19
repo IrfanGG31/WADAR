@@ -40,6 +40,7 @@ const { updateChannel } = await import("./pengaturan/kanal/actions");
 const { updateCustomerProfile } = await import("./pelanggan/actions");
 const { hideSetupChecklist } = await import("./beranda/setup-actions");
 const { importMarketplaceOrders } = await import("./kasir/marketplace/actions");
+const { addDocument, deleteDocument } = await import("./pengaturan/dokumen/actions");
 const { updateMemoryItem } = await import("./konsultasi/memory-actions");
 
 const SALE = {
@@ -110,6 +111,8 @@ describe("kasir (cashier)", () => {
     const order = { external_order_id: "A1", occurred_at: null, status: "completed", buyer_name: null, order_discount: 0, platform_fee: null, items: [{ variant_id: VARIANT, qty: 1, unit_price: 1000, line_discount: 0 }] };
     const imported = await importMarketplaceOrders("kopi-dimas", { channel_id: VARIANT, marketplace: "shopee", file_name: "a.csv", orders: [order] });
     expect("error" in imported && imported.error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await addDocument("kopi-dimas", { title: "Panduan ukuran", text: "S: 50 cm, M: 54 cm, L: 58 cm" })).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await deleteDocument("kopi-dimas", "doc-1")).error).toMatch(/^Akun kasir tidak bisa/);
     expect(touched()).toBe(0);
   });
 

@@ -69,7 +69,7 @@ function ChannelCard({ channel }: { channel: ChannelView }) {
           <p className="text-sm text-muted-foreground">{label}</p>
         </div>
         {channel.fee_is_default && channel.fee_pct + channel.fee_fixed > 0 && (
-          <Badge variant="warning" title="Nilai awal WADAR. Cek tarif sebenarnya di akun seller-mu.">
+          <Badge variant="warning" title="Nilai awal (perkiraan). Cek tarif sebenarnya di akun seller-mu.">
             Perkiraan
           </Badge>
         )}
