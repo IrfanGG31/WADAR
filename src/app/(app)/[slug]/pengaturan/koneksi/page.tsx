@@ -8,6 +8,7 @@ import { getAgentSettings, listOpenAgentTasks } from "@/db/agent";
 import { getAiProviderSettings, isConnectHubInstalled } from "@/db/ai-provider";
 import { listApiKeys } from "@/db/api-keys";
 import { listChannelConnections, whatsappVerifyToken, type ChannelConnectionView } from "@/db/channel-connections";
+import { getPurchaseAgentSettings } from "@/db/purchasing";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { requestOrigin } from "@/lib/request-origin";
@@ -71,7 +72,7 @@ async function Steps({ params }: { params: Params }) {
   const shop = await getShop(slug);
   const { origin } = await requestOrigin();
   const supabase = await createClient();
-  const [installed, ai, keys, agent, tasks, outsideChats, imports, connectors] = await Promise.all([
+  const [installed, ai, keys, agent, tasks, outsideChats, imports, connectors, purchaseAgent] = await Promise.all([
     isConnectHubInstalled(),
     getAiProviderSettings(shop.id),
     listApiKeys(shop.id),
@@ -80,6 +81,7 @@ async function Steps({ params }: { params: Params }) {
     supabase.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id).in("channel", ["whatsapp", "telegram", "api"]),
     supabase.from("marketplace_imports").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id),
     listChannelConnections(shop.id),
+    getPurchaseAgentSettings(shop.id),
   ]);
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const messageKey = activeKeys.some((k) => k.scopes.includes("messages:write"));
@@ -318,7 +320,7 @@ async function Steps({ params }: { params: Params }) {
         state={states.agent as StepState}
         why="Agent yang menyiapkan pekerjaan rutin: pesanan ulang ke pemasok dan FAQ baru. Kamu tinggal satu ketuk; yang sudah tidak perlu hilang sendiri."
       >
-        <AgentSettingsForm settings={agent} openTasks={tasks.length} />
+        <AgentSettingsForm settings={agent} openTasks={tasks.length} purchase={purchaseAgent} />
       </Step>
     </div>
   );

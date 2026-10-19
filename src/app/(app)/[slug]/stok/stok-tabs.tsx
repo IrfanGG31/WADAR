@@ -3,11 +3,12 @@ import { PageTabs } from "@/components/shell/page-tabs";
 import { shopPath } from "@/lib/routes";
 
 const TABS = [
-  { page: "stok", label: "Stok Produk" },
-  { page: "stok/prediksi", label: "Prediksi & Rekomendasi", shortLabel: "Prediksi & Saran" },
+  { page: "stok", label: "Stok Produk", shortLabel: "Stok" },
+  { page: "stok/prediksi", label: "Prediksi & Rekomendasi", shortLabel: "Prediksi" },
+  { page: "stok/pembelian", label: "Pembelian" },
 ] as const;
 
-/** Stock Intelligence tabs (PRD §7.2): Stok Produk · Prediksi & Rekomendasi. */
+/** Stock tabs (PRD §7.2 + ADR-005): Stok Produk · Prediksi & Rekomendasi · Pembelian. */
 export function StokTabs({ slug, active }: { slug: string; active: (typeof TABS)[number]["page"] }) {
   return <PageTabs slug={slug} tabs={TABS} active={active} label="Stok" />;
 }

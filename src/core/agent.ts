@@ -1,3 +1,4 @@
+import { formatRupiah } from "./money";
 import { formatCount } from "./number-format";
 import { needsRestock, sortByUrgency, type ForecastRow } from "./stock-insight";
 
@@ -38,13 +39,32 @@ export const FAQ_WORTHY_CAUSES = new Set(["not_in_store_data", "low_confidence",
 export const MAX_REORDER_TASKS = 20;
 export const MAX_FAQ_TASKS = 10;
 
+/** A draft purchase order Autopilot prepared (Pembelian, ADR-005) that waits for the owner. */
+export interface PurchaseDraftSummary {
+  id: string;
+  number: string;
+  supplier_name: string | null;
+  line_count: number;
+  total: number;
+}
+
 export function planAgentTasks(
   settings: AgentSettings,
-  data: { forecasts: readonly ForecastRow[]; unanswered: readonly UnansweredQuestion[] },
+  data: { forecasts: readonly ForecastRow[]; unanswered: readonly UnansweredQuestion[]; purchaseDrafts?: readonly PurchaseDraftSummary[] },
 ): AgentTaskDraft[] {
   if (!settings.enabled) return [];
   const tasks: AgentTaskDraft[] = [];
   if (settings.auto_reorder) {
+    // With Pembelian, restocking becomes draft orders per supplier: one task per draft to approve.
+    for (const d of data.purchaseDrafts ?? []) {
+      tasks.push({
+        kind: "reorder",
+        dedupe_key: `po:${d.id}`,
+        title: d.supplier_name ? `Setujui pesanan ke ${d.supplier_name}` : `Pilih pemasok untuk ${d.number}`,
+        body: `${d.number}: ${formatCount(d.line_count)} barang, total ${formatRupiah(d.total)}.`,
+        payload: { po_id: d.id, number: d.number, total: d.total, supplier: d.supplier_name },
+      });
+    }
     for (const r of sortByUrgency(data.forecasts.filter(needsRestock)).slice(0, MAX_REORDER_TASKS)) {
       if (r.reorder_qty <= 0) continue;
       tasks.push({

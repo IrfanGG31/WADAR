@@ -10,6 +10,7 @@ const updateMemory = vi.fn(async () => true);
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: (to: string) => { throw new Error(`NEXT_REDIRECT:${to}`); } }));
 vi.mock("next/server", () => ({ after: () => undefined }));
+vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 vi.mock("@/db/shop", () => ({
   getShop: async (slug: string) => ({ id: "t1", slug, name: "Kopi Dimas", is_demo: true, timezone: "Asia/Jakarta" }),
   getShopDeletion: async () => null,
@@ -42,6 +43,7 @@ const { hideSetupChecklist } = await import("./beranda/setup-actions");
 const { importMarketplaceOrders } = await import("./kasir/marketplace/actions");
 const { addDocument, deleteDocument } = await import("./pengaturan/dokumen/actions");
 const { updateMemoryItem } = await import("./konsultasi/memory-actions");
+const { createPurchaseOrder, orderPurchaseOrder, payPurchaseOrder, receivePurchaseOrder, saveSupplier } = await import("./stok/pembelian/actions");
 
 const SALE = {
   channel_id: "00000000-0000-4000-8000-000000000001",
@@ -55,6 +57,9 @@ const ADJUST = { variant_id: VARIANT, reason: "rusak", qty: 2, note: "pecah" };
 const OPNAME = { variant_id: VARIANT, counted: 7 };
 const EXPENSE = { amount: 50000, category: "Sewa", occurred_on: "2026-10-18", note: "", idempotency_key: "exp-12345678" };
 const STOCK_IN = { variant_id: "00000000-0000-4000-8000-000000000002", qty: 5, unit_cost: 10000 };
+const PO_ID = "00000000-0000-4000-8000-0000000000a1";
+const PO = { supplier_id: null, lines: [{ variant_id: VARIANT, qty: 10, unit_cost: 9000 }] };
+const RECEIVE = { lines: [{ variant_id: VARIANT, qty: 10, unit_cost: 9000 }], idempotency_key: "rcv-12345678" };
 
 beforeEach(() => {
   role = "owner";
@@ -71,7 +76,9 @@ beforeEach(() => {
               ? { on_hand: 3 }
               : fn === "stock_opname"
                 ? { before: 5, counted: 7, diff: 2 }
-                : null,
+                : fn === "receive_purchase_order"
+                  ? { receipt_id: "r1", total: 90000, status: "received", duplicate: false }
+                  : null,
       error: null,
     }),
   );
@@ -120,6 +127,16 @@ describe("kasir (cashier)", () => {
     expect((await recordSale("kopi-dimas", SALE)).error).toBeUndefined();
     expect((await stockIn("kopi-dimas", STOCK_IN)).error).toBeUndefined();
     expect(db.rpcs.map((r) => r.fn)).toEqual(["record_sale", "stock_in"]);
+  });
+
+  it("receives goods of an order but cannot order, approve, pay or add suppliers (Pembelian)", async () => {
+    expect((await createPurchaseOrder("kopi-dimas", PO)).error).toMatch(/^Akun kasir tidak bisa mengatur pembelian/);
+    expect((await orderPurchaseOrder("kopi-dimas", PO_ID)).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await payPurchaseOrder("kopi-dimas", PO_ID, { amount: 1000, idempotency_key: "pay-12345678" })).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await saveSupplier("kopi-dimas", null, { name: "CV Jaya" })).error).toMatch(/^Akun kasir tidak bisa/);
+    expect(touched()).toBe(0);
+    expect((await receivePurchaseOrder("kopi-dimas", PO_ID, RECEIVE)).note).toMatch(/^Barang diterima semua/);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["receive_purchase_order"]);
   });
 });
 

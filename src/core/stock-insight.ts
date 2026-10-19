@@ -51,6 +51,8 @@ export interface ForecastRow {
   slow_moving: boolean;
   /** on_hand × avg_cost — shown as "modal tertahan" for slow movers. */
   idle_capital: number;
+  /** Current average cost per unit (integer rupiah): the default price of a purchase draft. */
+  avg_cost?: number;
   narrative: string;
 }
 
@@ -87,6 +89,7 @@ export function toForecastRow(item: StockItem, f: StockForecast): ForecastRow {
     reorder_qty: f.reorder_qty,
     slow_moving: f.slow_moving,
     idle_capital: f.idle_capital,
+    avg_cost: item.avg_cost,
     narrative: narrateForecast(title, f, item.unit),
   };
 }

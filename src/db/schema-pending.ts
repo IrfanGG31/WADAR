@@ -3,10 +3,11 @@
  * migration (e.g. deployed before `connect_hub` is applied). Readers treat it as "feature not
  * installed" instead of failing the page. Postgres: 42P01 undefined_table, 42883
  * undefined_function, 42703 undefined_column; PostgREST: PGRST205 table not in schema cache,
- * PGRST202 function not found, PGRST204 column not found.
+ * PGRST202 function not found, PGRST204 column not found, PGRST200 relationship not found (what a
+ * select with an embedded table reports when the tables are not there).
  */
 export function isSchemaPending(error: { code?: string | null } | null | undefined): boolean {
-  return Boolean(error?.code && ["42P01", "42883", "42703", "PGRST205", "PGRST202", "PGRST204"].includes(error.code));
+  return Boolean(error?.code && ["42P01", "42883", "42703", "PGRST205", "PGRST202", "PGRST204", "PGRST200"].includes(error.code));
 }
 
 /** What an action says when its table/function is not on this database yet. */

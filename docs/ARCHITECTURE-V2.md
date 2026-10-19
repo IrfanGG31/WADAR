@@ -21,6 +21,7 @@ penghubung** (`stock.move`, `account.move`). WADAR memakai pola yang sama, denga
 | **Persediaan** | Inventory | `stock_movements` (append-only), `variants.on_hand`, `stock_daily_rollup` | `stock`, `stock-insight`, `stock-level`, `expiry` | `stock_in`, `adjust_stock`, `stock_opname` |
 | **Penjualan / POS** | Sales + POS | `sales`, `sale_items` (append-only), `channels`, `marketplace_imports` | `cart`, `sale-schema`, `sale-void`, `marketplace-import`, `channel-settings` | `record_sale`, `void_sale`, `import_marketplace_orders` |
 | **Keuangan** | Accounting (ringan) | `expenses` (append-only), `fin_daily_rollup` | `money` (BigInt, largest remainder), `finance`, `finance-insight`, `expense` | `void_expense`, insert pengeluaran |
+| **Pembelian** | Purchase | `suppliers`, `supplier_products`, `purchase_orders`, `purchase_order_lines`, `purchase_receipts`, `purchase_payments` | `purchasing` | `create/update/order/cancel/receive/pay_purchase_order` (ADR-005) |
 | **CRM** | Contacts + CRM | `customers` | `customers`, `customer-profile` | update terbatas kolom (nama, catatan, label) |
 | **Pengetahuan (RAG)** | Knowledge | `kb_documents`, `kb_chunks` (pgvector + tsvector), `store_profile` | `chat/kb`, `chat/kb-doc`, `chat/retrieval`, `chat/store-policies` | FAQ, dokumen, profil toko |
 | **Percakapan** | Discuss / Live chat | `conversations`, `messages`, `notifications` | `chat/pipeline`, `chat/guardrails`, `chat/widget-service` | pipeline chat |
@@ -44,6 +45,14 @@ Kasir / impor marketplace / API orders
   → rollup harian  →  fin_daily_rollup / stock_daily_rollup   (Keuangan, Persediaan)
   → Beranda, Keuangan, prakiraan stok, insight mingguan        (dibaca, bukan ditulis)
   → Autopilot: draf pesan ulang bila prakiraan stok kritis      (agent_tasks)
+
+Autopilot → draf PO per pemasok (Pembelian, ADR-005)
+  └─ setujui (pemilik, atau otomatis ≤ batas) → kirim lewat WhatsApp
+       └─ receive_purchase_order                       (Pembelian, satu transaksi)
+            ├─ stock_movements kind=purchase ref=PO  →  variants.on_hand, avg_cost  (Persediaan)
+            ├─ supplier_products (pemasok + harga terakhir dipelajari)
+            └─ purchase_receipts → jurnal: Persediaan / Utang usaha   (Keuangan)
+       └─ pay_purchase_order → purchase_payments → jurnal: Utang usaha / Kas
 ```
 
 ## Lapisan AI
@@ -61,8 +70,8 @@ satu basis pengetahuan berada di satu ruang vektor.
 
 ## Tahap 2 (setelah demo)
 
-1. **Pembelian (Purchase):** `suppliers`, `purchase_orders`, `purchase_order_lines`, penerimaan barang →
-   `stock_movements kind=purchase`. Draf Autopilot berubah menjadi draf PO; batas nominal auto-kirim berlaku di sini.
+1. **Pembelian (Purchase):** **selesai (ADR-005)** — pemasok, PO, terima barang → `stock_movements kind=purchase`,
+   bayar; Autopilot membuat draf PO per pemasok dan menyetujui sendiri sampai batas nominal pemilik.
 2. **Jurnal double-entry:** `journal_entries` + `journal_lines` (trigger: debit = kredit, append-only) diisi dari
    penjualan, pembelian, dan pengeluaran. `fin_daily_rollup` tetap sebagai cache baca.
 3. **Event outbox:** `outbox_events` ditulis di transaksi yang sama dengan perubahan; handler idempoten

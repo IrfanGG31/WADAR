@@ -43,6 +43,11 @@ describe("restricted pages are gated", () => {
     ["stok/impor/page.tsx", "catalog"],
     ["stok/produk/baru/page.tsx", "catalog"],
     ["stok/produk/[id]/page.tsx", "catalog"],
+    ["stok/pembelian/page.tsx", "stock_in"],
+    ["stok/pembelian/[id]/page.tsx", "stock_in"],
+    ["stok/pembelian/baru/page.tsx", "purchase"],
+    ["stok/pembelian/[id]/ubah/page.tsx", "purchase"],
+    ["stok/pembelian/pemasok/page.tsx", "purchase"],
   ];
   it.each(pages)("%s needs %s", (file, permission) => {
     const src = readFileSync(join(process.cwd(), "src/app/(app)/[slug]", file), "utf8");

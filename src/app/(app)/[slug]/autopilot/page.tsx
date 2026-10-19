@@ -1,4 +1,4 @@
-import { Bot, MessageCircleQuestion, PackagePlus, Settings2 } from "lucide-react";
+import { Bot, ClipboardCheck, MessageCircleQuestion, PackagePlus, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CopyButton } from "@/components/copy-button";
@@ -42,7 +42,9 @@ async function Inbox({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
   const [installed, settings, tasks] = await Promise.all([isConnectHubInstalled(), getAgentSettings(shop.id), listOpenAgentTasks(shop.id)]);
-  const reorders = tasks.filter((t) => t.kind === "reorder");
+  // Pembelian (ADR-005): a restock that became a draft purchase order is approved on the order page.
+  const orderTasks = tasks.filter((t) => t.kind === "reorder" && t.payload.po_id);
+  const reorders = tasks.filter((t) => t.kind === "reorder" && !t.payload.po_id);
   const faqs = tasks.filter((t) => t.kind === "faq");
   const items = reorders.map((t) => ({ item: String(t.payload.item ?? t.title), qty: Number(t.payload.qty ?? 0), unit: String(t.payload.unit ?? "pcs") }));
   const message = items.length ? supplierMessage(shop.name, items) : "";
@@ -58,6 +60,31 @@ async function Inbox({ params }: { params: Params }) {
           </Link>
           .
         </p>
+      )}
+
+      {orderTasks.length > 0 && (
+        <section className="rounded-2xl border border-border p-5" aria-labelledby="draf-pembelian">
+          <h2 id="draf-pembelian" className="flex items-center gap-2 font-semibold">
+            <ClipboardCheck className="h-5 w-5 text-primary" aria-hidden />
+            Pesanan pembelian menunggu persetujuan ({formatCount(orderTasks.length)})
+          </h2>
+          <ul className="mt-4 divide-y divide-border rounded-xl border border-border">
+            {orderTasks.map((t) => (
+              <li key={t.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">{t.title}</p>
+                  <p className="text-sm text-muted-foreground">{t.body}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild size="sm">
+                    <Link href={shopPath(slug, `stok/pembelian/${String(t.payload.po_id)}`)}>Buka & setujui</Link>
+                  </Button>
+                  <TaskActions taskIds={[t.id]} doneLabel="Sudah diurus" primary={false} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="rounded-2xl border border-border p-5" aria-labelledby="pesan-ulang">

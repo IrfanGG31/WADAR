@@ -10,7 +10,8 @@ export type MemberRole = "owner" | "cashier" | "chat_admin";
 export const PERMISSIONS = [
   "sell", // Kasir: catat penjualan
   "void_sale", // Batalkan (void) penjualan yang salah input
-  "stock_in", // Stok masuk
+  "stock_in", // Stok masuk, terima barang dari pemasok
+  "purchase", // Pembelian: pesanan ke pemasok, setujui, bayar, data pemasok
   "catalog", // Tambah/ubah/arsipkan/impor produk
   "chat", // Ambil alih, balas, kembalikan ke AI, notifikasi eskalasi
   "consult", // Konsultasi Bisnis + "Yang WADAR tahu"
@@ -42,6 +43,7 @@ const ACTION: Record<Permission, string> = {
   sell: "mencatat penjualan",
   void_sale: "membatalkan transaksi",
   stock_in: "mencatat stok masuk",
+  purchase: "mengatur pembelian ke pemasok",
   catalog: "mengubah daftar produk",
   chat: "membalas chat pembeli",
   consult: "memakai Konsultasi Bisnis",
@@ -81,6 +83,7 @@ const PAGE_NAME: Record<Permission, string> = {
   sell: "Penjualan",
   void_sale: "Batalkan transaksi",
   stock_in: "Stok masuk",
+  purchase: "Pembelian",
   catalog: "Ubah produk",
   chat: "Chat AI",
   consult: "Konsultasi Bisnis",

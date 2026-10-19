@@ -7,9 +7,13 @@ import {
   staleTaskKeys,
   type AgentSettings,
   type AgentTaskKind,
+  type PurchaseDraftSummary,
   type UnansweredQuestion,
 } from "@/core/agent";
+import { canAutoApprove, planPurchaseDrafts } from "@/core/purchasing";
+import { needsRestock, type ForecastRow } from "@/core/stock-insight";
 import { createClient } from "@/lib/supabase/server";
+import { lastSuppliers, readPurchaseAgentSettings, variantsOnOrder } from "./purchasing";
 import { isSchemaPending } from "./schema-pending";
 import { listStockForecasts } from "./stock";
 
@@ -83,6 +87,74 @@ export interface AgentRunReport {
   closed: number;
   /** Open tasks after this run (new + still waiting). */
   open: number;
+  /** Pembelian: draft orders made this run, and how many of them Autopilot approved within the limit. */
+  purchaseDrafts?: number;
+  autoOrdered?: number;
+}
+
+/**
+ * Pembelian step (ADR-005): products that need restocking and are not on an open order yet become
+ * draft orders, one per supplier; drafts within the owner's limit are approved at once (the
+ * database checks the limit again). Returns the variants now on order (null = Pembelian not
+ * installed) and the drafts that wait for the owner.
+ */
+async function draftPurchaseOrders(
+  db: SupabaseClient,
+  tenantId: string,
+  forecasts: readonly ForecastRow[],
+): Promise<{ onOrder: Set<string>; drafts: PurchaseDraftSummary[]; created: number; ordered: number } | null> {
+  const purchase = await readPurchaseAgentSettings(db, tenantId);
+  if (!purchase?.auto_po) return null;
+  const onOrder = await variantsOnOrder(db, tenantId);
+  if (!onOrder) return null;
+
+  const needs = forecasts
+    .filter((r) => needsRestock(r) && r.reorder_qty > 0 && !onOrder.has(r.variant_id))
+    .map((r) => ({ variant_id: r.variant_id, title: r.title, unit: r.unit, qty: r.reorder_qty, avg_cost: r.avg_cost ?? 0 }));
+  let created = 0;
+  let ordered = 0;
+  if (needs.length) {
+    const suppliers = await lastSuppliers(db, tenantId);
+    for (const plan of planPurchaseDrafts(needs, (id) => suppliers.get(id))) {
+      const { data, error } = await db.rpc("create_purchase_order", {
+        p_tenant_id: tenantId,
+        p_supplier_id: plan.supplier_id,
+        p_lines: plan.lines,
+        p_note: null,
+        p_source: "autopilot",
+      });
+      if (error) throw error;
+      created += 1;
+      for (const l of plan.lines) onOrder.add(l.variant_id);
+      if (canAutoApprove(plan, purchase.po_auto_limit)) {
+        const { error: oe } = await db.rpc("order_purchase_order", { p_po_id: (data as { id: string }).id });
+        if (!oe) ordered += 1;
+        else if (oe.code !== "42501") throw oe;
+      }
+    }
+  }
+
+  const { data: drafts, error } = await db
+    .from("purchase_orders")
+    .select("id, number, total, suppliers(name), purchase_order_lines(count)")
+    .eq("tenant_id", tenantId)
+    .eq("status", "draft")
+    .eq("source", "autopilot")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return {
+    onOrder,
+    created,
+    ordered,
+    drafts: (drafts ?? []).map((d) => ({
+      id: d.id as string,
+      number: d.number as string,
+      supplier_name: (d.suppliers as unknown as { name: string } | null)?.name ?? null,
+      line_count: (d.purchase_order_lines as unknown as { count: number }[])?.[0]?.count ?? 0,
+      total: Number(d.total),
+    })),
+  };
 }
 
 /**
@@ -100,7 +172,13 @@ export async function runAgentForShop(db: SupabaseClient, tenantId: string): Pro
     if (isSchemaPending(open.error)) return { created: 0, closed: 0, open: 0 };
     throw open.error;
   }
-  const planned = planAgentTasks(settings, { forecasts, unanswered });
+  const purchasing = settings.enabled && settings.auto_reorder ? await draftPurchaseOrders(db, tenantId, forecasts) : null;
+  const planned = planAgentTasks(settings, {
+    // Products already on an order are not suggested again; the order's draft is the task.
+    forecasts: purchasing ? forecasts.filter((r) => !purchasing.onOrder.has(r.variant_id)) : forecasts,
+    unanswered,
+    purchaseDrafts: purchasing?.drafts,
+  });
 
   const openKeys = new Set((open.data ?? []).map((t) => t.dedupe_key));
   let created = 0;
@@ -124,5 +202,10 @@ export async function runAgentForShop(db: SupabaseClient, tenantId: string): Pro
       .in("dedupe_key", stale);
     if (error) throw error;
   }
-  return { created, closed: stale.length, open: openKeys.size + created - stale.length };
+  return {
+    created,
+    closed: stale.length,
+    open: openKeys.size + created - stale.length,
+    ...(purchasing ? { purchaseDrafts: purchasing.created, autoOrdered: purchasing.ordered } : {}),
+  };
 }

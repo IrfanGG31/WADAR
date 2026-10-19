@@ -33,6 +33,22 @@ describe("planAgentTasks (Autopilot)", () => {
     expect(tasks.map((t) => t.dedupe_key)).toEqual(["faq:c1"]);
   });
 
+  it("turns Autopilot's draft purchase orders into approval tasks (Pembelian)", () => {
+    const tasks = planAgentTasks(DEFAULT_AGENT_SETTINGS, {
+      forecasts: [],
+      unanswered: [],
+      purchaseDrafts: [
+        { id: "po1", number: "PO-2610-0001", supplier_name: "CV Jaya", line_count: 3, total: 1_250_000 },
+        { id: "po2", number: "PO-2610-0002", supplier_name: null, line_count: 1, total: 0 },
+      ],
+    });
+    expect(tasks.map((t) => [t.dedupe_key, t.title, t.body])).toEqual([
+      ["po:po1", "Setujui pesanan ke CV Jaya", "PO-2610-0001: 3 barang, total Rp1.250.000."],
+      ["po:po2", "Pilih pemasok untuk PO-2610-0002", "PO-2610-0002: 1 barang, total Rp0."],
+    ]);
+    expect(planAgentTasks({ ...DEFAULT_AGENT_SETTINGS, auto_reorder: false }, { forecasts: [], unanswered: [], purchaseDrafts: [{ id: "x", number: "PO-1", supplier_name: null, line_count: 1, total: 1 }] })).toEqual([]);
+  });
+
   it("respects the switches", () => {
     const data = { forecasts: [row({})], unanswered: [{ conversation_id: "c1", question: "Ada garansi?", cause: "not_in_store_data" }] };
     expect(planAgentTasks({ ...DEFAULT_AGENT_SETTINGS, enabled: false }, data)).toEqual([]);
