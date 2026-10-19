@@ -20,7 +20,7 @@ describe("/privasi", () => {
       expect(html).toContain(section);
     }
     expect(html).toContain("7 hari");
-    expect(html).toContain("WADAR AI");
+    expect(html).toContain("WADAR");
   });
 
   it("names the processors by service (database, hosting, AI model, login email)", () => {

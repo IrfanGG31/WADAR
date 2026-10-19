@@ -16,12 +16,7 @@ const LINKS = [
 ];
 
 /** Worked example for the money row — integer rupiah, the same order the Keuangan screen uses. */
-const EXAMPLE = {
-  sales: 18_536_500,
-  cost: 9_412_000,
-  fees: 1_207_300,
-  expenses: 2_150_000,
-};
+const EXAMPLE = { sales: 18_536_500, cost: 9_412_000, fees: 1_207_300, expenses: 2_150_000 };
 const EXAMPLE_PROFIT = EXAMPLE.sales - EXAMPLE.cost - EXAMPLE.fees - EXAMPLE.expenses;
 
 export default function LandingPage() {
@@ -48,45 +43,44 @@ export default function LandingPage() {
             <>
               Toko jalan terus.
               <br />
-              <span className="text-primary">Angkanya jelas,</span> pembelinya terjawab.
+              Angkanya jelas, pembelinya terjawab.
             </>
           }
           description={brand.tagline}
-          actions={<DemoButtons />}
-          footnote={
+          actions={
             <>
-              Toko contoh berisi data 90 hari, tanpa daftar.{" "}
-              <Link href="/masuk" className="font-medium text-primary underline-offset-4 hover:underline">
-                Sudah punya toko? Masuk
-              </Link>
+              <DemoButtons />
+              <p className="text-xs text-muted-foreground">
+                Toko contoh dengan data 90 hari, tanpa daftar.{" "}
+                <Link href="/masuk" className="font-medium text-primary underline-offset-4 hover:underline">
+                  Sudah punya toko? Masuk
+                </Link>
+              </p>
             </>
           }
           preview={
-            <div className="relative">
-              <div className="mx-auto w-60 overflow-hidden rounded-[1.75rem] border-[6px] border-navy shadow-[0_24px_48px_-24px_rgb(8_42_92/0.5)] sm:hidden">
-                <Image src="/landing/kasir.jpg" alt="Layar Kasir di HP" width={780} height={1560} className="h-auto w-full" sizes="240px" priority />
-              </div>
-              <div className="hidden sm:block">
-                <ProductFrame
-                  src="/landing/beranda.jpg"
-                  alt="Beranda toko contoh: penjualan hari ini, grafik 7 hari, dan stok yang menipis"
-                  width={1280}
-                  height={820}
-                  address="Beranda · Glow by Sari"
-                />
-              </div>
-              <div className="absolute -bottom-10 -right-2 hidden w-36 overflow-hidden rounded-2xl border-4 border-background shadow-[0_16px_40px_-16px_rgb(8_42_92/0.45)] sm:block lg:-right-6">
-                <Image src="/landing/kasir.jpg" alt="Layar Kasir di HP" width={780} height={1560} className="h-auto w-full" sizes="160px" />
+            <div className="relative mx-auto max-w-5xl">
+              <ProductFrame
+                src="/landing/beranda.jpg"
+                alt="Beranda toko contoh: penjualan hari ini, grafik 7 hari, dan stok yang menipis"
+                width={1280}
+                height={820}
+                address="Beranda · Glow by Sari"
+              />
+              <div className="absolute -bottom-10 -right-4 hidden w-44 overflow-hidden rounded-[1.75rem] border-[6px] border-background shadow-[0_24px_48px_-24px_rgb(8_42_92/0.5)] md:block lg:-right-10 lg:w-52">
+                <Image src="/landing/kasir.jpg" alt="Layar Kasir di HP" width={780} height={1560} className="h-auto w-full" sizes="208px" />
               </div>
             </div>
           }
         />
 
-        <section id="fitur" className="scroll-mt-20 border-y border-border bg-surface">
+        <section id="fitur" className="scroll-mt-20 border-t border-border bg-surface">
           <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-20 md:px-6 md:py-24">
-            <div className="max-w-2xl">
+            <div className="mx-auto max-w-2xl text-center">
               <p className="text-sm font-semibold text-primary">Yang dikerjakan untukmu</p>
-              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-navy md:text-4xl">Bukan cuma mencatat. Memberi tahu sebelum terlambat.</h2>
+              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-navy md:text-4xl">
+                Bukan cuma mencatat. Memberi tahu sebelum terlambat.
+              </h2>
             </div>
 
             <Feature
@@ -153,7 +147,9 @@ export default function LandingPage() {
 
         <section id="mulai" className="scroll-mt-20">
           <div className="mx-auto max-w-6xl px-4 py-20 md:px-6 md:py-24">
-            <h2 className="max-w-xl font-display text-3xl font-bold tracking-tight text-navy md:text-4xl">Mulai dalam satu sore</h2>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-navy md:text-4xl">Mulai dalam satu sore</h2>
+            </div>
             <ol className="mt-10 grid gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-3">
               {[
                 ["Buat toko", "Nama toko, alamat link, dan jenis usaha. Kanal jualan dan komisinya disiapkan otomatis."],
@@ -170,21 +166,25 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="coba" className="scroll-mt-20 bg-navy text-white">
-          <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-16 md:grid-cols-2 md:px-6 md:py-20">
-            <div>
-              <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">Lihat dulu dengan toko contoh</h2>
-              <p className="mt-3 max-w-md text-white/75">
-                90 hari penjualan, stok, pengeluaran, dan chat pembeli. Coba catat transaksi, lihat untungnya berubah.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 md:items-end">
-              <div className="w-full max-w-sm rounded-xl bg-background p-4 text-foreground">
-                <DemoButtons />
+        <section id="coba" className="scroll-mt-20">
+          <div className="mx-auto max-w-6xl px-4 pb-24 md:px-6">
+            <div className="overflow-hidden rounded-3xl bg-navy p-10 text-white md:p-14">
+              <div className="grid items-center gap-8 md:grid-cols-2">
+                <div>
+                  <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">Lihat dulu dengan toko contoh</h2>
+                  <p className="mt-3 max-w-md text-white/75">
+                    90 hari penjualan, stok, pengeluaran, dan chat pembeli. Coba catat transaksi, lihat untungnya berubah.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 md:items-end">
+                  <div className="w-full max-w-sm rounded-xl bg-background p-4 text-foreground">
+                    <DemoButtons />
+                  </div>
+                  <Link href="/masuk" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white/85 hover:text-white">
+                    Atau langsung buat tokomu <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Link>
+                </div>
               </div>
-              <Link href="/masuk" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white/85 hover:text-white">
-                Atau langsung buat tokomu <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
             </div>
           </div>
         </section>

@@ -5,7 +5,7 @@
  * src/brand.test.ts).
  */
 export const brand = {
-  name: "WADAR AI",
+  name: "WADAR",
   shortName: "WADAR",
   tagline: "Asisten AI yang ngerti tokomu: bukan sekadar mencatat, tetapi memperingatkan dan menjawab.",
   colors: {
