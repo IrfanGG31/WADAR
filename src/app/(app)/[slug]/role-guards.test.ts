@@ -34,7 +34,9 @@ const { deleteFaq, resetDemoShop } = await import("./pengaturan/actions");
 const { exportShopData, requestShopDeletion } = await import("./pengaturan/data-actions");
 const { sendReply, takeOver } = await import("./chat/actions");
 const { recordSale, voidSale } = await import("./kasir/actions");
-const { archiveProduct, stockIn } = await import("./stok/actions");
+const { adjustStock, archiveProduct, countStock, stockIn } = await import("./stok/actions");
+const { addExpense, voidExpense } = await import("./keuangan/pengeluaran/actions");
+const { updateChannel } = await import("./pengaturan/kanal/actions");
 const { updateMemoryItem } = await import("./konsultasi/memory-actions");
 
 const SALE = {
@@ -44,6 +46,10 @@ const SALE = {
   idempotency_key: "cart-12345678",
 };
 const VOID = { sale_id: "00000000-0000-4000-8000-000000000003", reason: "salah input" };
+const VARIANT = "00000000-0000-4000-8000-000000000002";
+const ADJUST = { variant_id: VARIANT, reason: "rusak", qty: 2, note: "pecah" };
+const OPNAME = { variant_id: VARIANT, counted: 7 };
+const EXPENSE = { amount: 50000, category: "Sewa", occurred_on: "2026-10-18", note: "", idempotency_key: "exp-12345678" };
 const STOCK_IN = { variant_id: "00000000-0000-4000-8000-000000000002", qty: 5, unit_cost: 10000 };
 
 beforeEach(() => {
@@ -51,7 +57,19 @@ beforeEach(() => {
   updateMemory.mockClear();
   db = fakeSupabase(
     (chain) => ({ data: chain.calls.some(([m]) => m === "maybeSingle") ? { id: "c1" } : [], error: null }),
-    (fn) => ({ data: fn === "record_sale" ? { sale_id: "s1", total: 10000 } : fn === "stock_in" ? { on_hand: 5, avg_cost: 10000 } : null, error: null }),
+    (fn) => ({
+      data:
+        fn === "record_sale"
+          ? { sale_id: "s1", total: 10000 }
+          : fn === "stock_in"
+            ? { on_hand: 5, avg_cost: 10000 }
+            : fn === "adjust_stock"
+              ? { on_hand: 3 }
+              : fn === "stock_opname"
+                ? { before: 5, counted: 7, diff: 2 }
+                : null,
+      error: null,
+    }),
   );
 });
 
@@ -75,6 +93,17 @@ describe("kasir (cashier)", () => {
     expect(await voidSale("kopi-dimas", VOID)).toEqual({ error: "Akun kasir tidak bisa membatalkan transaksi. Minta pemilik toko melakukannya." });
     expect(touched()).toBe(0);
     expect(updateMemory).not.toHaveBeenCalled();
+  });
+
+  it("cannot adjust or count stock, record expenses, or change commissions (owner only)", async () => {
+    expect((await adjustStock("kopi-dimas", ADJUST)).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await countStock("kopi-dimas", OPNAME)).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await addExpense("kopi-dimas", EXPENSE)).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await voidExpense("kopi-dimas", "00000000-0000-4000-8000-000000000009", "salah")).error).toMatch(/^Akun kasir tidak bisa/);
+    expect((await updateChannel("kopi-dimas", "00000000-0000-4000-8000-000000000001", { fee_pct: 5, fee_fixed: 0, is_active: true })).error).toMatch(
+      /^Akun kasir tidak bisa/,
+    );
+    expect(touched()).toBe(0);
   });
 
   it("can still sell and book stock in", async () => {
@@ -103,6 +132,14 @@ describe("pemilik (owner)", () => {
     expect((await voidSale("kopi-dimas", VOID)).error).toBeUndefined();
     expect(db.rpcs.at(-1)).toMatchObject({ fn: "void_sale", args: { p_sale_id: VOID.sale_id, p_reason: "salah input" } });
     await expect(archiveProduct("kopi-dimas", "p1")).rejects.toThrow("NEXT_REDIRECT:/kopi-dimas/stok");
+  });
+
+  it("adjusts stock with the reason's sign and counts stock (STK-0b)", async () => {
+    expect(await adjustStock("kopi-dimas", ADJUST)).toEqual({ onHand: 3 });
+    expect(db.rpcs.at(-1)).toEqual({ fn: "adjust_stock", args: { p_variant_id: VARIANT, p_qty: -2, p_reason: "rusak", p_note: "pecah" } });
+    expect(await countStock("kopi-dimas", OPNAME)).toEqual({ onHand: 7, diff: 2 });
+    expect(db.rpcs.at(-1)).toEqual({ fn: "stock_opname", args: { p_variant_id: VARIANT, p_counted: 7, p_note: null } });
+    expect((await adjustStock("kopi-dimas", { ...ADJUST, qty: 0 })).error).toBe("Jumlah tidak boleh 0.");
   });
 });
 

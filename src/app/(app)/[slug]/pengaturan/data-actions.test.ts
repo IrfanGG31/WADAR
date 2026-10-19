@@ -22,6 +22,7 @@ const redirect = vi.fn((to: string) => {
 });
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/db/audit", () => ({ logAudit: async () => {} }));
 vi.mock("next/navigation", () => ({ redirect: (to: string) => redirect(to) }));
 // Role checks (CON-6) are covered by role-guards.test.ts; here the caller is the owner.
 vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));

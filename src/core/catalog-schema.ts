@@ -39,3 +39,23 @@ export const StockInInput = z.object({
     .preprocess((v) => (v === "" ? null : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal kedaluwarsa belum benar.").nullish())
     .transform((v) => v ?? null),
 });
+
+/** STK-0b: stock changed outside a sale/purchase — damaged, lost, expired, returned to supplier, found, corrected. */
+export const StockAdjustInput = z.object({
+  variant_id: z.string().uuid(),
+  reason: z.enum(["rusak", "hilang", "kedaluwarsa", "retur_pemasok", "ditemukan", "koreksi"], { error: "Pilih alasan." }),
+  qty: z
+    .number({ error: "Isi jumlahnya." })
+    .int("Jumlah harus bilangan bulat.")
+    .min(-1_000_000)
+    .max(1_000_000)
+    .refine((v) => v !== 0, "Jumlah tidak boleh 0."),
+  note: z.string().trim().max(200).optional().default(""),
+});
+
+/** STK-0b: physical count; the difference to the system figure is booked as an opname movement. */
+export const StockOpnameInput = z.object({
+  variant_id: z.string().uuid(),
+  counted: z.number({ error: "Isi hasil hitung." }).int("Hasil hitung harus bilangan bulat.").min(0, "Hasil hitung tidak boleh minus.").max(1_000_000),
+  note: z.string().trim().max(200).optional().default(""),
+});

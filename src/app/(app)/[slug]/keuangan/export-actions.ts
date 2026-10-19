@@ -4,6 +4,7 @@ import { parseFinancePeriodDays } from "@/core/finance-insight";
 import { financeReportCsv, financeReportFileName } from "@/core/finance-report";
 import { isoDateInZone, lastClosedDays } from "@/core/period";
 import { permissionDenied } from "@/db/access";
+import { logAudit } from "@/db/audit";
 import { getFinanceData } from "@/db/finance";
 import { getShop } from "@/db/shop";
 
@@ -20,6 +21,7 @@ export async function exportFinanceReport(slug: string, periode: string | undefi
   const window = lastClosedDays(isoDateInZone(new Date(), shop.timezone), parseFinancePeriodDays(periode));
   try {
     const { lines, expenses } = await getFinanceData(shop.id, window);
+    await logAudit(shop.id, "report.exported", { period: `${window.from} – ${window.to}` });
     return { filename: financeReportFileName(shop.slug, window), csv: financeReportCsv(lines, expenses, window) };
   } catch (e) {
     console.error("finance report export failed", e);

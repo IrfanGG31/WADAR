@@ -5,6 +5,7 @@ import { buildExportEntries, exportFileName, zipStore } from "@/core/export";
 import { confirmsSlug, deletionError, deletionStage } from "@/core/shop-deletion";
 import { loadExportData } from "@/db/export";
 import { permissionDenied } from "@/db/access";
+import { logAudit } from "@/db/audit";
 import { getShop, getShopDeletion } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { createClient } from "@/lib/supabase/server";
@@ -24,6 +25,7 @@ export async function exportShopData(slug: string): Promise<ExportResult> {
     const data = await loadExportData(supabase, shop.id);
     const now = new Date();
     const zip = zipStore(buildExportEntries(data), now);
+    await logAudit(shop.id, "data.exported");
     return { filename: exportFileName(shop.slug, now), base64: Buffer.from(zip).toString("base64") };
   } catch (e) {
     console.error("shop export failed", e);

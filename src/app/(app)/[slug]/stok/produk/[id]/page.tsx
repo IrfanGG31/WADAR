@@ -10,6 +10,7 @@ import { shopPath } from "@/lib/routes";
 import { ArchiveButton } from "../../archive-button";
 import { ExpiryForm } from "../../expiry-form";
 import { ProductForm } from "../../product-form";
+import { StockAdjustForm } from "../../stock-adjust-form";
 import { StockInForm } from "../../stock-in-form";
 import { PageGate } from "@/components/shell/page-gate";
 
@@ -61,6 +62,9 @@ async function EditProduct({ params }: { params: Params }) {
           costIsSet: v.cost_is_set,
           packSize: v.pack_size,
         }))}
+      />
+      <StockAdjustForm
+        variants={product.variants.map((v) => ({ id: v.id, label: variantLabel(product, v), unit: product.unit, onHand: v.on_hand }))}
       />
       <ProductForm
         slug={slug}

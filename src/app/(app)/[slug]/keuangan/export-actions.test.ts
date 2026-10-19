@@ -8,6 +8,7 @@ const getFinanceData = vi.fn<(tenantId: string, window: Window) => Promise<{ lin
 );
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/db/audit", () => ({ logAudit: async () => {} }));
 vi.mock("@/db/shop", () => ({
   getShop: async (slug: string) => ({ id: `tenant-of-${slug}`, slug, timezone: "Asia/Jakarta" }),
 }));

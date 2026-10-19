@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-export const PAYMENT_METHODS = ["tunai", "qris", "transfer", "marketplace"] as const;
+export const PAYMENT_METHODS = ["tunai", "qris", "transfer", "ewallet", "kartu", "lainnya", "marketplace"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   tunai: "Tunai",
   qris: "QRIS",
   transfer: "Transfer",
+  ewallet: "E-wallet",
+  kartu: "Kartu",
+  lainnya: "Lainnya",
   marketplace: "Lewat marketplace",
 };
 

@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ProductInput, StockInInput } from "@/core/catalog-schema";
+import { signedAdjustQty } from "@/core/audit";
+import { ProductInput, StockAdjustInput, StockInInput, StockOpnameInput } from "@/core/catalog-schema";
 import { expiryAfterStockIn, isIsoDay } from "@/core/expiry";
 import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
@@ -143,4 +144,52 @@ export async function setVariantExpiry(slug: string, variantId: string, expiresO
   }
   if (!data || data.length === 0) return { error: "Varian tidak ditemukan." };
   return {};
+}
+
+export interface StockChangeResult extends ActionResult {
+  onHand?: number;
+  diff?: number;
+}
+
+function stockRpcError(error: { code?: string; message?: string }): string {
+  if (error.code === "42501") return "Hanya pemilik toko yang bisa menyesuaikan stok.";
+  if (error.code === "P0002") return "Produk tidak ditemukan.";
+  if (error.code === "22023") return error.message ?? "Isian belum benar.";
+  return "Perubahan stok belum tercatat. Coba lagi sebentar.";
+}
+
+/** Penyesuaian & retur ke pemasok (STK-0b): one signed movement with a reason, audited (owner). */
+export async function adjustStock(slug: string, input: unknown): Promise<StockChangeResult> {
+  const parsed = StockAdjustInput.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "catalog");
+  if (denied) return { error: denied };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("adjust_stock", {
+    p_variant_id: parsed.data.variant_id,
+    p_qty: signedAdjustQty(parsed.data.reason, parsed.data.qty),
+    p_reason: parsed.data.reason,
+    p_note: parsed.data.note || null,
+  });
+  if (error) return { error: stockRpcError(error) };
+  return { onHand: Number((data as { on_hand: number }).on_hand) };
+}
+
+/** Stok opname (STK-0b): set the counted figure; the difference is booked and audited (owner). */
+export async function countStock(slug: string, input: unknown): Promise<StockChangeResult> {
+  const parsed = StockOpnameInput.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const shop = await getShop(slug);
+  const denied = await permissionDenied(shop.id, "catalog");
+  if (denied) return { error: denied };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stock_opname", {
+    p_variant_id: parsed.data.variant_id,
+    p_counted: parsed.data.counted,
+    p_note: parsed.data.note || null,
+  });
+  if (error) return { error: stockRpcError(error) };
+  const result = data as { counted: number; diff: number };
+  return { onHand: Number(result.counted), diff: Number(result.diff) };
 }

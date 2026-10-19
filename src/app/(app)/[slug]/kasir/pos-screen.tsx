@@ -36,7 +36,8 @@ export interface PosChannel {
 }
 
 const MARKETPLACE_KINDS = new Set(["shopee", "tiktok_shop", "tokopedia", "gofood", "grabfood", "shopeefood"]);
-const DIRECT_METHODS: PaymentMethod[] = ["tunai", "qris", "transfer"];
+/** POS-2: every way a walk-in buyer pays; "marketplace" is set by the channel, not picked. */
+const DIRECT_METHODS: PaymentMethod[] = ["tunai", "qris", "transfer", "ewallet", "kartu", "lainnya"];
 
 interface Done {
   total: number;
