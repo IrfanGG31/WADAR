@@ -1,0 +1,3 @@
+Nomor Invoice,Tanggal Pembayaran,Status Terakhir,Nama Produk,Nomor SKU,Jumlah Produk Dibeli,Harga Jual (IDR),Nama Pembeli
+INV/20261018/MPL/1234567,18-10-2026 08:01:00,Pesanan Selesai,Serum Vit C 20ml,SERU-001,1,89000,Maya
+INV/20261018/MPL/1234568,18-10-2026 13:22:00,Dikembalikan,Hydrating Toner 100ml,TONE-001,1,69000,Nia

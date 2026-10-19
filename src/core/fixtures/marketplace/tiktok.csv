@@ -1,0 +1,3 @@
+Order ID,Order Status,Order Substatus,Created Time,Seller SKU,Product Name,Variation,Quantity,SKU Unit Original Price,SKU Seller Discount,SKU Subtotal After Discount,Buyer Username,Recipient
+579123456789012345,Completed,Delivered,18/10/2026 10:05:11,SERU-001,Serum Vit C 20ml,Default,1,95000,6000,89000,glowlover,Ayu
+579123456789012399,Cancelled,Canceled by buyer,18/10/2026 12:00:00,TONE-001,Hydrating Toner 100ml,Default,2,75000,0,150000,tok_user,Tia
