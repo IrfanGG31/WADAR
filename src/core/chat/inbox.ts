@@ -61,3 +61,18 @@ export const OwnerReplyInput = z.object({
 export function inboxTab(status: ConversationStatus): "belum" | "utama" {
   return status === "escalated" ? "belum" : "utama";
 }
+
+/**
+ * CHT-7 "Jadikan FAQ": the buyer's question plus the reply that followed it (by AI or admin),
+ * cut to what the FAQ form accepts. The owner reviews both before saving.
+ */
+export function faqDraftFrom(
+  messages: readonly { id: string; author: MessageAuthor; content: string | null }[],
+  messageId: string,
+): { question: string; answer: string } | null {
+  const i = messages.findIndex((m) => m.id === messageId);
+  const asked = messages[i];
+  if (!asked || asked.author !== "customer" || !asked.content?.trim()) return null;
+  const reply = messages.slice(i + 1).find((m) => (m.author === "ai" || m.author === "human") && m.content);
+  return { question: asked.content.trim().slice(0, 200), answer: (reply?.content ?? "").trim().slice(0, 700) };
+}

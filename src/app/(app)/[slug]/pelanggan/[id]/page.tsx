@@ -3,19 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
+import { favoriteProducts } from "@/core/customer-profile";
 import { customerList, lastOrderText } from "@/core/customers";
 import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
 import { formatPhone } from "@/core/phone";
 import { PAYMENT_LABEL, type PaymentMethod } from "@/core/sale-schema";
 import { saleStatusLabel } from "@/core/sale-void";
-import { getCustomer } from "@/db/customers";
+import { getCustomer, getCustomerNotes } from "@/db/customers";
 import { listRecentSales } from "@/db/sales";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { shopToday } from "@/lib/shop-today";
 import { shopPath } from "@/lib/routes";
 import { WhatsAppLink } from "../whatsapp-link";
+import { CustomerNotes } from "./customer-notes";
 
 export const metadata = { title: "Riwayat pelanggan" };
 
@@ -40,13 +42,15 @@ async function Detail({ params }: { params: Params }) {
   const { slug, id } = await params;
   if (!UUID.test(id)) notFound();
   const shop = await getShop(slug);
-  const [today, customer, sales] = await Promise.all([
+  const [today, customer, sales, profile] = await Promise.all([
     shopToday(shop.timezone),
     getCustomer(shop, id),
     listRecentSales(shop.id, HISTORY_LIMIT, { customerId: id }),
+    getCustomerNotes(shop.id, id),
   ]);
   if (!customer) notFound();
   const c = customerList([customer], today, "semua").rows[0];
+  const favorites = favoriteProducts(sales);
 
   return (
     <>
@@ -80,6 +84,21 @@ async function Detail({ params }: { params: Params }) {
           </div>
         ))}
       </dl>
+      {favorites.length > 0 && (
+        <section className="flex flex-col gap-2" aria-labelledby="produk-favorit">
+          <h2 id="produk-favorit" className="text-sm font-semibold">
+            Sering dibeli
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {favorites.map((f) => (
+              <li key={f.name} className="rounded-full border border-border px-3 py-1.5 text-sm">
+                {f.name} <span className="text-muted-foreground tabular-nums">· {formatCount(f.qty)}×</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <CustomerNotes customerId={c.id} name={customer.name} notes={profile.notes} tags={profile.tags} />
       <section className="flex flex-col gap-2" aria-labelledby="riwayat-belanja">
         <h2 id="riwayat-belanja" className="text-sm font-semibold">
           Riwayat belanja

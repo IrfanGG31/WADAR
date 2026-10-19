@@ -46,3 +46,11 @@ export async function getCustomer(shop: Pick<Shop, "id" | "timezone">, id: strin
   if (error) throw error;
   return data ? toRow(data as CustomerDbRow, shop.timezone) : null;
 }
+
+/** CRM-2: the shop's own notes and labels on a buyer. */
+export async function getCustomerNotes(tenantId: string, id: string): Promise<{ notes: string | null; tags: string[] }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("customers").select("notes, tags").eq("tenant_id", tenantId).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return { notes: (data?.notes as string | null) ?? null, tags: (data?.tags as string[] | null) ?? [] };
+}

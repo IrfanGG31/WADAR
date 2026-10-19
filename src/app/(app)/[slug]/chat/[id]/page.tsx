@@ -4,12 +4,15 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/states/page-skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AUTHOR_LABEL, conversationChip, escalationLabel } from "@/core/chat/inbox";
+import { AUTHOR_LABEL, conversationChip, escalationLabel, faqDraftFrom } from "@/core/chat/inbox";
+import { can } from "@/core/roles";
+import { getMyRole } from "@/db/access";
 import { visitorLabel } from "@/core/chat/widget";
 import { getThread } from "@/db/chat";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
+import { MakeFaq } from "../make-faq";
 import { AutoRefresh, ThreadControls } from "../thread-controls";
 import { PageGate } from "@/components/shell/page-gate";
 
@@ -28,7 +31,8 @@ export default function ThreadPage({ params }: PageProps<"/[slug]/chat/[id]">) {
 async function Thread({ params }: Pick<PageProps<"/[slug]/chat/[id]">, "params">) {
   const { slug, id } = await params;
   const shop = await getShop(slug);
-  const thread = await getThread(shop.id, id);
+  const [thread, role] = await Promise.all([getThread(shop.id, id), getMyRole(shop.id)]);
+  const canEditFaq = can(role, "settings");
   if (!thread) notFound();
   const { conversation: c, messages } = thread;
   const chip = conversationChip(c.mode, c.status);
@@ -56,14 +60,16 @@ async function Thread({ params }: Pick<PageProps<"/[slug]/chat/[id]">, "params">
       <ol className="flex flex-col gap-2">
         {messages.map((m) => {
           const mine = m.author !== "customer";
+          const draft = !mine && canEditFaq ? faqDraftFrom(messages, m.id) : null;
           return (
-            <li key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
+            <li key={m.id} className={mine ? "flex justify-end" : "flex flex-col items-start"}>
               <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-primary/10" : "rounded-bl-sm bg-muted"}`}>
                 <p className="mb-0.5 text-xs font-medium text-slate-700">
                   {AUTHOR_LABEL[m.author]} · {formatDateTime(m.created_at, shop.timezone)}
                 </p>
                 <p className="whitespace-pre-wrap">{m.content}</p>
               </div>
+              {draft && <MakeFaq slug={slug} question={draft.question} answer={draft.answer} />}
             </li>
           );
         })}

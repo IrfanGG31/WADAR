@@ -37,6 +37,8 @@ const { recordSale, voidSale } = await import("./kasir/actions");
 const { adjustStock, archiveProduct, countStock, stockIn } = await import("./stok/actions");
 const { addExpense, voidExpense } = await import("./keuangan/pengeluaran/actions");
 const { updateChannel } = await import("./pengaturan/kanal/actions");
+const { updateCustomerProfile } = await import("./pelanggan/actions");
+const { hideSetupChecklist } = await import("./beranda/setup-actions");
 const { updateMemoryItem } = await import("./konsultasi/memory-actions");
 
 const SALE = {
@@ -103,6 +105,7 @@ describe("kasir (cashier)", () => {
     expect((await updateChannel("kopi-dimas", "00000000-0000-4000-8000-000000000001", { fee_pct: 5, fee_fixed: 0, is_active: true })).error).toMatch(
       /^Akun kasir tidak bisa/,
     );
+    expect((await hideSetupChecklist("kopi-dimas")).error).toMatch(/^Akun kasir tidak bisa/);
     expect(touched()).toBe(0);
   });
 
@@ -119,6 +122,8 @@ describe("admin chat", () => {
     expect(await sendReply("kopi-dimas", "c1", { text: "Halo kak" })).toEqual({});
     const before = touched();
     expect(await recordSale("kopi-dimas", SALE)).toEqual({ error: "Akun admin chat tidak bisa mencatat penjualan. Minta pemilik toko melakukannya." });
+    expect(touched()).toBe(before);
+    expect((await updateCustomerProfile("kopi-dimas", "c1", { name: "Tari", notes: "", tags: [] })).error).toMatch(/^Akun admin chat tidak bisa/);
     expect(touched()).toBe(before);
   });
 });

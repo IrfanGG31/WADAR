@@ -16,6 +16,7 @@ import { getWeeklyDigest } from "@/db/weekly-digest";
 import { formatIsoWeekday } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { shopToday } from "@/lib/shop-today";
+import { SetupChecklist } from "./setup-checklist";
 import { WeeklyDigestSummary } from "./weekly-digest";
 
 export const metadata = { title: "Beranda" };
@@ -39,6 +40,9 @@ export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]
       </div>
       <Suspense fallback={null}>
         <DeniedNotice params={params} searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SetupChecklist params={params} />
       </Suspense>
 
       <Suspense fallback={<KpiSkeleton />}>

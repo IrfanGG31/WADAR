@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationChip, escalationLabel, inboxTab, OwnerReplyInput } from "./inbox";
+import { conversationChip, escalationLabel, faqDraftFrom, inboxTab, OwnerReplyInput } from "./inbox";
 
 describe("inbox helpers", () => {
   it("labels the chip from mode and status", () => {
@@ -47,5 +47,22 @@ describe("StoreProfileInput", () => {
   it("rejects a shipping estimate whose max is below its min", () => {
     const r = StoreProfileInput.safeParse({ ...ok, policies: { shipping_estimates: [{ area: "Jawa", cost_min: 20000, cost_max: 10000 }] } });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("faqDraftFrom (CHT-7)", () => {
+  const msgs = [
+    { id: "1", author: "customer" as const, content: "  Bisa COD ke Bekasi?  " },
+    { id: "2", author: "system" as const, content: "Diambil alih" },
+    { id: "3", author: "human" as const, content: "Bisa kak, ongkir Rp10.000." },
+    { id: "4", author: "customer" as const, content: "Oke" },
+  ];
+  it("pairs the buyer question with the next AI/admin reply", () => {
+    expect(faqDraftFrom(msgs, "1")).toEqual({ question: "Bisa COD ke Bekasi?", answer: "Bisa kak, ongkir Rp10.000." });
+  });
+  it("leaves the answer empty when nobody replied yet, and refuses non-buyer messages", () => {
+    expect(faqDraftFrom(msgs, "4")).toEqual({ question: "Oke", answer: "" });
+    expect(faqDraftFrom(msgs, "3")).toBeNull();
+    expect(faqDraftFrom(msgs, "x")).toBeNull();
   });
 });
