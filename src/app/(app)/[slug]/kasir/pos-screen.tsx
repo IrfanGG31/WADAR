@@ -398,8 +398,8 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
                 aria-pressed={category === c}
                 onClick={() => setCategory(c)}
                 className={cn(
-                  "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                  category === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
+                  "min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  category === c ? "border-navy bg-navy text-white" : "border-border bg-card text-muted-foreground hover:text-foreground",
                 )}
               >
                 {c ?? "Semua"}
@@ -423,17 +423,30 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
                     onClick={() => add(item, 1)}
                     disabled={soldOut || inCart >= item.onHand}
                     className={cn(
-                      "relative flex h-full min-h-24 w-full flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50",
-                      inCart > 0 ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
+                      "relative flex h-full min-h-28 w-full min-w-0 flex-col items-start gap-2 rounded-xl border p-3 text-left transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.99] disabled:opacity-50",
+                      inCart > 0
+                        ? "border-primary bg-primary/[0.04] shadow-[0_0_0_1px_var(--color-primary)]"
+                        : "border-border bg-card hover:border-primary/40 hover:shadow-[0_2px_8px_-2px_rgb(8_42_92/0.12)]",
                     )}
                   >
-                    <span className="line-clamp-2 pr-6 text-sm font-medium leading-snug">
+                    {/* Long single "words" like "(Serum+Toner+Moisturizer)" must wrap, not spill into the next tile. */}
+                    <span className="line-clamp-2 w-full break-words pr-7 text-sm font-medium leading-snug [overflow-wrap:anywhere]">
                       {item.name}
                       {item.option && <span className="text-muted-foreground"> · {item.option}</span>}
                     </span>
-                    <span className="mt-auto font-semibold tabular-nums">{formatRupiah(item.price)}</span>
-                    <span className={cn("text-xs", item.onHand <= 5 ? "text-amber-800" : "text-muted-foreground")}>
-                      {soldOut ? "Habis" : `Stok ${formatCount(item.onHand)}`}
+                    <span className="mt-auto flex w-full min-w-0 flex-col gap-0.5">
+                      <span className="font-semibold tabular-nums text-navy">{formatRupiah(item.price)}</span>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 text-xs tabular-nums",
+                          soldOut ? "font-medium text-red-700" : item.onHand <= 5 ? "font-medium text-amber-800" : "text-muted-foreground",
+                        )}
+                      >
+                        {(soldOut || item.onHand <= 5) && (
+                          <span className={cn("h-1.5 w-1.5 rounded-full", soldOut ? "bg-red-600" : "bg-amber-500")} aria-hidden />
+                        )}
+                        {soldOut ? "Habis" : `Sisa ${formatCount(item.onHand)}`}
+                      </span>
                     </span>
                     {inCart > 0 && (
                       <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
@@ -455,7 +468,7 @@ export function PosScreen({ slug, items, channels }: { slug: string; items: PosI
         aria-modal={checkout ? true : undefined}
         aria-label="Pembayaran"
         className={cn(
-          "md:sticky md:top-20 md:block md:rounded-xl md:border md:border-border md:p-4",
+          "md:sticky md:top-24 md:block md:rounded-2xl md:border md:border-border md:bg-card md:p-5 md:shadow-[0_8px_24px_-12px_rgb(8_42_92/0.18)]",
           checkout ? "fixed inset-0 z-50 overflow-y-auto bg-background px-4 pb-8 pt-4 md:static md:z-auto md:overflow-visible" : "hidden",
         )}
       >

@@ -17,7 +17,7 @@ export function BottomTabs({ role }: { role: MemberRole | null }) {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_8px_rgba(15,23,42,0.06)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       {navFor(MOBILE_NAV, role).map((item) => {
         const active = isActive(item, page);
@@ -28,11 +28,13 @@ export function BottomTabs({ role }: { role: MemberRole | null }) {
             href={shopPath(slug, item.page)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+              "group flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="h-5 w-5" aria-hidden />
+            <span className={cn("flex h-7 w-12 items-center justify-center rounded-full transition-colors", active ? "bg-primary/10" : "group-hover:bg-muted")}>
+              <Icon className="h-5 w-5" aria-hidden />
+            </span>
             {item.label}
           </Link>
         );
@@ -49,13 +51,13 @@ export function Sidebar({ role }: { role: MemberRole | null }) {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-background p-4 md:flex"
+      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col overflow-y-auto border-r border-border/70 bg-surface px-3 py-4 md:flex"
     >
-      <div className="mb-6 mt-2 flex items-center px-2">
+      <div className="mb-8 mt-1 flex h-8 items-center px-3">
         <Image src={brand.mark.src} alt="" width={brand.mark.width} height={brand.mark.height} className="h-6 w-auto" priority />
         <span className="ml-2 font-display text-lg font-extrabold tracking-tight text-navy">{brand.name}</span>
       </div>
-      <div className="flex flex-1 flex-col gap-1">
+      <div className="flex flex-1 flex-col gap-0.5">
         {navFor(DESKTOP_NAV, role).map((item) => {
           const active = isActive(item, page);
           const Icon = item.icon;
@@ -65,11 +67,13 @@ export function Sidebar({ role }: { role: MemberRole | null }) {
               href={shopPath(slug, item.page)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                active
+                  ? "bg-background font-semibold text-navy shadow-[0_1px_2px_rgb(8_42_92/0.08),0_0_0_1px_rgb(8_42_92/0.06)]"
+                  : "font-medium text-muted-foreground hover:bg-background/60 hover:text-foreground",
               )}
             >
-              <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
+              <Icon className={cn("h-[18px] w-[18px]", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
               {item.label}
             </Link>
           );
@@ -83,10 +87,10 @@ export function Sidebar({ role }: { role: MemberRole | null }) {
 export function NavSkeleton() {
   return (
     <>
-      <div aria-hidden className="hidden h-dvh w-64 shrink-0 flex-col gap-2 border-r border-border p-4 md:flex">
-        <div className="mb-6 mt-2 h-8 w-28 animate-pulse rounded-lg bg-muted" />
+      <div aria-hidden className="hidden h-dvh w-60 shrink-0 flex-col gap-0.5 border-r border-border/70 bg-surface px-3 py-4 md:flex">
+        <div className="mb-8 mt-1 h-8 w-28 animate-pulse rounded-lg bg-muted" />
         {DESKTOP_NAV.map((item) => (
-          <div key={item.page} className="h-11 animate-pulse rounded-xl bg-muted" />
+          <div key={item.page} className="h-11 animate-pulse rounded-lg bg-muted" />
         ))}
       </div>
       <div aria-hidden className="fixed inset-x-0 bottom-0 flex h-14 items-center gap-2 border-t border-border bg-background px-3 md:hidden">

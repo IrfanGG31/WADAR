@@ -100,7 +100,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
             onClick={() => setFilter(value)}
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              filter === value ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
+              filter === value ? "border-navy bg-navy text-white" : "border-border bg-card text-muted-foreground hover:text-foreground",
             )}
           >
             {label} ({formatCount(counts[value])})
@@ -113,7 +113,7 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
           Tidak ada produk yang cocok.
         </p>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
           {shown.map((row) => (
             <li key={row.variantId}>
               <Link
@@ -147,11 +147,15 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
                     )}
                   </span>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="text-lg font-semibold tabular-nums">
-                    {formatCount(row.onHand)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
+                <div className="flex w-24 shrink-0 flex-col items-end gap-1.5 sm:w-32">
+                  <span className="flex items-center gap-2">
+                    {/* Only problems get a badge; a column of green "Aman" badges hides the ones that matter. */}
+                    {row.status !== "aman" && <Badge variant={STATUS_BADGE[row.status]}>{STOCK_STATUS_LABEL[row.status]}</Badge>}
+                    <span className="text-lg font-semibold tabular-nums">
+                      {formatCount(row.onHand)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
+                    </span>
                   </span>
-                  <Badge variant={STATUS_BADGE[row.status]}>{STOCK_STATUS_LABEL[row.status]}</Badge>
+                  <StockBar onHand={row.onHand} minStock={row.minStock} status={row.status} />
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
@@ -160,5 +164,20 @@ export function StockList({ slug, rows }: { slug: string; rows: StockRow[] }) {
         </ul>
       )}
     </div>
+  );
+}
+
+const BAR_TONE: Record<StockStatus, string> = { habis: "bg-red-500", kritis: "bg-red-500", menipis: "bg-amber-500", aman: "bg-primary/35" };
+
+/** Stock against three times the minimum — a glance at "how far from reorder", not a precise figure. */
+function StockBar({ onHand, minStock, status }: { onHand: number; minStock: number; status: StockStatus }) {
+  const scale = Math.max(minStock * 3, 1);
+  const pct = Math.max(onHand > 0 ? 4 : 0, Math.min(100, Math.round((Math.max(onHand, 0) / scale) * 100)));
+  const minPct = Math.min(100, Math.round((minStock / scale) * 100));
+  return (
+    <span className="relative block h-1.5 w-full rounded-full bg-muted" aria-hidden>
+      <span className={`absolute inset-y-0 left-0 rounded-full ${BAR_TONE[status]}`} style={{ width: `${pct}%` }} />
+      <span className="absolute -inset-y-0.5 w-px bg-foreground/30" style={{ left: `${minPct}%` }} />
+    </span>
   );
 }

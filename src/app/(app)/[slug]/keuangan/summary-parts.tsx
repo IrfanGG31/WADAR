@@ -22,39 +22,87 @@ const TONE_TEXT: Record<SummaryCard["tone"], string> = {
   neutral: "text-muted-foreground",
 };
 
+/** Cost lines shown as deductions in the statement; the sign is presentation only (values arrive positive). */
+const DEDUCTION: ReadonlySet<SummaryCard["key"]> = new Set(["C", "F", "S"]);
+
+/**
+ * Untung bersih as the headline, then the statement that leads to it:
+ * Penjualan → − Modal → − Komisi → − Ongkir → Untung kotor (subtotal). One reading order instead of six equal tiles.
+ */
 export function SummaryCards({ cards }: { cards: SummaryCard[] }) {
+  const np = cards.find((c) => c.key === "NP");
+  const gp = cards.find((c) => c.key === "GP");
+  const statement = cards.filter((c) => c.key !== "NP");
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-      {cards.map((c) => (
-        <div
-          key={c.key}
-          className={cn(
-            "flex min-w-0 flex-col gap-1 rounded-xl border border-border p-3 sm:p-4",
-            c.key === "NP" && "border-primary/40 bg-primary/5",
-          )}
-        >
-          <p className="text-xs text-muted-foreground sm:text-sm">{c.label}</p>
-          <p className="text-base font-semibold tabular-nums sm:text-2xl">
-            {formatRupiah(c.value)}
-          </p>
-          <Delta card={c} />
-          <p className="text-xs text-muted-foreground">{c.hint}</p>
-        </div>
-      ))}
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      {np && (
+        <section className="flex flex-col justify-between gap-6 rounded-2xl border border-border bg-navy p-6 text-white" aria-labelledby="untung-bersih">
+          <div className="flex flex-col gap-2">
+            <h2 id="untung-bersih" className="text-sm font-medium text-white/70">
+              {np.label}
+            </h2>
+            <p className="text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">{formatRupiah(np.value)}</p>
+            <Delta card={np} inverse />
+          </div>
+          <dl className="grid gap-2 border-t border-white/15 pt-4 text-sm">
+            {gp && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-white/70">{gp.label}</dt>
+                <dd className="font-medium tabular-nums">{formatRupiah(gp.value)}</dd>
+              </div>
+            )}
+            <div className="text-white/70">{np.hint}</div>
+          </dl>
+        </section>
+      )}
+      <section className="rounded-2xl border border-border p-2" aria-label="Rincian untung">
+        <dl className="flex flex-col">
+          {statement.map((c) => {
+            const deduction = DEDUCTION.has(c.key);
+            const subtotal = c.key === "GP";
+            return (
+              <div
+                key={c.key}
+                className={cn(
+                  "grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-0.5 rounded-xl px-4 py-3",
+                  subtotal && "mt-1 bg-surface",
+                )}
+              >
+                <dt className={cn("text-sm", subtotal ? "font-semibold text-foreground" : "text-muted-foreground")}>{c.label}</dt>
+                <dd className={cn("text-right tabular-nums", subtotal ? "text-xl font-bold text-navy" : "text-base font-semibold")}>
+                  {deduction && c.value > 0 ? "−" : ""}
+                  {formatRupiah(c.value)}
+                </dd>
+                <span className="text-xs text-muted-foreground">{c.hint}</span>
+                <span className="text-right">
+                  <Delta card={c} compact />
+                </span>
+              </div>
+            );
+          })}
+        </dl>
+      </section>
     </div>
   );
 }
 
-function Delta({ card }: { card: SummaryCard }) {
+const TONE_ON_DARK: Record<SummaryCard["tone"], string> = {
+  good: "text-emerald-300",
+  bad: "text-red-300",
+  neutral: "text-white/70",
+};
+
+function Delta({ card, inverse = false, compact = false }: { card: SummaryCard; inverse?: boolean; compact?: boolean }) {
   const Icon = card.delta > 0 ? ArrowUpRight : card.delta < 0 ? ArrowDownRight : Minus;
   const text =
     card.delta_pct !== null ? formatPercent(Math.abs(card.delta_pct)) : card.delta === 0 ? "tetap" : formatSignedRupiah(card.delta);
   return (
-    <p className={cn("flex items-center gap-1 text-xs font-medium", TONE_TEXT[card.tone])}>
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", inverse ? TONE_ON_DARK[card.tone] : TONE_TEXT[card.tone])}>
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="sr-only">{card.delta > 0 ? "naik" : card.delta < 0 ? "turun" : "tetap"}</span>
-      {text} <span className="font-normal text-muted-foreground">vs minggu lalu</span>
-    </p>
+      {text}
+      {!compact && <span className={cn("font-normal", inverse ? "text-white/60" : "text-muted-foreground")}>vs periode sebelumnya</span>}
+    </span>
   );
 }
 
@@ -63,7 +111,7 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
   const max = insight.effects.reduce((m, e) => Math.max(m, Math.abs(e.amount)), 0);
   const label = periodLabels(insight.days);
   return (
-    <section className="rounded-xl border border-border p-4" aria-labelledby="kenapa-untung">
+    <section className="rounded-2xl border border-border p-5" aria-labelledby="kenapa-untung">
       <h2 id="kenapa-untung" className="flex items-center gap-2 text-sm font-semibold">
         <Lightbulb className="h-4 w-4 text-accent" aria-hidden />
         Kenapa untung berubah?
@@ -80,7 +128,7 @@ export function ProfitChangeCard({ insight }: { insight: ProfitInsight }) {
                 </span>
                 <div className="col-span-2 h-1.5 rounded-full bg-muted">
                   <div
-                    className={cn("h-1.5 rounded-full", e.amount > 0 ? "bg-emerald-600" : "bg-red-600")}
+                    className={cn("h-1.5 rounded-full", e.amount > 0 ? "bg-emerald-500" : "bg-red-400")}
                     style={{ width: `${max > 0 ? Math.max(2, (Math.abs(e.amount) / max) * 100) : 0}%` }}
                   />
                 </div>

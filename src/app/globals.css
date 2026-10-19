@@ -16,6 +16,8 @@
   --color-foreground: #0b1d3a;
   /* Page wash behind white cards (landing sections, auth panel). */
   --color-surface: #f4f7fb;
+  /* Panels on the surface (app cards). */
+  --color-card: #ffffff;
 
   --color-border: #dfe6ef;
   --color-muted: #eef3f9;
@@ -43,4 +45,15 @@ body {
   /* NFR-A11Y: body text ≥ 16px. */
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * App surfaces (v2): the shop app sits on --color-surface and every bordered panel
+ * (rounded-lg/xl/2xl + border) is a white card on it. Lives in the base layer so an
+ * explicit bg-* utility on a panel (bg-muted, bg-primary/5, …) still wins.
+ */
+@layer base {
+  [data-surface] :where(.rounded-lg.border, .rounded-xl.border, .rounded-2xl.border):not(:where(.border-dashed)) {
+    background-color: var(--color-card);
+  }
 }

@@ -109,10 +109,9 @@ function SummarySkeleton() {
   return (
     <div className="flex flex-col gap-4">
       <PeriodPickerSkeleton />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-xl bg-muted" />
-        ))}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <div className="h-48 animate-pulse rounded-2xl bg-muted lg:h-80" />
+        <div className="h-80 animate-pulse rounded-2xl bg-muted" />
       </div>
       <div className="h-48 animate-pulse rounded-xl bg-muted" />
       <div className="h-56 animate-pulse rounded-xl bg-muted" />

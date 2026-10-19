@@ -59,14 +59,16 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
           Bagikan tautan ini di bio Instagram atau WhatsApp: <span className="break-all font-mono text-foreground">/w/{slug}</span>
         </p>
       </section>
-      <nav aria-label="Pengaturan lain" className="grid gap-3 sm:grid-cols-2">
+      <nav aria-label="Pengaturan lain" className="grid overflow-hidden rounded-2xl border border-border sm:grid-cols-2">
         {SETTINGS_LINKS.map((l) => (
           <Link
             key={l.page}
             href={shopPath(slug, l.page)}
-            className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="-mb-px -mr-px flex min-h-16 items-center gap-3 border-b border-r border-border p-4 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
           >
-            <l.icon className="h-5 w-5 text-primary" aria-hidden />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <l.icon className="h-[18px] w-[18px] text-primary" aria-hidden />
+            </span>
             <span className="flex flex-1 flex-col">
               <span className="font-semibold">{l.title}</span>
               <span className="text-sm text-muted-foreground">{l.hint}</span>

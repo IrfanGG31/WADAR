@@ -1,10 +1,10 @@
-import { AlertTriangle, ChevronRight, MessagesSquare, Package, Receipt, ShoppingBag, Sparkles, UserPlus, Users, Wallet } from "lucide-react";
+import { AlertTriangle, ChevronRight, MessagesSquare, Package, Sparkles, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { weekStart } from "@/core/consult/insights";
 import { STOCK_STATUS_LABEL } from "@/core/stock-level";
-import type { ForecastRow } from "@/core/stock-insight";
+import { formatDaysLeft, type ForecastRow } from "@/core/stock-insight";
 import { formatRupiah } from "@/core/money";
 import { formatCount } from "@/core/number-format";
 import { can, DENIED_PARAM, deniedPageNotice } from "@/core/roles";
@@ -34,10 +34,7 @@ type Params = PageProps<"/[slug]/beranda">["params"];
 export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]/beranda">) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">Selamat datang</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Beranda</h1>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight text-navy">Beranda</h1>
       <Suspense fallback={null}>
         <DeniedNotice params={params} searchParams={searchParams} />
       </Suspense>
@@ -48,12 +45,14 @@ export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]
       <Suspense fallback={<KpiSkeleton />}>
         <KpiCards params={params} />
       </Suspense>
-      <Suspense fallback={<TrendSkeleton />}>
-        <TrendSection params={params} />
-      </Suspense>
-      <Suspense fallback={<LowStockSkeleton />}>
-        <LowStockSection params={params} />
-      </Suspense>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <Suspense fallback={<TrendSkeleton />}>
+          <TrendSection params={params} />
+        </Suspense>
+        <Suspense fallback={<LowStockSkeleton />}>
+          <LowStockSection params={params} />
+        </Suspense>
+      </div>
       <Suspense fallback={<InsightSkeleton />}>
         <InsightSection params={params} />
       </Suspense>
@@ -78,22 +77,30 @@ async function KpiCards({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
   const s = await getBerandaSummary(shop.id);
-  const cards = [
-    { label: "Total Penjualan Hari Ini", icon: ShoppingBag, value: formatRupiah(s.revenue_today) },
-    { label: "Jumlah Transaksi", icon: Receipt, value: formatCount(s.orders_today) },
-    { label: "Produk Terjual", icon: Package, value: formatCount(s.items_today) },
-    { label: "Pelanggan Baru", icon: UserPlus, value: formatCount(s.new_customers_today) },
+  const stats = [
+    { label: "Transaksi", value: formatCount(s.orders_today) },
+    { label: "Barang terjual", value: formatCount(s.items_today) },
+    { label: "Pelanggan baru", value: formatCount(s.new_customers_today) },
   ] as const;
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {cards.map(({ label, icon: Icon, value }) => (
-        <div key={label} className="flex min-w-0 flex-col gap-2 rounded-xl border border-border p-3 sm:p-4">
-          <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
-          <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
-          <p className="text-base font-semibold tabular-nums sm:text-2xl">{value}</p>
+    <section className="rounded-2xl border border-border p-5 sm:p-6" aria-labelledby="hari-ini">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 id="hari-ini" className="text-sm font-medium text-muted-foreground">
+            Penjualan hari ini
+          </h2>
+          <p className="text-4xl font-bold tracking-tight text-navy tabular-nums sm:text-5xl">{formatRupiah(s.revenue_today)}</p>
         </div>
-      ))}
-    </div>
+        <dl className="grid grid-cols-3 divide-x divide-border rounded-xl bg-surface lg:min-w-[26rem]">
+          {stats.map(({ label, value }) => (
+            <div key={label} className="flex flex-col gap-0.5 px-3 py-3 sm:px-4">
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="text-xl font-semibold tabular-nums text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
   );
 }
 
@@ -115,22 +122,22 @@ function TrendChart({ points }: { points: BerandaSummary["trend_7d"] }) {
   }
   const dayLabel = formatIsoWeekday;
   return (
-    <section className="rounded-xl border border-border p-4" aria-labelledby="penjualan-7-hari">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="penjualan-7-hari" className="text-sm font-semibold">Penjualan 7 Hari</h2>
+    <section className="rounded-2xl border border-border p-5" aria-labelledby="penjualan-7-hari">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="penjualan-7-hari" className="text-sm font-semibold">Penjualan 7 hari</h2>
         <p className="text-xs text-muted-foreground tabular-nums">Total {formatRupiah(points.reduce((s, p) => s + p.revenue, 0))}</p>
       </div>
       <ul className="flex flex-col gap-2">
         {points.map((p) => {
           const widthPct = max > 0 ? Math.max(2, Math.round((p.revenue / max) * 100)) : 2;
           return (
-            <li key={p.day} className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:text-sm">
+            <li key={p.day} className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3 text-xs sm:text-sm">
               <span className="truncate text-muted-foreground">{dayLabel(p.day)}</span>
-              <div className="h-2.5 rounded-full bg-muted">
+              <div className="h-2 rounded-full bg-muted">
                 <div
                   role="img"
                   aria-label={`${dayLabel(p.day)}: ${formatRupiah(p.revenue)}`}
-                  className="h-2.5 rounded-full bg-primary/80"
+                  className={`h-2 rounded-full ${p === points.at(-1) ? "bg-primary" : "bg-primary/45"}`}
                   style={{ width: `${widthPct}%` }}
                 />
               </div>
@@ -149,16 +156,16 @@ async function LowStockSection({ params }: { params: Params }) {
   const rows = await getLowStock(shop.id, 5);
   if (rows.length === 0) {
     return (
-      <section className="rounded-xl border border-border p-4">
+      <section className="rounded-2xl border border-border p-5">
         <h2 className="mb-2 text-sm font-semibold">Stok</h2>
         <p className="text-sm text-muted-foreground">Semua stok aman. Senang-senang saja.</p>
       </section>
     );
   }
   return (
-    <section className="rounded-xl border border-border p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Stok Menipis</h2>
+    <section className="rounded-2xl border border-border p-5">
+      <div className="-mt-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Perlu dipesan ulang</h2>
         <Link
           href={shopPath(slug, "stok")}
           className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -179,17 +186,21 @@ function LowStockItem({ row }: { row: ForecastRow }) {
   const variant =
     row.status === "habis" || row.status === "kritis" ? "danger" : row.status === "menipis" ? "warning" : "muted";
   return (
-    <li className="flex items-start gap-3 py-3">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
+    <li className="flex items-center gap-3 py-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-sm font-medium">{row.title}</p>
-          <Badge variant={variant}>{STOCK_STATUS_LABEL[row.status]}</Badge>
+          <Badge variant={variant} className="shrink-0">
+            {STOCK_STATUS_LABEL[row.status]}
+          </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{row.narrative}</p>
         <p className="text-xs text-muted-foreground">
-          Stok {formatCount(row.on_hand)} {row.unit} · pesan ulang disarankan {formatCount(row.reorder_qty)} {row.unit}
+          Sisa {formatCount(row.on_hand)} {row.unit} · {row.status === "habis" ? "sudah habis" : `habis ${formatDaysLeft(row)} lagi`}
         </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-sm font-semibold tabular-nums">+{formatCount(row.reorder_qty)}</p>
+        <p className="text-[11px] text-muted-foreground">{row.unit} dipesan</p>
       </div>
     </li>
   );
@@ -227,7 +238,7 @@ async function InsightSection({ params }: { params: Params }) {
     return { key, title, text, icon: link?.icon ?? Sparkles, href: shopPath(slug, link?.page ?? "konsultasi") };
   });
   return (
-    <section className="rounded-xl border border-border p-4" aria-labelledby="insight-untukmu">
+    <section className="rounded-2xl border border-border p-5" aria-labelledby="insight-untukmu">
       <h2 id="insight-untukmu" className="mb-2 flex items-center gap-2 text-sm font-semibold">
         <Sparkles className="h-4 w-4 text-primary" aria-hidden />
         Insight untukmu
@@ -262,13 +273,7 @@ async function InsightSection({ params }: { params: Params }) {
 }
 
 function KpiSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
-      ))}
-    </div>
-  );
+  return <div className="h-44 animate-pulse rounded-2xl bg-muted lg:h-32" />;
 }
 function TrendSkeleton() {
   return <div className="h-48 animate-pulse rounded-xl bg-muted" />;

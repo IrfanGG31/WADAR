@@ -15,13 +15,13 @@ import { signOut } from "../actions";
  */
 export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">) {
   return (
-    <div className="min-h-dvh md:flex">
+    <div className="min-h-dvh bg-surface md:flex" data-surface>
       <Suspense fallback={<NavSkeleton />}>
         <RoleNav params={params} />
         <ServiceWorkerRegister />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border/70 bg-surface/90 px-4 backdrop-blur md:h-16 md:px-10">
           <Suspense fallback={<div className="h-5 w-40 animate-pulse rounded bg-muted" />}>
             <ShopName params={params} />
           </Suspense>
@@ -37,7 +37,7 @@ export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">)
             </form>
           </div>
         </header>
-        <main className="flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-10">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 md:px-10 md:pb-12 md:pt-8">{children}</main>
       </div>
     </div>
   );

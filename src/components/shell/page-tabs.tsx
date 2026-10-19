@@ -29,15 +29,15 @@ export function PageTabs({
   href?: (page: string) => string;
 }) {
   return (
-    <nav className="flex gap-1 rounded-lg bg-muted p-1" aria-label={label}>
+    <nav className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 md:mx-0 md:gap-6 md:px-0" aria-label={label}>
       {tabs.map((tab) => (
         <Link
           key={tab.page}
           href={href(tab.page)}
           aria-current={tab.page === active ? "page" : undefined}
           className={cn(
-            "flex min-h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-md px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:flex-none md:px-6",
-            tab.page === active ? "bg-background text-foreground shadow-sm" : "text-slate-700 hover:text-foreground",
+            "relative -mb-px flex min-h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:flex-none md:px-1",
+            tab.page === active ? "border-primary text-navy" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
           )}
         >
           {tab.shortLabel ? (
@@ -55,5 +55,5 @@ export function PageTabs({
 }
 
 export function PageTabsSkeleton() {
-  return <div className="h-[3.25rem] animate-pulse rounded-lg bg-muted" aria-hidden />;
+  return <div className="h-11 animate-pulse border-b border-border" aria-hidden />;
 }

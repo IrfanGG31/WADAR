@@ -102,7 +102,7 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
       aria-current={active ? "page" : undefined}
       className={cn(
         "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+        active ? "border-navy bg-navy text-white" : "border-border bg-card text-muted-foreground hover:text-foreground",
       )}
     >
       {children}

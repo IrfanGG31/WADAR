@@ -39,7 +39,7 @@ const STATUS_BADGE: Record<StockStatus, "danger" | "warning" | "success"> = {
 const chip = (on: boolean) =>
   cn(
     "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-    on ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
+    on ? "border-navy bg-navy text-white" : "border-border bg-card text-muted-foreground hover:text-foreground",
   );
 
 /**
