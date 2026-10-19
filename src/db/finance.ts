@@ -89,6 +89,7 @@ const loadFinanceData = cache(async (tenantId: string, fromDay: string, toDay: s
         .from("expenses")
         .select("id, occurred_at, amount")
         .eq("tenant_id", tenantId)
+        .is("voided_at", null)
         .gte("occurred_at", window.from)
         .lte("occurred_at", window.to)
         .order("occurred_at")

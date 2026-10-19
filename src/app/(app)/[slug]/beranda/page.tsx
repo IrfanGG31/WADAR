@@ -13,6 +13,7 @@ import { getBerandaInsight } from "@/db/beranda-insight";
 import { getBerandaSummary, getLowStock, type BerandaSummary } from "@/db/dashboard";
 import { getShop } from "@/db/shop";
 import { getWeeklyDigest } from "@/db/weekly-digest";
+import { formatIsoWeekday } from "@/lib/format-date";
 import { shopPath } from "@/lib/routes";
 import { shopToday } from "@/lib/shop-today";
 import { WeeklyDigestSummary } from "./weekly-digest";
@@ -108,8 +109,7 @@ function TrendChart({ points }: { points: BerandaSummary["trend_7d"] }) {
       </div>
     );
   }
-  const dayLabel = (iso: string) =>
-    new Date(`${iso}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric" });
+  const dayLabel = formatIsoWeekday;
   return (
     <section className="rounded-xl border border-border p-4" aria-labelledby="penjualan-7-hari">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">

@@ -30,7 +30,7 @@ export async function getBerandaSummary(tenantId: string): Promise<BerandaSummar
     items_today: Number(d.items_today ?? 0),
     new_customers_today: Number(d.new_customers_today ?? 0),
     trend_7d: (d.trend_7d ?? []).map((p) => ({
-      day: p.day,
+      day: String(p.day).slice(0, 10), // timestamptz → YYYY-MM-DD
       revenue: Number(p.revenue ?? 0),
       q: Number(p.q ?? 0),
     })),

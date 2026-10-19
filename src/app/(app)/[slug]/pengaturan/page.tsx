@@ -1,4 +1,4 @@
-import { ChevronRight, Users } from "lucide-react";
+import { ChevronRight, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { canResetDemo, RESET_DEMO_PARAM } from "@/core/demo-reset";
@@ -16,6 +16,11 @@ import { StoreProfileForm } from "./store-profile-form";
 import { PageGate } from "@/components/shell/page-gate";
 
 export const metadata = { title: "Pengaturan" };
+
+const SETTINGS_LINKS = [
+  { page: "pengaturan/kanal", title: "Kanal & komisi", hint: "Shopee, TikTok, GoFood…: komisi per pesanan", icon: Store },
+  { page: "pengaturan/anggota", title: "Anggota tim", hint: "Undang kasir atau admin chat, ubah peran, cabut akses", icon: Users },
+] as const;
 
 export default function PengaturanPage({ params, searchParams }: PageProps<"/[slug]/pengaturan">) {
   return (
@@ -51,17 +56,22 @@ async function Content({ params, searchParams }: Pick<PageProps<"/[slug]/pengatu
           Bagikan tautan ini di bio Instagram atau WhatsApp: <span className="break-all font-mono text-foreground">/w/{slug}</span>
         </p>
       </section>
-      <Link
-        href={shopPath(slug, "pengaturan/anggota")}
-        className="flex min-h-14 items-center gap-3 rounded-xl border border-border p-4 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <Users className="h-5 w-5 text-muted-foreground" aria-hidden />
-        <span className="flex flex-1 flex-col">
-          <span className="font-semibold">Anggota tim</span>
-          <span className="text-sm text-muted-foreground">Undang kasir atau admin chat, ubah peran, cabut akses</span>
-        </span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
-      </Link>
+      <nav aria-label="Pengaturan lain" className="grid gap-3 sm:grid-cols-2">
+        {SETTINGS_LINKS.map((l) => (
+          <Link
+            key={l.page}
+            href={shopPath(slug, l.page)}
+            className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <l.icon className="h-5 w-5 text-primary" aria-hidden />
+            <span className="flex flex-1 flex-col">
+              <span className="font-semibold">{l.title}</span>
+              <span className="text-sm text-muted-foreground">{l.hint}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+          </Link>
+        ))}
+      </nav>
       <StoreProfileForm slug={slug} policies={profile.policies} persona={profile.persona} />
       <FaqManager slug={slug} faqs={faqs} />
       {prefs && (
