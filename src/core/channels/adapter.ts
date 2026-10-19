@@ -1,6 +1,7 @@
 /**
- * Chat channel adapters (ADR-002). Every messaging channel — the web widget today, WhatsApp Cloud API
- * and Telegram later — is reduced to the same three steps around the one chat pipeline (`runTurn`):
+ * Chat channel adapters (ADR-002, ADR-004). Every messaging channel — the web widget, a Telegram bot,
+ * a WhatsApp Cloud API number — is reduced to the same three steps around the one chat pipeline
+ * (`runTurn`):
  *
  *   webhook → verifyWebhook → parseInbound → (same flow as the widget: store, rate limit, runTurn) → sendText
  *
@@ -14,11 +15,15 @@ export type ChatChannelKind = "whatsapp" | "telegram";
 export interface InboundMessage {
   /** Provider's message id — used to drop webhook retries (idempotency). */
   externalMessageId: string;
-  /** Buyer id on that channel: phone number (E.164) for WhatsApp, chat id for Telegram. */
+  /** Buyer id on that channel: WhatsApp id (country code + number, digits) or Telegram chat id. */
   externalUserId: string;
   displayName: string | null;
   text: string;
   receivedAt: string;
+  /** The shop-side account the message was sent to (WhatsApp phone number id), when the provider says. */
+  recipientId?: string;
+  /** A photo/sticker/voice note without words: the assistant cannot read it, the buyer gets a short note. */
+  unsupported?: boolean;
 }
 
 export interface WebhookRequest {
@@ -36,7 +41,7 @@ export type VerifyResult =
 
 export type SendResult = { ok: true; externalMessageId: string } | { ok: false; retryable: boolean; reason: string };
 
-/** Per-shop secrets, read server-side only (never sent to the browser, never logged). */
+/** Per-shop secrets and ids, read server-side only (never sent to the browser, never logged). */
 export interface ChannelCredentials {
   [field: string]: string;
 }
@@ -45,27 +50,39 @@ export interface ChannelAdapter {
   readonly kind: ChatChannelKind;
   /** Signature / token check of an incoming webhook; must be timing-safe. */
   verifyWebhook(req: WebhookRequest, credentials: ChannelCredentials): Promise<VerifyResult>;
-  /** Provider payload → buyer messages (status callbacks, reactions, media without caption → []). */
+  /** Provider payload → buyer messages (status callbacks, reactions, group chats → []). */
   parseInbound(rawBody: string): InboundMessage[];
   /** Send a reply to one buyer. */
   sendText(to: string, text: string, credentials: ChannelCredentials): Promise<SendResult>;
 }
 
-/** Placeholder until a channel is built: refuses every webhook and every send, loudly. */
+/** Placeholder for a channel that is not configured: refuses every webhook and every send, loudly. */
 export class NotConnectedAdapter implements ChannelAdapter {
   constructor(readonly kind: ChatChannelKind) {}
   async verifyWebhook(): Promise<VerifyResult> {
-    return { kind: "rejected", reason: `${this.kind} belum tersedia` };
+    return { kind: "rejected", reason: `${this.kind} belum tersambung` };
   }
   parseInbound(): InboundMessage[] {
     return [];
   }
   async sendText(): Promise<SendResult> {
-    return { ok: false, retryable: false, reason: `${this.kind} belum tersedia` };
+    return { ok: false, retryable: false, reason: `${this.kind} belum tersambung` };
   }
 }
 
-export const CHANNEL_ADAPTERS: Readonly<Record<ChatChannelKind, ChannelAdapter>> = {
-  whatsapp: new NotConnectedAdapter("whatsapp"),
-  telegram: new NotConnectedAdapter("telegram"),
-};
+/** Sends once more after a short pause when the provider says "try again" (rate limit, 5xx, timeout). */
+export async function sendWithRetry(
+  adapter: ChannelAdapter,
+  to: string,
+  text: string,
+  credentials: ChannelCredentials,
+  { attempts = 2, pauseMs = 800 }: { attempts?: number; pauseMs?: number } = {},
+): Promise<SendResult & { attempts: number }> {
+  let result: SendResult = { ok: false, retryable: true, reason: "belum dicoba" };
+  for (let i = 1; i <= attempts; i++) {
+    result = await adapter.sendText(to, text, credentials);
+    if (result.ok || !result.retryable || i === attempts) return { ...result, attempts: i };
+    await new Promise((r) => setTimeout(r, pauseMs * i));
+  }
+  return { ...result, attempts };
+}

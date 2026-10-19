@@ -14,7 +14,7 @@ import { OFFLINE_PATH } from "@/lib/service-worker";
  * /api/v1/ is the WADAR API for outside apps: no session, every route checks its API key itself.
  * /struk/<token> is a buyer's receipt: one sale behind a random token (POS-3).
  */
-const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/api/v1/", "/privasi", "/sw.js", "/struk/"];
+const PUBLIC_PREFIXES = ["/masuk", "/auth/callback", "/w/", "/api/widget/", "/api/cron/", "/api/v1/", "/api/channels/", "/privasi", "/sw.js", "/struk/"];
 /** Pages a signed-in user has no reason to see. */
 const SIGNED_OUT_ONLY_PATHS = ["/", "/masuk", "/masuk/admin"];
 

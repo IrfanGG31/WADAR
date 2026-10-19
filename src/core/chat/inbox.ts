@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { EscalationCause } from "./schema";
 import { findForbiddenTerms } from "./text";
+import { visitorLabel } from "./widget";
 
 /** Inbox wording (CHT-6, CHT-7): status chips, escalation reasons, authors. */
 export type ConversationMode = "ai" | "human";
@@ -76,3 +77,24 @@ export function faqDraftFrom(
   const reply = messages.slice(i + 1).find((m) => (m.author === "ai" || m.author === "human") && m.content);
   return { question: asked.content.trim().slice(0, 200), answer: (reply?.content ?? "").trim().slice(0, 700) };
 }
+
+export type InboxChannel = "widget" | "whatsapp" | "telegram" | "api";
+
+export const CHANNEL_LABEL: Record<InboxChannel, string> = {
+  widget: "Web",
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  api: "Aplikasi",
+};
+
+/**
+ * Who the inbox says is writing: the buyer's name from Telegram/WhatsApp when known, a WhatsApp
+ * number as is, a web visitor as "Pengunjung AB12" (the session id is not a person).
+ */
+export function buyerLabel(c: { channel: string; external_user_id: string; display_name?: string | null }): string {
+  if (c.display_name?.trim()) return c.display_name.trim();
+  if (c.channel === "widget") return visitorLabel(c.external_user_id);
+  if (c.channel === "whatsapp" && /^\d{8,15}$/.test(c.external_user_id)) return `+${c.external_user_id}`;
+  return c.external_user_id;
+}
+

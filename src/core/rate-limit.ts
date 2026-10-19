@@ -35,6 +35,18 @@ export function widgetBuckets(args: { tenantId: string; sessionId: string; ip: s
   ];
 }
 
+/**
+ * Buyer messages relayed by a server (Telegram/WhatsApp webhook, a bot through the WADAR API) all
+ * come from the provider's IP, so a per-IP bucket would throttle every buyer of the shop at once.
+ * The buyer's id on that channel (set by the provider, not by the buyer) and the shop bound them.
+ */
+export function relayedBuckets(args: { tenantId: string; channel: string; externalUserId: string }): RateBucket[] {
+  return [
+    { key: `session:${args.tenantId}:${args.channel}:${args.externalUserId}`, limit: WIDGET_SESSION_LIMIT },
+    { key: `tenant:${args.tenantId}`, limit: WIDGET_TENANT_LIMIT },
+  ];
+}
+
 /** Client IP as set by the platform proxy: first hop of x-forwarded-for, else x-real-ip. */
 export function clientIp(headers: Headers): string | null {
   const first = headers.get("x-forwarded-for")?.split(",")[0]?.trim();

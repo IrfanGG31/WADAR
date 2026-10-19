@@ -7,12 +7,18 @@ let db: ReturnType<typeof fakeSupabase>;
 vi.mock("@/db/access", () => ({ permissionDenied: async () => null }));
 vi.mock("@/db/shop", () => ({ getShop: async () => SHOP }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db.client }));
+const deliver = vi.fn(async (): Promise<unknown> => null);
+vi.mock("@/lib/connector-delivery", () => ({ deliverToConnector: deliver }));
 
 const { sendReply } = await import("./actions");
 
 /** The conversation update matches a row only when it belongs to this shop. */
 const respondWith = (ownConversation: boolean) => (chain: Chain) =>
-  chain.table === "conversations" ? { data: ownConversation ? { id: "conv-1" } : null, error: null } : { data: null, error: null };
+  chain.table === "conversations"
+    ? { data: ownConversation ? { id: "conv-1" } : null, error: null }
+    : chain.table === "messages"
+      ? { data: { id: "msg-1" }, error: null }
+      : { data: null, error: null };
 
 describe("sendReply (cross-tenant)", () => {
   beforeEach(() => {
@@ -33,5 +39,13 @@ describe("sendReply (cross-tenant)", () => {
     const msg = db.chains.find((c) => c.table === "messages")!;
     expect(has(msg, "insert")).toBe(true);
     expect(msg.calls.find(([m]) => m === "insert")?.[1]).toMatchObject({ tenant_id: "tenant-a", conversation_id: "conv-1" });
+  });
+
+  it("sends the reply through the chat's connector and warns when it did not arrive", async () => {
+    db = fakeSupabase(respondWith(true));
+    deliver.mockResolvedValueOnce({ ok: false, channel: "Telegram", reason: "Pembeli memblokir bot." });
+    const r = await sendReply("toko-a", "conv-1", { text: "halo" });
+    expect(deliver).toHaveBeenLastCalledWith({ tenantId: "tenant-a", conversationId: "conv-1", messageId: "msg-1", text: "halo" });
+    expect(r).toEqual({ warning: "Tersimpan, tapi belum terkirim ke Telegram: Pembeli memblokir bot." });
   });
 });

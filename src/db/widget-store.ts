@@ -50,13 +50,15 @@ export function supabaseWidgetStore(db: SupabaseClient, { embedQuery }: { embedQ
       };
     },
 
-    async ensureConversation(tenantId, sessionId, channel = "widget") {
+    async ensureConversation(tenantId, sessionId, channel = "widget", connector) {
+      // Connector columns only when set: they come with migration channel_connectors.
+      const link = connector
+        ? { connection_id: connector.connectionId, ...(connector.displayName ? { display_name: connector.displayName.slice(0, 80) } : {}) }
+        : {};
+      const row = { tenant_id: tenantId, channel, external_user_id: sessionId, ...link };
       const { data, error } = await db
         .from("conversations")
-        .upsert(
-          { tenant_id: tenantId, channel, external_user_id: sessionId },
-          { onConflict: "tenant_id,channel,external_user_id" },
-        )
+        .upsert(row, { onConflict: "tenant_id,channel,external_user_id" })
         .select("id, mode, status, last_inbound_at")
         .single();
       if (error) throw error;

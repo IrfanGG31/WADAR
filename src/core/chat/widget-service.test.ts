@@ -267,4 +267,26 @@ describe("handleWidgetMessage → outside channels and Autopilot", () => {
     expect(calls).toEqual(["human_requested"]);
     expect(base.saved).toEqual([]);
   });
+
+  it("buyers relayed by one bot/webhook IP are limited per buyer, not per IP, and keep their connector", async () => {
+    const base = fakeStore();
+    const links: unknown[] = [];
+    base.store.ensureConversation = async (_t, _s, _c, connector) => {
+      links.push(connector);
+      return { id: "c1", mode: "ai", status: "open", lastInboundAt: null };
+    };
+    const connector = { connectionId: "conn-1", displayName: "Sari" };
+    for (let i = 0; i < WIDGET_IP_LIMIT + 5; i++) {
+      const r = await handleWidgetMessage(base.store, good, req({ channel: "telegram", sessionId: `${1000 + i}`, connector, body: { text: "halo", client_id: `client-${1000 + i}` } }));
+      expect(r.status).toBe(200);
+    }
+    expect(links[0]).toEqual(connector);
+    // One buyer still has their own per-minute limit.
+    let last = 0;
+    for (let i = 0; i <= WIDGET_SESSION_LIMIT; i++) {
+      last = (await handleWidgetMessage(base.store, good, req({ channel: "telegram", sessionId: "777", body: { text: "halo", client_id: `same-${1000 + i}` } }))).status;
+    }
+    expect(last).toBe(429);
+  });
 });
+

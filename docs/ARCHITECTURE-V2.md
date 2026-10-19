@@ -25,7 +25,7 @@ penghubung** (`stock.move`, `account.move`). WADAR memakai pola yang sama, denga
 | **Pengetahuan (RAG)** | Knowledge | `kb_documents`, `kb_chunks` (pgvector + tsvector), `store_profile` | `chat/kb`, `chat/kb-doc`, `chat/retrieval`, `chat/store-policies` | FAQ, dokumen, profil toko |
 | **Percakapan** | Discuss / Live chat | `conversations`, `messages`, `notifications` | `chat/pipeline`, `chat/guardrails`, `chat/widget-service` | pipeline chat |
 | **Konsultasi** | (tidak ada di Odoo) | `memory_items`, `insights`, `weekly_insight_digests` | `consult/*` | tools baca-saja |
-| **Koneksi** | Integrations / API | `ai_providers`, `api_keys` | `channels/ai-provider`, `channels/api-key`, `channels/api-orders`, `channels/adapter` | RPC pemilik, `api_*` |
+| **Koneksi** | Integrations / API | `ai_providers`, `api_keys`, `channel_connections`, `message_deliveries` | `channels/ai-provider`, `channels/api-key`, `channels/api-orders`, `channels/adapter`, `channels/telegram`, `channels/whatsapp`, `channels/connector-service` | RPC pemilik, `api_*`, webhook `/api/channels/*` |
 | **Autopilot** | Automated actions | `agent_settings`, `agent_tasks` | `agent` (aturan, tanpa LLM) | cron + tutup tugas |
 | **Platform** | Base | `tenants`, `memberships`, `shop_invites`, `audit_log` | `roles`, `audit` | RLS `app.is_member` / `app.has_shop_role` |
 
@@ -67,5 +67,5 @@ satu basis pengetahuan berada di satu ruang vektor.
    penjualan, pembelian, dan pengeluaran. `fin_daily_rollup` tetap sebagai cache baca.
 3. **Event outbox:** `outbox_events` ditulis di transaksi yang sama dengan perubahan; handler idempoten
    (`processed_events`) menggantikan pemanggilan lintas modul langsung. Webhook keluar untuk aplikasi luar.
-4. **Konektor resmi:** WhatsApp Cloud API (`ChannelAdapter` whatsapp), Telegram Bot API, sinkron pesanan
+4. **Konektor resmi:** WhatsApp Cloud API dan Telegram Bot API — **selesai (ADR-004)**. Sisa: sinkron pesanan
    marketplace via OAuth seller center. Rahasia per toko memakai `src/lib/secret-box.ts`.

@@ -6,7 +6,7 @@ import { runTurn } from "./pipeline";
 import type { KbCandidate } from "./retrieval";
 import type { HistoryTurn, ProductCard } from "./schema";
 import type { StorePersona, StorePolicies } from "./store-policies";
-import { widgetBuckets } from "@/core/rate-limit";
+import { relayedBuckets, widgetBuckets, type RateBucket } from "@/core/rate-limit";
 import type { RateLimitResult } from "./widget";
 import { isValidSessionId, startsNewWindow, WidgetMessageInput } from "./widget";
 
@@ -49,9 +49,10 @@ export interface TurnData {
 
 export interface WidgetStore {
   findShop(slug: string): Promise<WidgetShop | null>;
-  ensureConversation(tenantId: string, sessionId: string, channel?: ChatChannel): Promise<ConversationRow>;
+  /** `connector`: the chat came in through a direct connector (Telegram bot, WhatsApp number) and is answered through it. */
+  ensureConversation(tenantId: string, sessionId: string, channel?: ChatChannel, connector?: ConnectorLink): Promise<ConversationRow>;
   /** Atomic check-and-record over all buckets (see `RateLimiter`). */
-  hitRateLimit(buckets: ReturnType<typeof widgetBuckets>, nowMs: number): Promise<RateLimitResult>;
+  hitRateLimit(buckets: readonly RateBucket[], nowMs: number): Promise<RateLimitResult>;
   /** null when this `providerMessageId` is already stored (retry / double tap). */
   insertInbound(args: { tenantId: string; conversationId: string; providerMessageId: string; text: string }): Promise<PublicMessage | null>;
   touchInbound(args: { tenantId: string; conversationId: string; nowIso: string; newWindow: boolean }): Promise<void>;
@@ -67,6 +68,12 @@ export interface WidgetStore {
 export type WidgetResult =
   | { status: 200; body: { messages: PublicMessage[]; inbound?: PublicMessage; duplicate?: boolean; mode: "ai" | "human" } }
   | { status: 400 | 404 | 429; body: { error: string; retryAfterSeconds?: number } };
+
+/** A chat that arrived through a direct connector: which one, and the buyer's name there. */
+export interface ConnectorLink {
+  connectionId: string;
+  displayName: string | null;
+}
 
 /** Where a buyer message came from: the web widget, or an outside app through the WADAR API. */
 export type ChatChannel = "widget" | "whatsapp" | "telegram" | "api";
@@ -84,6 +91,8 @@ export interface WidgetRequest {
   sessionId: string | null;
   /** Default "widget"; other channels identify the buyer by `sessionId` = their external id. */
   channel?: ChatChannel;
+  /** Set when the message came through a direct connector (see `ensureConversation`). */
+  connector?: ConnectorLink;
   /** Client IP from the platform proxy (null when unknown, e.g. local dev). */
   ip: string | null;
   body: unknown;
@@ -105,12 +114,16 @@ export async function handleWidgetMessage(store: WidgetStore, generateSource: Ge
 
   const nowMs = req.now.getTime();
   // Before anything is written: a rejected request must not create a conversation row.
-  const limit = await store.hitRateLimit(widgetBuckets({ tenantId: shop.tenantId, sessionId, ip: req.ip }), nowMs);
+  const buckets =
+    channel === "widget"
+      ? widgetBuckets({ tenantId: shop.tenantId, sessionId, ip: req.ip })
+      : relayedBuckets({ tenantId: shop.tenantId, channel, externalUserId: sessionId });
+  const limit = await store.hitRateLimit(buckets, nowMs);
   if (limit.limited) {
     return { status: 429, body: { error: "Pesannya terlalu cepat. Tunggu sebentar ya.", retryAfterSeconds: limit.retryAfterSeconds } };
   }
 
-  const conversation = await store.ensureConversation(shop.tenantId, sessionId, channel);
+  const conversation = await store.ensureConversation(shop.tenantId, sessionId, channel, req.connector);
 
   const stored = await store.insertInbound({
     tenantId: shop.tenantId,

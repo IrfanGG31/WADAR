@@ -1,5 +1,4 @@
-import { ChevronLeft, ExternalLink } from "lucide-react";
-import { headers } from "next/headers";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getAi } from "@/ai";
@@ -8,13 +7,16 @@ import { PageGate } from "@/components/shell/page-gate";
 import { getAgentSettings, listOpenAgentTasks } from "@/db/agent";
 import { getAiProviderSettings, isConnectHubInstalled } from "@/db/ai-provider";
 import { listApiKeys } from "@/db/api-keys";
+import { listChannelConnections, whatsappVerifyToken, type ChannelConnectionView } from "@/db/channel-connections";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
+import { requestOrigin } from "@/lib/request-origin";
 import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { AgentSettingsForm } from "./agent-settings-form";
 import { AiProviderForm } from "./ai-provider-form";
 import { ApiKeyManager } from "./api-key-manager";
+import { TelegramConnect, WhatsAppConnect, type ConnectorView } from "./channel-connect";
 import { SchemaPendingNotice } from "./schema-pending-notice";
 import { Step, type StepState } from "./step";
 
@@ -64,19 +66,12 @@ function Code({ children }: { children: string }) {
   );
 }
 
-const ext = (href: string, label: string) => (
-  <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline">
-    {label} <ExternalLink className="h-3 w-3" aria-hidden />
-  </a>
-);
-
 async function Steps({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "wadar.app"}`;
+  const { origin } = await requestOrigin();
   const supabase = await createClient();
-  const [installed, ai, keys, agent, tasks, outsideChats, imports] = await Promise.all([
+  const [installed, ai, keys, agent, tasks, outsideChats, imports, connectors] = await Promise.all([
     isConnectHubInstalled(),
     getAiProviderSettings(shop.id),
     listApiKeys(shop.id),
@@ -84,17 +79,35 @@ async function Steps({ params }: { params: Params }) {
     listOpenAgentTasks(shop.id),
     supabase.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id).in("channel", ["whatsapp", "telegram", "api"]),
     supabase.from("marketplace_imports").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id),
+    listChannelConnections(shop.id),
   ]);
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const messageKey = activeKeys.some((k) => k.scopes.includes("messages:write"));
   const orderKey = activeKeys.some((k) => k.scopes.includes("orders:write"));
   const defaultAiOk = getAi().offlineReason() === null;
+  const connectorView = async (c: ChannelConnectionView | undefined): Promise<ConnectorView | null> =>
+    c
+      ? {
+          kind: c.kind,
+          label: c.label,
+          status: c.status,
+          last_error: c.last_error,
+          last_event_label: c.last_event_at ? formatDateTime(c.last_event_at, shop.timezone) : null,
+          username: c.settings.username,
+          ...(c.kind === "whatsapp" ? { callback_url: `${origin}/api/channels/whatsapp/${c.id}`, verify_token: await whatsappVerifyToken(c.id) } : {}),
+        }
+      : null;
+  const [telegram, whatsapp] = await Promise.all([
+    connectorView(connectors.connections.find((c) => c.kind === "telegram")),
+    connectorView(connectors.connections.find((c) => c.kind === "whatsapp")),
+  ]);
+  const connectorActive = connectors.connections.some((c) => c.status === "active");
 
   const states: Record<string, StepState> = {
     ai: ai?.enabled && ai.last_test_ok ? "done" : defaultAiOk ? "ready" : "todo",
     chat: "done",
     api: activeKeys.length ? "done" : "todo",
-    wa: (outsideChats.count ?? 0) > 0 ? "done" : messageKey ? "ready" : "todo",
+    wa: connectorActive || (outsideChats.count ?? 0) > 0 ? "done" : connectors.connections.length || messageKey ? "ready" : "todo",
     marketplace: (imports.count ?? 0) > 0 || orderKey ? "done" : "ready",
     agent: agent.enabled ? "done" : "todo",
   };
@@ -234,27 +247,44 @@ async function Steps({ params }: { params: Params }) {
         id="wa"
         title="WhatsApp & Telegram"
         state={states.wa as StepState}
-        why="Bot WhatsApp/Telegram-mu meneruskan pesan pembeli ke WADAR, lalu mengirim balik jawaban AI. Chat yang perlu kamu tangani muncul di menu Chat."
-        tutorial={[
-          <>
-            Siapkan bot. Telegram: buat bot di {ext("https://t.me/BotFather", "@BotFather")}. WhatsApp: pakai gateway/bot yang kamu punya (mis. WhatsApp
-            Business API lewat penyedia resmi, atau alur n8n/Make).
-          </>,
-          <>Buat API key di langkah 3 dengan izin <b>Chat pembeli</b>.</>,
-          <>Di bot, setiap ada pesan masuk: kirim ke endpoint di bawah, lalu kirim isi <code className="rounded bg-background px-1">reply</code> ke pembeli.</>,
-          <>
-            Kalau balasannya <code className="rounded bg-background px-1">mode: &quot;human&quot;</code>, chat sudah diteruskan ke kamu. Bot cukup memanggil GET
-            tiap beberapa detik untuk mengirim jawabanmu.
-          </>,
-        ]}
+        why="Pembeli chat ke bot Telegram atau nomor WhatsApp bisnismu, asisten toko menjawab di sana. Yang perlu kamu tangani muncul di menu Chat, dan balasanmu terkirim balik otomatis."
       >
-        <Code>{`curl -X POST ${origin}/api/v1/messages \\
+        <div className="flex flex-col gap-4">
+          {connectors.installed ? (
+            <div className="flex flex-col gap-4">
+              <TelegramConnect view={telegram} />
+              <WhatsAppConnect view={whatsapp} />
+            </div>
+          ) : (
+            <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              Sambungan langsung ke Telegram dan WhatsApp menunggu pembaruan database. Sementara itu, bot yang sudah kamu punya bisa memakai cara lewat API di
+              bawah.
+            </p>
+          )}
+          <details className="group rounded-xl border border-border p-4">
+            <summary className="cursor-pointer list-none text-sm font-medium text-navy">Punya bot atau alur n8n/Make sendiri? Sambungkan lewat API</summary>
+            <ol className="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-relaxed">
+              <li>
+                Buat API key di langkah 3 dengan izin <b>Chat pembeli</b>.
+              </li>
+              <li>
+                Di bot, setiap ada pesan masuk: kirim ke endpoint di bawah, lalu kirim isi <code className="rounded bg-surface px-1">reply</code> ke pembeli.
+              </li>
+              <li>
+                Kalau balasannya <code className="rounded bg-surface px-1">mode: &quot;human&quot;</code>, chat sudah diteruskan ke kamu. Bot cukup memanggil GET
+                tiap beberapa detik untuk mengirim jawabanmu.
+              </li>
+            </ol>
+            <div className="mt-3">
+              <Code>{`curl -X POST ${origin}/api/v1/messages \\
   -H "Authorization: Bearer ${keyPlaceholder}" \\
   -H "Content-Type: application/json" \\
   -d '{"channel":"whatsapp","from":"+6281234567890","message_id":"wamid.123","text":"Kak, serum vit c ready?"}'
 
 # Jawaban: {"reply":"Serum Vit C 20ml ready Kak…","mode":"ai","duplicate":false}`}</Code>
-        <p className="mt-3 text-xs text-muted-foreground">Sambungan langsung ke WhatsApp Cloud API resmi (tanpa bot perantara) menyusul di tahap 2.</p>
+            </div>
+          </details>
+        </div>
       </Step>
 
       <Step

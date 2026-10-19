@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationChip, escalationLabel, faqDraftFrom, inboxTab, OwnerReplyInput } from "./inbox";
+import { conversationChip, escalationLabel, faqDraftFrom, inboxTab, OwnerReplyInput, buyerLabel } from "./inbox";
 
 describe("inbox helpers", () => {
   it("labels the chip from mode and status", () => {
@@ -66,3 +66,14 @@ describe("faqDraftFrom (CHT-7)", () => {
     expect(faqDraftFrom(msgs, "x")).toBeNull();
   });
 });
+
+describe("buyerLabel", () => {
+  it("prefers the buyer's name, shows WhatsApp ids as numbers and web visitors as a short code", () => {
+    expect(buyerLabel({ channel: "telegram", external_user_id: "555", display_name: " Sari " })).toBe("Sari");
+    expect(buyerLabel({ channel: "whatsapp", external_user_id: "6281234567890", display_name: null })).toBe("+6281234567890");
+    expect(buyerLabel({ channel: "whatsapp", external_user_id: "+6281234567890" })).toBe("+6281234567890");
+    expect(buyerLabel({ channel: "widget", external_user_id: "ab3_xyz0123456789abcdef" })).toBe("Pengunjung AB3X");
+    expect(buyerLabel({ channel: "telegram", external_user_id: "555" })).toBe("555");
+  });
+});
+

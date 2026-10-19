@@ -1,10 +1,30 @@
 import "server-only";
+import type { InboxChannel } from "@/core/chat/inbox";
 import { createClient } from "@/lib/supabase/server";
+import { isSchemaPending } from "./schema-pending";
+
+const INBOX_COLUMNS = "id, channel, external_user_id, mode, status, escalation_reason, last_message_at, last_content, last_author";
+/** With the connector columns (migration channel_connectors); without them the inbox still works. */
+const INBOX_COLUMNS_V2 = `${INBOX_COLUMNS}, display_name, customer_id`;
+
+type InboxQuery = (columns: string) => PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+
+async function withConnectorColumns<T>(query: InboxQuery): Promise<T> {
+  const first = await query(INBOX_COLUMNS_V2);
+  if (!first.error) return first.data as T;
+  if (!isSchemaPending(first.error)) throw first.error;
+  const legacy = await query(INBOX_COLUMNS);
+  if (legacy.error) throw legacy.error;
+  return legacy.data as T;
+}
 
 export interface InboxRow {
   id: string;
-  channel: "whatsapp" | "widget";
+  channel: InboxChannel;
   external_user_id: string;
+  /** Buyer's name from Telegram/WhatsApp; null before migration channel_connectors. */
+  display_name: string | null;
+  customer_id: string | null;
   mode: "ai" | "human";
   status: "open" | "escalated" | "closed";
   escalation_reason: string | null;
@@ -24,27 +44,24 @@ export interface ThreadMessage {
 /** The shop's conversations, newest first. Read as the signed-in user (RLS), from `inbox_conversations`. */
 export async function listInbox(tenantId: string): Promise<InboxRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("inbox_conversations")
-    .select("id, channel, external_user_id, mode, status, escalation_reason, last_message_at, last_content, last_author")
-    .eq("tenant_id", tenantId)
-    .order("last_message_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(100);
-  if (error) throw error;
-  return (data ?? []) as InboxRow[];
+  const rows = await withConnectorColumns<InboxRow[] | null>((columns) =>
+    supabase
+      .from("inbox_conversations")
+      .select(columns)
+      .eq("tenant_id", tenantId)
+      .order("last_message_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100),
+  );
+  return (rows ?? []).map((r) => ({ ...r, display_name: r.display_name ?? null, customer_id: r.customer_id ?? null }));
 }
 
 /** One conversation with its last 200 messages in arrival order, or null when it is not this shop's. */
 export async function getThread(tenantId: string, conversationId: string) {
   const supabase = await createClient();
-  const { data: conv, error } = await supabase
-    .from("inbox_conversations")
-    .select("id, channel, external_user_id, mode, status, escalation_reason, last_message_at, last_content, last_author")
-    .eq("tenant_id", tenantId)
-    .eq("id", conversationId)
-    .maybeSingle();
-  if (error) throw error;
+  const conv = await withConnectorColumns<InboxRow | null>((columns) =>
+    supabase.from("inbox_conversations").select(columns).eq("tenant_id", tenantId).eq("id", conversationId).maybeSingle(),
+  );
   if (!conv) return null;
   const { data: msgs, error: me } = await supabase
     .from("messages")
@@ -54,5 +71,8 @@ export async function getThread(tenantId: string, conversationId: string) {
     .order("id", { ascending: false })
     .limit(200);
   if (me) throw me;
-  return { conversation: conv as InboxRow, messages: ((msgs ?? []) as ThreadMessage[]).reverse() };
+  return {
+    conversation: { ...conv, display_name: conv.display_name ?? null, customer_id: conv.customer_id ?? null },
+    messages: ((msgs ?? []) as ThreadMessage[]).reverse(),
+  };
 }

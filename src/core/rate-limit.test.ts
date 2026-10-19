@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientIp, createMemoryRateLimiter, widgetBuckets } from "./rate-limit";
+import { clientIp, createMemoryRateLimiter, relayedBuckets, widgetBuckets } from "./rate-limit";
 
 describe("clientIp", () => {
   const h = (init: Record<string, string>) => new Headers(init);
@@ -42,3 +42,13 @@ describe("widgetBuckets", () => {
     expect(widgetBuckets({ tenantId: "t1", sessionId: "s", ip: null })[1].key).toBe("ip:t1:unknown");
   });
 });
+
+describe("relayedBuckets", () => {
+  it("has no IP bucket: the provider's IP is shared by every buyer", () => {
+    expect(relayedBuckets({ tenantId: "t1", channel: "telegram", externalUserId: "555" }).map((b) => b.key)).toEqual([
+      "session:t1:telegram:555",
+      "tenant:t1",
+    ]);
+  });
+});
+

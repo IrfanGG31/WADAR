@@ -2,8 +2,7 @@ import { Bot } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
-import { conversationChip, inboxTab, escalationLabel } from "@/core/chat/inbox";
-import { visitorLabel } from "@/core/chat/widget";
+import { buyerLabel, CHANNEL_LABEL, conversationChip, inboxTab, escalationLabel } from "@/core/chat/inbox";
 import { formatCount } from "@/core/number-format";
 import { listInbox } from "@/db/chat";
 import { listUnreadNotifications } from "@/db/notifications";
@@ -75,14 +74,13 @@ async function Inbox({ params, searchParams }: Pick<PageProps<"/[slug]/chat">, "
                   className="flex min-h-14 flex-col gap-1 px-4 py-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium">
-                      {c.channel === "widget" ? visitorLabel(c.external_user_id) : c.external_user_id}
-                    </span>
+                    <span className="truncate text-sm font-medium">{buyerLabel(c)}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(c.last_message_at, shop.timezone)}</span>
                   </span>
                   <span className="line-clamp-2 text-sm text-muted-foreground">{c.last_content ?? "—"}</span>
                   <span className="flex flex-wrap items-center gap-2">
                     <Badge variant={CHIP_VARIANT[chip.tone]}>{chip.label}</Badge>
+                    <span className="text-xs text-muted-foreground">{CHANNEL_LABEL[c.channel] ?? c.channel}</span>
                     {c.status === "escalated" && <span className="text-xs text-muted-foreground">{escalationLabel(c.escalation_reason)}</span>}
                   </span>
                 </Link>
