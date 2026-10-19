@@ -4,6 +4,7 @@ import { getQueryEmbedder } from "@/ai";
 import { chatGenerator } from "@/ai/chat-generator";
 import { isValidExternalUserId, handleWidgetMessage } from "@/core/chat/widget-service";
 import { clientIp } from "@/core/rate-limit";
+import { isChannelPending } from "@/db/schema-pending";
 import { supabaseWidgetStore } from "@/db/widget-store";
 import { apiError, readJson, withApiKey } from "@/lib/api-v1";
 import { getTenantAi } from "@/lib/tenant-ai";
@@ -31,11 +32,17 @@ export function POST(request: Request) {
     if (!parsed.success) return apiError(400, "invalid_body", parsed.error.issues[0]?.message ?? "Isi permintaan tidak valid.");
     const { from, text, message_id, channel } = parsed.data;
     const clientId = createHash("sha256").update(message_id).digest("hex").slice(0, 32);
-    const result = await handleWidgetMessage(
-      supabaseWidgetStore(db, { embedQuery: getQueryEmbedder() }),
-      { forTenant: async (tenantId) => chatGenerator(await getTenantAi(tenantId)) },
-      { slug: caller.slug, sessionId: from, channel, ip: clientIp(request.headers), body: { text, client_id: clientId }, now: new Date() },
-    );
+    let result;
+    try {
+      result = await handleWidgetMessage(
+        supabaseWidgetStore(db, { embedQuery: getQueryEmbedder() }),
+        { forTenant: async (tenantId) => chatGenerator(await getTenantAi(tenantId)) },
+        { slug: caller.slug, sessionId: from, channel, ip: clientIp(request.headers), body: { text, client_id: clientId }, now: new Date() },
+      );
+    } catch (e) {
+      if (!isChannelPending(e)) throw e;
+      return apiError(503, "channel_pending", `Kanal "${channel}" menunggu pembaruan database WADAR. Sementara kirim dengan "channel": "whatsapp".`);
+    }
     if (result.status !== 200) return apiError(result.status, result.status === 429 ? "rate_limited" : "rejected", result.body.error, result.body);
     const reply = result.body.messages
       .filter((m) => m.author !== "customer")

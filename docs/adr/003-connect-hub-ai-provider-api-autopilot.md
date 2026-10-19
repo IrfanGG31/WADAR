@@ -26,8 +26,10 @@
 
 ## Konsekuensi
 
-- Satu migrasi `connect_hub` (tabel `ai_providers`, `api_keys`, `agent_settings`, `agent_tasks`, perluasan
-  `conversations.channel`). Diuji `supabase/tests/23_connect_hub.sql`.
+- Migrasi `connect_hub` (tabel `ai_providers`, `api_keys`, `agent_settings`, `agent_tasks`; aditif) dan
+  `conversation_channels` (perluasan CHECK `conversations.channel`; dipisah karena DROP CONSTRAINT perlu konfirmasi
+  manusia di hosted). Diuji `supabase/tests/23_connect_hub.sql`. Selama perluasan belum ada, kanal telegram/api di
+  `/api/v1/messages` dijawab 503 `channel_pending`; kanal whatsapp tetap jalan.
 - Cron baru `/api/cron/agent` (06.00 WIB). `/api/v1/` publik di `src/proxy.ts`; setiap route memeriksa kuncinya.
 - Merotasi `SUPABASE_SERVICE_ROLE_KEY` tanpa `WADAR_ENCRYPTION_KEY` membuat kunci AI tersimpan tak terbaca: toko
   kembali ke AI bawaan dan pemilik mengisi ulang. Set `WADAR_ENCRYPTION_KEY` sebelum rotasi.

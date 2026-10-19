@@ -10,3 +10,12 @@ export function isSchemaPending(error: { code?: string | null } | null | undefin
 
 /** What an action says when its table/function is not on this database yet. */
 export const SCHEMA_PENDING_MESSAGE = "Fitur ini menunggu pembaruan database (migrasi connect_hub). Fitur lain tetap jalan.";
+
+/**
+ * `conversations.channel` not widened yet (migration conversation_channels): the CHECK still only
+ * allows 'whatsapp' and 'widget', so a Telegram/API chat cannot open a conversation.
+ */
+export function isChannelPending(error: unknown): boolean {
+  const e = error as { code?: unknown; message?: unknown } | null | undefined;
+  return e?.code === "23514" && typeof e.message === "string" && e.message.includes("conversations_channel_check");
+}

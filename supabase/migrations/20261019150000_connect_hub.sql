@@ -228,8 +228,3 @@ begin
 end $$;
 revoke execute on function public.close_agent_task(uuid, text) from public, anon;
 grant execute on function public.close_agent_task(uuid, text) to authenticated;
-
--- ── 4. Chats from outside apps (bots forwarding WhatsApp / Telegram, or any app) ──
-alter table public.conversations drop constraint if exists conversations_channel_check;
-alter table public.conversations add constraint conversations_channel_check
-  check (channel in ('whatsapp', 'widget', 'telegram', 'api'));
