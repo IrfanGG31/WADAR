@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { Suspense } from "react";
+import { JudgeDockLoader } from "@/components/demo/judge-dock-loader";
 import { AccountLink } from "@/components/shell/account-link";
 import { NavSkeleton } from "@/components/shell/app-nav";
 import { RoleNav } from "@/components/shell/role-nav";
@@ -39,6 +40,9 @@ export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">)
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 md:px-10 md:pb-12 md:pt-8">{children}</main>
       </div>
+      <Suspense fallback={null}>
+        <JudgeDockLoader params={params} />
+      </Suspense>
     </div>
   );
 }

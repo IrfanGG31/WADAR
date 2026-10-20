@@ -46,20 +46,28 @@ export default function BerandaPage({ params, searchParams }: PageProps<"/[slug]
         <AutopilotCard params={params} />
       </Suspense>
 
-      <Suspense fallback={<KpiSkeleton />}>
-        <KpiCards params={params} />
-      </Suspense>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <Suspense fallback={<TrendSkeleton />}>
-          <TrendSection params={params} />
-        </Suspense>
-        <Suspense fallback={<LowStockSkeleton />}>
-          <LowStockSection params={params} />
+      <div data-tour="beranda-kpi" className="page-in">
+        <Suspense fallback={<KpiSkeleton />}>
+          <KpiCards params={params} />
         </Suspense>
       </div>
-      <Suspense fallback={<InsightSkeleton />}>
-        <InsightSection params={params} />
-      </Suspense>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div data-tour="beranda-trend" className="min-w-0">
+          <Suspense fallback={<TrendSkeleton />}>
+            <TrendSection params={params} />
+          </Suspense>
+        </div>
+        <div data-tour="beranda-stok" className="min-w-0">
+          <Suspense fallback={<LowStockSkeleton />}>
+            <LowStockSection params={params} />
+          </Suspense>
+        </div>
+      </div>
+      <div data-tour="beranda-insight">
+        <Suspense fallback={<InsightSkeleton />}>
+          <InsightSection params={params} />
+        </Suspense>
+      </div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ export function ResetDemo({ slug }: { slug: string }) {
     <section className="flex flex-col gap-3 rounded-xl border border-dashed border-warning/60 p-4">
       <h2 className="text-lg font-semibold">Reset data demo</h2>
       <p className="text-sm text-muted-foreground">
-        Mengembalikan toko contoh ke kondisi awal (90 hari data, cerita demo). Penjualan, stok, dan percakapan yang kamu tambahkan setelahnya
+        Mengembalikan toko contoh ke kondisi awal (data contoh dan cerita demo). Penjualan, stok, dan percakapan yang kamu tambahkan setelahnya
         diarsipkan, bukan dihapus.
       </p>
       <Button

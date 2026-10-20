@@ -69,6 +69,7 @@ export const PAGE_PERMISSION: Readonly<Record<string, Permission>> = {
   chat: "chat",
   konsultasi: "consult",
   pengaturan: "settings",
+  staging: "settings",
 };
 
 export function canOpenPage(role: MemberRole | null | undefined, page: string): boolean {

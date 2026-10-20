@@ -57,3 +57,30 @@ body {
     background-color: var(--color-card);
   }
 }
+
+/* Motion (Ruang Demo, Beranda): short, and off for prefers-reduced-motion. */
+@keyframes wadar-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes wadar-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 9999px rgb(8 42 92 / 0.55), 0 0 0 0 rgb(55 147 242 / 0.6); }
+  50% { box-shadow: 0 0 0 9999px rgb(8 42 92 / 0.55), 0 0 0 8px rgb(55 147 242 / 0); }
+}
+@keyframes wadar-paid {
+  0% { box-shadow: 0 0 0 0 rgb(22 163 74 / 0.5); }
+  100% { box-shadow: 0 0 0 18px rgb(22 163 74 / 0); }
+}
+@layer utilities {
+  .page-in { animation: wadar-rise 0.35s ease-out both; }
+  .dock-in { animation: wadar-rise 0.18s ease-out both; }
+  .lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgb(8 42 92 / 0.25); }
+  .tour-spotlight { animation: wadar-pulse-ring 1.8s ease-in-out infinite; }
+  .paid-flash { animation: wadar-paid 0.9s ease-out 2; }
+  .kpi-glow { box-shadow: 0 18px 40px -20px rgb(31 95 191 / 0.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .dock-in, .tour-spotlight, .paid-flash { animation: none; }
+  .lift, .lift:hover { transition: none; transform: none; }
+}

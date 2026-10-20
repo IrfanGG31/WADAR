@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { parseDemoProfile } from "@/core/demo-profiles";
 import { clientIp, DEMO_IP_LIMIT, DEMO_WINDOW_MS } from "@/core/rate-limit";
 import { sharedRateLimiter } from "@/db/rate-limit";
 import { shopPath } from "@/lib/routes";
@@ -25,7 +26,7 @@ function adminOrNull() {
  * (`create_demo_shop` reopens it instead of building another).
  */
 export async function startDemo(formData: FormData): Promise<void> {
-  const profile = formData.get("profile") === "kopi" ? "kopi" : "skincare";
+  const profile = parseDemoProfile(formData.get("profile"));
   const ip = clientIp(await headers()) ?? "unknown";
   const limit = await sharedRateLimiter(adminOrNull(), DEMO_WINDOW_MS)
     .hit([{ key: `demo:ip:${ip}`, limit: DEMO_IP_LIMIT }], Date.now())
