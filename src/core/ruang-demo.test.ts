@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PROFILES, DEMO_SHOPS, parseDemoProfile, SEGMENT_PROFILES } from "./demo-profiles";
+import { DEMO_PROFILES, DEMO_SHOPS, dayStory, parseDemoProfile, SEGMENT_PROFILES } from "./demo-profiles";
 import { formatDuration, weeklyImpact } from "./impact";
 import { crc16ccitt, qrisDemoPayload } from "./qris";
 
@@ -8,6 +8,12 @@ describe("demo profiles", () => {
     for (const p of DEMO_PROFILES) expect(parseDemoProfile(p)).toBe(p);
     expect(parseDemoProfile("kopi'; drop")).toBe("skincare");
     expect(parseDemoProfile(undefined)).toBe("skincare");
+  });
+
+  it("puts the current owner name in the day story", () => {
+    expect(dayStory("warkop", "Cak Rafi").some((m) => m.body.includes("Cak Rafi tetap di dapur"))).toBe(true);
+    expect(dayStory("madura", "  ").some((m) => m.body.includes("Cak Mat tinggal antar"))).toBe(true);
+    expect(dayStory("penyetan", "X").every((m) => !m.body.includes("{pemilik}"))).toBe(true);
   });
 
   it("segment demos tell a full day, each moment pointing at a page", () => {

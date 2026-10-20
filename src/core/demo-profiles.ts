@@ -22,6 +22,8 @@ export interface DayMoment {
 
 export interface DemoShop {
   name: string;
+  /** Seeded assistant/owner name (store_profile.persona.name). */
+  owner: string;
   segment: string;
   emoji: string;
   tagline: string;
@@ -33,6 +35,7 @@ export interface DemoShop {
 export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
   warkop: {
     name: "Warkop Mas Bayu",
+    owner: "Bayu",
     segment: "Cafe & warkop",
     emoji: "☕",
     tagline: "Kopi Rp5.000, ratusan gelas sehari, buka sampai tengah malam.",
@@ -41,12 +44,13 @@ export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
       { time: "06.00", title: "Buka, kasir siap", body: "Shift pagi langsung jualan. Tiap gelas tercatat 2 ketuk, tanpa nota kertas.", page: "kasir" },
       { time: "09.00", title: "Tahu menu yang laku", body: "Kopi tubruk dan es teh paling laris; WADAR tunjukkan untung per menu, bukan cuma omzet.", page: "keuangan" },
       { time: "13.00", title: "Pesanan GoFood ikut tercatat", body: "Komisi GoFood dihitung otomatis, jadi kelihatan untung bersihnya.", page: "keuangan" },
-      { time: "19.00", title: "Ramai nonton bola", body: "Tanya \"masih buka?\" di WhatsApp dijawab asisten, Mas Bayu tetap di dapur.", page: "chat" },
+      { time: "19.00", title: "Ramai nonton bola", body: "Tanya \"masih buka?\" di WhatsApp dijawab asisten, {pemilik} tetap di dapur.", page: "chat" },
       { time: "23.59", title: "Tutup, laporan jadi", body: "Omzet, untung, dan menu terlaris hari ini sudah ada di Beranda. Tidak perlu hitung uang laci.", page: "beranda" },
     ],
   },
   penyetan: {
     name: "Penyetan Bu Ratmi",
+    owner: "Bu Ratmi",
     segment: "Warung makan",
     emoji: "🍗",
     tagline: "Ayam & lele penyet, ramai makan siang, GoFood sedang naik.",
@@ -55,12 +59,13 @@ export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
       { time: "09.00", title: "Belanja pasar", body: "Biaya cabai, minyak, dan gas dicatat sekali; WADAR membaginya ke laporan mingguan.", page: "keuangan" },
       { time: "11.30", title: "Jam makan siang", body: "Antrean panjang: kasir pilih menu + level sambal, struk bisa dikirim ke WhatsApp.", page: "kasir" },
       { time: "14.00", title: "Promo GoFood 20%", body: "Omzet minggu ini naik, tapi WADAR memberi tahu untung menipis karena diskon + komisi.", page: "keuangan" },
-      { time: "16.00", title: "Pesanan nasi kotak", body: "Pembeli tanya minimal order di WhatsApp; asisten jawab dari FAQ toko, Bu Ratmi tinggal konfirmasi.", page: "chat" },
+      { time: "16.00", title: "Pesanan nasi kotak", body: "Pembeli tanya minimal order di WhatsApp; asisten jawab dari FAQ toko, {pemilik} tinggal konfirmasi.", page: "chat" },
       { time: "21.00", title: "Tanya ke Konsultasi Bisnis", body: "\"Lanjut promo GoFood atau tidak?\" dijawab dari angka penjualan toko sendiri.", page: "konsultasi" },
     ],
   },
   madura: {
     name: "Warung Madura Cak Mat",
+    owner: "Cak Mat",
     segment: "Toko kelontong",
     emoji: "🏪",
     tagline: "Buka 24 jam, jualan eceran: rokok per batang, bensin per liter.",
@@ -69,12 +74,13 @@ export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
       { time: "02.00", title: "Jaga malam", body: "Bensin eceran dan rokok per batang tercatat dengan satuan aslinya, bukan dibulatkan.", page: "kasir" },
       { time: "06.00", title: "Cek stok pagi", body: "Gas LPG 3 kg hampir habis; WADAR hitung kapan habis dan berapa yang perlu dipesan.", page: "stok" },
       { time: "10.00", title: "Pesan ke agen", body: "Pembelian ke agen gas dicatat; stok bertambah saat barang datang.", page: "stok/pembelian" },
-      { time: "15.00", title: "Antar gas lewat WhatsApp", body: "Pelanggan pesan gas lewat chat, asisten tanya alamat, Cak Mat tinggal antar.", page: "chat" },
+      { time: "15.00", title: "Antar gas lewat WhatsApp", body: "Pelanggan pesan gas lewat chat, asisten tanya alamat, {pemilik} tinggal antar.", page: "chat" },
       { time: "23.00", title: "Ganti shift", body: "Keponakan masuk jaga; laporan hari ini jelas, tidak ada selisih uang yang dicurigai.", page: "beranda" },
     ],
   },
   kopi: {
     name: "Kopi Dimas",
+    owner: "Dimas",
     segment: "Coffee shop",
     emoji: "🧋",
     tagline: "Kedai kopi kekinian, 90 hari data, GoFood & WhatsApp.",
@@ -88,6 +94,7 @@ export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
   },
   skincare: {
     name: "Glow by Sari",
+    owner: "Sari",
     segment: "Skincare online",
     emoji: "✨",
     tagline: "Jualan di Shopee, TikTok Shop, dan WhatsApp; 90 hari data.",
@@ -103,3 +110,9 @@ export const DEMO_SHOPS: Readonly<Record<DemoProfile, DemoShop>> = {
 
 /** The three segment demos shown first in Ruang Demo. */
 export const SEGMENT_PROFILES: readonly DemoProfile[] = ["warkop", "penyetan", "madura"];
+
+/** The day story with the shop's current owner name in place of `{pemilik}`. */
+export function dayStory(profile: DemoProfile, owner: string): DayMoment[] {
+  const name = owner.trim() || DEMO_SHOPS[profile].owner;
+  return DEMO_SHOPS[profile].day.map((m) => ({ ...m, body: m.body.replaceAll("{pemilik}", name) }));
+}

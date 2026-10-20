@@ -19,6 +19,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   "onboarding",
   "privasi",
   "struk",
+  "juri",
   "undangan",
   "w",
   // Next.js / PWA / public files

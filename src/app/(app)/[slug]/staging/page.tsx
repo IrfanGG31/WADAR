@@ -1,13 +1,15 @@
-import { ArrowRight, Clock, FlaskConical, QrCode } from "lucide-react";
+import { ArrowRight, Clock, FlaskConical, PenLine, QrCode } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PitchCard } from "@/components/demo/pitch-card";
 import { PageGate } from "@/components/shell/page-gate";
-import { DEMO_PROFILES, DEMO_SHOPS, SEGMENT_PROFILES } from "@/core/demo-profiles";
+import { DEMO_PROFILES, DEMO_SHOPS, dayStory, SEGMENT_PROFILES } from "@/core/demo-profiles";
 import { IMPACT_ASSUMPTIONS, weeklyImpact } from "@/core/impact";
+import { getStoreProfile } from "@/db/kb";
 import { getDemoProfile, getWeeklyCounts, listMyDemoShops } from "@/db/ruang-demo";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
+import { IdentityForm } from "./identity-form";
 import { ImpactCounter } from "./impact-counter";
 import { StartTourButton } from "./start-tour-button";
 import { VariantPicker } from "./variant-picker";
@@ -39,13 +41,28 @@ export default function StagingPage({ params }: PageProps<"/[slug]/staging">) {
 async function Body({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const [counts, profile, mine] = await Promise.all([getWeeklyCounts(shop.id), getDemoProfile(shop), listMyDemoShops()]);
+  const [counts, profile, mine, store] = await Promise.all([getWeeklyCounts(shop.id), getDemoProfile(shop), listMyDemoShops(), getStoreProfile(shop.id)]);
   const impact = weeklyImpact({ sales: counts.sales, aiReplies: counts.aiReplies, days: 7 });
   const story = DEMO_SHOPS[profile ?? "warkop"];
+  const owner = store.persona.name ?? "";
+  const moments = dayStory(profile ?? "warkop", owner);
   const a = IMPACT_ASSUMPTIONS;
 
   return (
     <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-4 rounded-2xl border border-border p-5" aria-labelledby="identitas">
+        <div>
+          <h2 id="identitas" className="flex items-center gap-2 text-lg font-semibold text-navy">
+            <PenLine className="h-4 w-4 text-primary" aria-hidden /> Sesuaikan toko
+          </h2>
+          <p className="text-sm text-muted-foreground">Ganti nama usaha sesuai calon pengguna atau juri yang kamu ajak demo. Data penjualan tidak berubah.</p>
+        </div>
+        <IdentityForm
+          current={{ name: shop.name, owner, address: store.policies.address ?? "" }}
+          original={profile ? { name: DEMO_SHOPS[profile].name, owner: DEMO_SHOPS[profile].owner, address: "" } : null}
+        />
+      </section>
+
       <section className="flex flex-col gap-4 rounded-2xl border border-border p-5" aria-labelledby="dampak">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -70,12 +87,12 @@ async function Body({ params }: { params: Params }) {
       <section className="flex flex-col gap-4 rounded-2xl border border-border p-5" aria-labelledby="sehari">
         <div>
           <h2 id="sehari" className="text-lg font-semibold text-navy">
-            Sehari di {story.name}
+            Sehari di {shop.name}
           </h2>
           <p className="text-sm text-muted-foreground">{story.tagline} Klik satu momen untuk melihatnya langsung di aplikasi.</p>
         </div>
         <ol className="relative flex flex-col gap-1 border-l-2 border-primary/20 pl-5">
-          {story.day.map((m) => (
+          {moments.map((m) => (
             <li key={m.time} className="relative">
               <span className="absolute -left-[27px] top-4 h-3 w-3 rounded-full bg-primary ring-4 ring-primary/15" aria-hidden />
               <Link href={shopPath(slug, m.page)} className="group flex flex-col gap-0.5 rounded-xl p-3 hover:bg-surface sm:flex-row sm:items-start sm:gap-4">
