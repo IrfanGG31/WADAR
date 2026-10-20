@@ -72,3 +72,25 @@ export async function adminListShops(query: string, kind: ShopKind): Promise<Adm
     createdAt: String(r.created_at),
   }));
 }
+
+export interface DemoSummaryRow {
+  profile: DemoProfile;
+  shops: number;
+  visitorShops: number;
+  lastCreated: string | null;
+}
+
+export async function adminDemoSummary(): Promise<DemoSummaryRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_demo_summary");
+  if (error) {
+    if (isSchemaPending(error)) return [];
+    throw error;
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    profile: parseDemoProfile(r.profile),
+    shops: Number(r.shops ?? 0),
+    visitorShops: Number(r.visitor_shops ?? 0),
+    lastCreated: (r.last_created as string | null) ?? null,
+  }));
+}

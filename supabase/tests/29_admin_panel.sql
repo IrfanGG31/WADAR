@@ -73,3 +73,28 @@ reset role;
 rollback;
 \o
 select 'admin overview: ok' as result;
+-- Demo cleanup: visitor copies go, a real account's demo shop stays.
+\o /dev/null
+begin;
+insert into auth.users (id, email, is_anonymous) values
+  ('00000000-0000-4000-8000-0000000000c1', 'staff@wadar.test', false),
+  ('00000000-0000-4000-8000-0000000000c2', null, true);
+insert into app.platform_admins (email) values ('staff@wadar.test');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c2"}', true);
+select set_config('test.visitor', public.create_demo_shop('warkop'), true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c1"}', true);
+select set_config('test.staff', public.create_demo_shop('warkop'), true);
+do $$ begin
+  assert (select visitor_shops from public.admin_demo_summary() where profile = 'warkop') = 1, 'one visitor copy';
+  assert public.admin_purge_demo_shops(1) = 0, 'nothing older than a day yet';
+  assert public.admin_purge_demo_shops(0) = 1, 'visitor copy purged';
+end $$;
+reset role;
+do $$ begin
+  assert not exists (select 1 from public.tenants where slug = current_setting('test.visitor')), 'visitor shop gone';
+  assert exists (select 1 from public.tenants where slug = current_setting('test.staff')), 'staff demo kept';
+end $$;
+rollback;
+\o
+select 'demo cleanup: ok' as result;

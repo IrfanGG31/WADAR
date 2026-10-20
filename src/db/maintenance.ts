@@ -1,10 +1,21 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isSchemaPending } from "./schema-pending";
 
 /** Service role only (migration 20261017024527 grants EXECUTE to service_role alone). Returns the number of shops deleted. */
 export async function purgeDueShops(db: SupabaseClient): Promise<number> {
   const { data, error } = await db.rpc("purge_due_shops");
   if (error) throw error;
+  return Number(data ?? 0);
+}
+
+/** Visitor (anonymous-only) demo shops older than 7 days (migration demo_cleanup); 0 before that migration. */
+export async function purgeStaleDemoShops(db: SupabaseClient): Promise<number> {
+  const { data, error } = await db.rpc("purge_stale_demo_shops");
+  if (error) {
+    if (isSchemaPending(error)) return 0;
+    throw error;
+  }
   return Number(data ?? 0);
 }
 

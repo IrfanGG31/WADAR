@@ -5,6 +5,13 @@ import { isPublicPath } from "@/proxy";
 const admin = { tag: "service-role" };
 let dueShops = 0;
 let expiredRows = 0;
+let staleDemos = 0;
+const purgeStaleDemoShops = vi.fn(async (db: unknown) => {
+  if (db !== admin) throw new Error("not service role");
+  const n = staleDemos;
+  staleDemos = 0;
+  return n;
+});
 const purgeDueShops = vi.fn(async (db: unknown) => {
   if (db !== admin) throw new Error("not service role");
   const n = dueShops;
@@ -23,6 +30,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => admin }));
 vi.mock("@/db/maintenance", () => ({
   purgeDueShops: (db: unknown) => purgeDueShops(db),
+  purgeStaleDemoShops: (db: unknown) => purgeStaleDemoShops(db),
   pruneExpiredAnswerCache: (db: unknown, now: Date) => pruneExpiredAnswerCache(db, now),
 }));
 
@@ -31,6 +39,7 @@ const call = (auth?: string) => GET(new Request("https://wadar.test/api/cron/dai
 
 beforeEach(() => {
   dueShops = 2;
+  staleDemos = 3;
   expiredRows = 9;
   vi.clearAllMocks();
   vi.stubEnv("CRON_SECRET", "s3cret");
@@ -51,8 +60,9 @@ describe("GET /api/cron/daily-cleanup (Vercel Cron)", () => {
   it("purges due shops and prunes the answer cache with the service-role client, then is a no-op on re-run", async () => {
     const first = await call("Bearer s3cret");
     expect(first.status).toBe(200);
-    expect(await first.json()).toMatchObject({ purged_shops: 2, pruned_cache_rows: 9, errors: [] });
+    expect(await first.json()).toMatchObject({ purged_shops: 5, pruned_cache_rows: 9, errors: [] });
     expect(purgeDueShops).toHaveBeenCalledWith(admin);
+    expect(purgeStaleDemoShops).toHaveBeenCalledWith(admin);
     expect(pruneExpiredAnswerCache.mock.calls[0][0]).toBe(admin);
 
     const again = await call("Bearer s3cret");

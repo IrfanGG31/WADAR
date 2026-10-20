@@ -67,3 +67,18 @@ export async function switchToAdmin(): Promise<void> {
   await supabase.auth.signOut();
   redirect("/masuk/admin?next=/admin");
 }
+
+const PurgeInput = z.object({ days: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(7)]) });
+
+/** Deletes visitor demo shops older than `days` (demo shops of real accounts are kept). */
+export async function purgeDemoShops(input: unknown): Promise<AdminResult> {
+  const parsed = PurgeInput.safeParse(input);
+  if (!parsed.success) return { error: "Pilihan umur belum benar." };
+  if (!(await isPlatformAdmin())) return { error: NOT_ADMIN };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_purge_demo_shops", { p_days: parsed.data.days });
+  if (error) return { error: error.code === "42501" ? NOT_ADMIN : "Belum terhapus. Coba lagi sebentar." };
+  revalidatePath("/admin");
+  const n = Number(data ?? 0);
+  return { note: n === 0 ? "Tidak ada toko demo pengunjung yang cocok." : `${n} toko demo pengunjung dihapus.` };
+}
