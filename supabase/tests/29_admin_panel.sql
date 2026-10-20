@@ -55,3 +55,21 @@ reset role;
 rollback;
 \o
 select 'admin panel: ok' as result;
+-- Overview + kind filter.
+\o /dev/null
+begin;
+insert into auth.users (id, email, is_anonymous) values ('00000000-0000-4000-8000-0000000000b1', 'boss@wadar.test', false);
+insert into app.platform_admins (email) values ('boss@wadar.test');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000b1"}', true);
+select public.create_demo_shop('madura');
+do $$ begin
+  assert (select demo_shops from public.admin_overview()) >= 1, 'overview counts demo shops';
+  assert not exists (select 1 from public.admin_list_shops('', 50, 'real') where is_demo), 'real filter';
+  assert exists (select 1 from public.admin_list_shops('', 50, 'demo') where is_demo and revenue_30d > 0), 'demo filter + revenue';
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a2"}', true);
+reset role;
+rollback;
+\o
+select 'admin overview: ok' as result;

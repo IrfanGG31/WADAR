@@ -2,6 +2,7 @@ import { LogOut } from "lucide-react";
 import { Suspense } from "react";
 import { JudgeDockLoader } from "@/components/demo/judge-dock-loader";
 import { AccountLink } from "@/components/shell/account-link";
+import { AdminLink } from "@/components/shell/admin-link";
 import { NavSkeleton } from "@/components/shell/app-nav";
 import { RoleNav } from "@/components/shell/role-nav";
 import { ServiceWorkerRegister } from "@/components/shell/service-worker-register";
@@ -26,7 +27,10 @@ export default function ShopLayout({ children, params }: LayoutProps<"/[slug]">)
           <Suspense fallback={<div className="h-5 w-40 animate-pulse rounded bg-muted" />}>
             <ShopName params={params} />
           </Suspense>
-          <div className="flex shrink-0 items-center">
+          <div className="flex shrink-0 items-center gap-1">
+            <Suspense fallback={null}>
+              <AdminLink />
+            </Suspense>
             <Suspense fallback={<div className="h-11 w-11" aria-hidden />}>
               <AccountLink params={params} />
             </Suspense>

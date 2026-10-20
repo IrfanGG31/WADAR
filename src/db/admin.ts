@@ -24,12 +24,40 @@ export interface AdminShopRow {
   demoProfile: DemoProfile | null;
   ownerEmail: string | null;
   sales30d: number;
+  revenue30d: number;
+  lastSaleAt: string | null;
   createdAt: string;
 }
 
-export async function adminListShops(query: string): Promise<AdminShopRow[]> {
+export type ShopKind = "real" | "demo" | "all";
+
+export interface AdminOverview {
+  realShops: number;
+  realActive7d: number;
+  realNew7d: number;
+  demoShops: number;
+  sales30d: number;
+  revenue30d: number;
+}
+
+export async function adminOverview(): Promise<AdminOverview> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_list_shops", { p_query: query, p_limit: 100 });
+  const { data, error } = await supabase.rpc("admin_overview");
+  if (error) throw error;
+  const r = ((data ?? [])[0] ?? {}) as Record<string, unknown>;
+  return {
+    realShops: Number(r.real_shops ?? 0),
+    realActive7d: Number(r.real_active_7d ?? 0),
+    realNew7d: Number(r.real_new_7d ?? 0),
+    demoShops: Number(r.demo_shops ?? 0),
+    sales30d: Number(r.sales_30d ?? 0),
+    revenue30d: Number(r.revenue_30d ?? 0),
+  };
+}
+
+export async function adminListShops(query: string, kind: ShopKind): Promise<AdminShopRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_shops", { p_query: query, p_limit: 200, p_kind: kind });
   if (error) throw error;
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: String(r.id),
@@ -39,6 +67,8 @@ export async function adminListShops(query: string): Promise<AdminShopRow[]> {
     demoProfile: r.demo_profile ? parseDemoProfile(r.demo_profile) : null,
     ownerEmail: (r.owner_email as string | null) ?? null,
     sales30d: Number(r.sales_30d ?? 0),
+    revenue30d: Number(r.revenue_30d ?? 0),
+    lastSaleAt: (r.last_sale_at as string | null) ?? null,
     createdAt: String(r.created_at),
   }));
 }
