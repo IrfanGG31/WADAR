@@ -56,7 +56,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   if (!isAuthenticated && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/masuk";
+    // Staff sign in with a password (no email delivery needed).
+    url.pathname = pathname === "/admin" || pathname.startsWith("/admin/") ? "/masuk/admin" : "/masuk";
     url.search = "";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);

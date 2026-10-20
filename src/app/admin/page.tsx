@@ -1,14 +1,15 @@
 import { ExternalLink, Search, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { brand } from "@/brand";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCount } from "@/core/number-format";
 import { adminListShops, isPlatformAdmin } from "@/db/admin";
 import { listDemoTemplates } from "@/db/demo-templates";
 import { formatDateTime } from "@/lib/format-date";
+import { switchToAdmin } from "./actions";
 import { ShopRenameRow } from "./shop-rename-row";
 import { TemplateForm } from "./template-form";
 
@@ -42,7 +43,19 @@ export default function AdminPage({ searchParams }: PageProps<"/admin">) {
 }
 
 async function Body({ searchParams }: Pick<PageProps<"/admin">, "searchParams">) {
-  if (!(await isPlatformAdmin())) notFound();
+  if (!(await isPlatformAdmin())) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col gap-3 rounded-2xl border border-border p-6 text-center">
+        <p className="text-lg font-semibold text-navy">Khusus admin WADAR</p>
+        <p className="text-sm text-muted-foreground">Akun yang sedang masuk di browser ini bukan akun admin (misalnya akun pengunjung demo).</p>
+        <form action={switchToAdmin}>
+          <Button type="submit" className="w-full">
+            Masuk dengan akun admin
+          </Button>
+        </form>
+      </div>
+    );
+  }
   const q = (await searchParams).q;
   const query = typeof q === "string" ? q.slice(0, 60) : "";
   const [templates, shops] = await Promise.all([listDemoTemplates(), adminListShops(query)]);

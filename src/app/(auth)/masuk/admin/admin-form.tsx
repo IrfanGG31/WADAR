@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { describeAuthError } from "@/lib/auth-errors";
-import { AFTER_SIGN_IN_PATH } from "@/lib/routes";
+import { safeNextPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -35,7 +35,7 @@ export function AdminForm() {
       setError(describeAuthError(signInError));
       return;
     }
-    router.push(AFTER_SIGN_IN_PATH);
+    router.push(safeNextPath(new URLSearchParams(window.location.search).get("next")));
     router.refresh();
   }
 

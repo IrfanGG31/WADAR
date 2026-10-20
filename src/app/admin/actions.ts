@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { DEMO_PROFILES } from "@/core/demo-profiles";
 import { isPlatformAdmin } from "@/db/admin";
@@ -58,4 +59,11 @@ export async function renameShop(input: unknown): Promise<AdminResult> {
   if (error) return { error: error.code === "42501" ? NOT_ADMIN : "Belum tersimpan. Coba lagi sebentar." };
   revalidatePath("/admin");
   return { note: `Nama toko diganti menjadi ${parsed.data.name}.` };
+}
+
+/** Signed in as someone else (e.g. a demo visitor): sign out and come back through the admin login. */
+export async function switchToAdmin(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/masuk/admin?next=/admin");
 }
