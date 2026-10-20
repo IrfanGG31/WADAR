@@ -1,5 +1,6 @@
 import { ApiOrdersInput, resolveApiOrders } from "@/core/channels/api-orders";
 import { apiError, readJson, withApiKey } from "@/lib/api-v1";
+import { scheduleWebhookDispatch } from "@/lib/webhook-dispatch";
 
 export const maxDuration = 60;
 
@@ -45,6 +46,7 @@ export function POST(request: Request) {
       }
       result = data as typeof result;
     }
+    if (result.created > 0) scheduleWebhookDispatch(caller.tenantId);
     return Response.json({ ...result, failed: result.failed + errors.length, errors: [...errors, ...(result.errors ?? [])] });
   });
 }

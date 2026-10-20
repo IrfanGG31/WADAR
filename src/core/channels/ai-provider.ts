@@ -22,7 +22,7 @@ export const AI_PRESETS: readonly AiPreset[] = [
   { key: "custom", name: "Lainnya / server sendiri", baseUrl: "", keyUrl: "", modelHint: "nama model persis seperti di dokumentasi penyedia" },
 ];
 
-const PRIVATE_HOST = [
+export const PRIVATE_HOST = [
   /^localhost$/i,
   /\.(local|internal|localhost)$/i,
   /^\d{1,3}(\.\d{1,3}){3}$/, // any IPv4 literal (private ranges included) — use a hostname

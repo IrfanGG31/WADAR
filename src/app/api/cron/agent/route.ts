@@ -1,4 +1,5 @@
 import { runAgentForShop } from "@/db/agent";
+import { dispatchWebhooks } from "@/db/webhooks";
 import { listDigestShops } from "@/db/weekly-digest";
 import { rejectCronRequest } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ export async function GET(request: Request): Promise<Response> {
   if (rejected) return rejected;
   const db = createAdminClient();
   const shops = await listDigestShops(db);
-  const report = { shops: shops.length, created: 0, closed: 0, purchase_drafts: 0, auto_ordered: 0, errors: [] as { tenant_id: string; error: string }[] };
+  const report = { shops: shops.length, created: 0, closed: 0, purchase_drafts: 0, auto_ordered: 0, webhooks_sent: 0, errors: [] as { tenant_id: string; error: string }[] };
   for (const shop of shops) {
     try {
       const r = await runAgentForShop(db, shop.id);
@@ -23,6 +24,9 @@ export async function GET(request: Request): Promise<Response> {
       report.closed += r.closed;
       report.purchase_drafts += r.purchaseDrafts ?? 0;
       report.auto_ordered += r.autoOrdered ?? 0;
+      // Catch-up for webhook retries that are due (ADR-007).
+      const hooks = await dispatchWebhooks(db, shop.id);
+      report.webhooks_sent += hooks.sent;
     } catch (e) {
       report.errors.push({ tenant_id: shop.id, error: e instanceof Error ? e.message : String(e) });
       console.error("[agent] shop failed", shop.id, e);

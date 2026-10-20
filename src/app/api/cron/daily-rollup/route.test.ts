@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import vercel from "../../../../../vercel.json";
 import { isPublicPath } from "@/proxy";
 
-const postJournal = vi.fn(async (_fn: string, _args: unknown) => ({ data: 4, error: null }));
+const postJournal = vi.fn(async (...call: [string, unknown]) => (call[0] ? { data: 4, error: null } : { data: 0, error: null }));
 const admin = { tag: "service-role", rpc: (fn: string, args: unknown) => postJournal(fn, args) };
 const listShopsForRollup = vi.fn(async (db: unknown) => {
   if (db !== admin) throw new Error("not service role");

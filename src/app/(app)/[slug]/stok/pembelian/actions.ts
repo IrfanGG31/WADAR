@@ -8,6 +8,7 @@ import { isSchemaPending, SCHEMA_PENDING_MESSAGE } from "@/db/schema-pending";
 import { getShop } from "@/db/shop";
 import { shopPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleWebhookDispatch } from "@/lib/webhook-dispatch";
 
 export interface PurchaseActionResult {
   error?: string;
@@ -142,6 +143,7 @@ export async function receivePurchaseOrder(slug: string, id: string, input: unkn
   });
   if (error) return { error: rpcError(error, "Penerimaan belum tercatat. Coba lagi sebentar.") };
   const r = (data ?? { total: 0, status: "partial" }) as { total: number; status: string };
+  scheduleWebhookDispatch(shop.id);
   refresh(slug, id);
   revalidatePath(shopPath(slug, "stok"));
   return {

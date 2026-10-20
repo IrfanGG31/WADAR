@@ -8,6 +8,7 @@ import { VoidSaleInput, voidResultNote, voidSaleError } from "@/core/sale-void";
 import { permissionDenied } from "@/db/access";
 import { getShop } from "@/db/shop";
 import { createClient } from "@/lib/supabase/server";
+import { scheduleWebhookDispatch } from "@/lib/webhook-dispatch";
 
 export interface RecordSaleResult {
   error?: string;
@@ -59,6 +60,7 @@ export async function recordSale(slug: string, input: unknown): Promise<RecordSa
     return { error: "Transaksi belum tersimpan. Coba tekan Bayar lagi; tidak akan tercatat dobel.", retryable: true };
   }
   const result = data as { sale_id: string; total: number; duplicate: boolean };
+  if (!result.duplicate) scheduleWebhookDispatch(shop.id);
   return { saleId: result.sale_id, total: Number(result.total), duplicate: result.duplicate };
 }
 
@@ -77,6 +79,7 @@ export async function voidSale(slug: string, input: unknown): Promise<VoidSaleRe
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("void_sale", { p_sale_id: parsed.data.sale_id, p_reason: parsed.data.reason || null });
   if (error) return { error: voidSaleError(error) };
+  scheduleWebhookDispatch(shop.id);
   return { note: voidResultNote((data ?? {}) as { already_void?: boolean; restocked?: number }) };
 }
 

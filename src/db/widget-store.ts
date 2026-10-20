@@ -16,6 +16,7 @@ import { findOpenShop } from "@/db/open-shop";
 import { notifyEscalation } from "@/core/notify";
 import { supabaseNotifyDeps } from "@/db/notifications";
 import { vapidConfigFromEnv } from "@/lib/web-push";
+import { dispatchWebhooks } from "./webhooks";
 
 const MESSAGE_COLUMNS = "id, author, content, created_at";
 
@@ -204,6 +205,12 @@ export function supabaseWidgetStore(db: SupabaseClient, { embedQuery }: { embedQ
       after(() =>
         notifyEscalation(supabaseNotifyDeps(db, vapidConfigFromEnv()), args).catch((e: unknown) => {
           console.error("escalation notification failed", e);
+        }),
+      );
+      // chat.needs_owner webhook (ADR-007), written by the escalation itself.
+      after(() =>
+        dispatchWebhooks(db, args.tenantId).catch((e: unknown) => {
+          console.error("webhook dispatch failed", e);
         }),
       );
     },

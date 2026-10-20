@@ -28,6 +28,7 @@ penghubung** (`stock.move`, `account.move`). WADAR memakai pola yang sama, denga
 | **Percakapan** | Discuss / Live chat | `conversations`, `messages`, `notifications` | `chat/pipeline`, `chat/guardrails`, `chat/widget-service` | pipeline chat |
 | **Konsultasi** | (tidak ada di Odoo) | `memory_items`, `insights`, `weekly_insight_digests` | `consult/*` | tools baca-saja |
 | **Koneksi** | Integrations / API | `ai_providers`, `api_keys`, `channel_connections`, `message_deliveries` | `channels/ai-provider`, `channels/api-key`, `channels/api-orders`, `channels/adapter`, `channels/telegram`, `channels/whatsapp`, `channels/connector-service` | RPC pemilik, `api_*`, webhook `/api/channels/*` |
+| **Webhook** | Webhooks / bus | `outbox_events`, `webhook_endpoints`, `webhook_deliveries` | `webhooks` | trigger outbox + `dispatchWebhooks` (ADR-007) |
 | **Autopilot** | Automated actions | `agent_settings`, `agent_tasks` | `agent` (aturan, tanpa LLM) | cron + tutup tugas |
 | **Platform** | Base | `tenants`, `memberships`, `shop_invites`, `audit_log` | `roles`, `audit` | RLS `app.is_member` / `app.has_shop_role` |
 
@@ -75,7 +76,7 @@ satu basis pengetahuan berada di satu ruang vektor.
    bayar; Autopilot membuat draf PO per pemasok dan menyetujui sendiri sampai batas nominal pemilik.
 2. **Jurnal double-entry:** **selesai (ADR-006)** — `journal_entries` + `journal_lines` (debit = kredit,
    append-only) dari penjualan, pembelian, pengeluaran, dan stok; layar Keuangan › Neraca & Jurnal.
-3. **Event outbox:** `outbox_events` ditulis di transaksi yang sama dengan perubahan; handler idempoten
-   (`processed_events`) menggantikan pemanggilan lintas modul langsung. Webhook keluar untuk aplikasi luar.
+3. **Event outbox + webhook keluar:** **selesai (ADR-007)** — `outbox_events` ditulis trigger di transaksi yang
+   sama; pengiriman bertanda tangan HMAC dengan retry. Sisa: handler internal lintas modul lewat outbox.
 4. **Konektor resmi:** WhatsApp Cloud API dan Telegram Bot API — **selesai (ADR-004)**. Sisa: sinkron pesanan
    marketplace via OAuth seller center. Rahasia per toko memakai `src/lib/secret-box.ts`.

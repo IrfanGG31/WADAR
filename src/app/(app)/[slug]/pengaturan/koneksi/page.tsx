@@ -9,6 +9,7 @@ import { getAiProviderSettings, isConnectHubInstalled } from "@/db/ai-provider";
 import { listApiKeys } from "@/db/api-keys";
 import { listChannelConnections, whatsappVerifyToken, type ChannelConnectionView } from "@/db/channel-connections";
 import { getPurchaseAgentSettings } from "@/db/purchasing";
+import { listWebhookEndpoints } from "@/db/webhooks";
 import { getShop } from "@/db/shop";
 import { formatDateTime } from "@/lib/format-date";
 import { requestOrigin } from "@/lib/request-origin";
@@ -18,6 +19,7 @@ import { AgentSettingsForm } from "./agent-settings-form";
 import { AiProviderForm } from "./ai-provider-form";
 import { ApiKeyManager } from "./api-key-manager";
 import { TelegramConnect, WhatsAppConnect, type ConnectorView } from "./channel-connect";
+import { WebhookManager } from "./webhook-manager";
 import { SchemaPendingNotice } from "./schema-pending-notice";
 import { Step, type StepState } from "./step";
 
@@ -72,7 +74,7 @@ async function Steps({ params }: { params: Params }) {
   const shop = await getShop(slug);
   const { origin } = await requestOrigin();
   const supabase = await createClient();
-  const [installed, ai, keys, agent, tasks, outsideChats, imports, connectors, purchaseAgent] = await Promise.all([
+  const [installed, ai, keys, agent, tasks, outsideChats, imports, connectors, purchaseAgent, webhooks] = await Promise.all([
     isConnectHubInstalled(),
     getAiProviderSettings(shop.id),
     listApiKeys(shop.id),
@@ -82,6 +84,7 @@ async function Steps({ params }: { params: Params }) {
     supabase.from("marketplace_imports").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id),
     listChannelConnections(shop.id),
     getPurchaseAgentSettings(shop.id),
+    listWebhookEndpoints(shop.id),
   ]);
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const messageKey = activeKeys.some((k) => k.scopes.includes("messages:write"));
@@ -241,6 +244,24 @@ async function Steps({ params }: { params: Params }) {
               </tbody>
             </table>
           </div>
+          {webhooks.installed && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-navy">Webhook keluar</p>
+              <p className="text-sm text-muted-foreground">
+                WADAR mengabari aplikasimu saat ada penjualan, barang datang, atau chat yang perlu kamu balas. Tiap kiriman ditandatangani (header{" "}
+                <code className="rounded bg-surface px-1">X-Wadar-Signature</code>) dan dicoba ulang kalau gagal.
+              </p>
+              <WebhookManager
+                endpoints={webhooks.endpoints.map((w) => ({
+                  id: w.id,
+                  url: w.url,
+                  events: w.events,
+                  last_error: w.last_error,
+                  status_label: w.last_delivery_at ? `Terakhir terkirim ${formatDateTime(w.last_delivery_at, shop.timezone)} (HTTP ${w.last_status ?? "-"})` : null,
+                }))}
+              />
+            </div>
+          )}
         </div>
       </Step>
 
