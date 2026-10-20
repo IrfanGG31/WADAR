@@ -5,6 +5,7 @@ import { PitchCard } from "@/components/demo/pitch-card";
 import { PageGate } from "@/components/shell/page-gate";
 import { DEMO_PROFILES, DEMO_SHOPS, dayStory, SEGMENT_PROFILES } from "@/core/demo-profiles";
 import { IMPACT_ASSUMPTIONS, weeklyImpact } from "@/core/impact";
+import { listDemoTemplates } from "@/db/demo-templates";
 import { getStoreProfile } from "@/db/kb";
 import { getDemoProfile, getWeeklyCounts, listMyDemoShops } from "@/db/ruang-demo";
 import { getShop } from "@/db/shop";
@@ -41,10 +42,16 @@ export default function StagingPage({ params }: PageProps<"/[slug]/staging">) {
 async function Body({ params }: { params: Params }) {
   const { slug } = await params;
   const shop = await getShop(slug);
-  const [counts, profile, mine, store] = await Promise.all([getWeeklyCounts(shop.id), getDemoProfile(shop), listMyDemoShops(), getStoreProfile(shop.id)]);
+  const [counts, profile, mine, store, templates] = await Promise.all([getWeeklyCounts(shop.id), getDemoProfile(shop), listMyDemoShops(), getStoreProfile(shop.id), listDemoTemplates()]);
   const impact = weeklyImpact({ sales: counts.sales, aiReplies: counts.aiReplies, days: 7 });
   const story = DEMO_SHOPS[profile ?? "warkop"];
   const owner = store.persona.name ?? "";
+  const tpl = profile ? templates.find((t) => t.profile === profile) : undefined;
+  const pick = (p: (typeof DEMO_PROFILES)[number]) => {
+    const t = templates.find((x) => x.profile === p);
+    const s = DEMO_SHOPS[p];
+    return { name: t?.name ?? s.name, segment: t?.segment ?? s.segment, emoji: t?.emoji ?? s.emoji, tagline: t?.tagline ?? s.tagline, highlights: s.highlights };
+  };
   const moments = dayStory(profile ?? "warkop", owner);
   const a = IMPACT_ASSUMPTIONS;
 
@@ -59,7 +66,7 @@ async function Body({ params }: { params: Params }) {
         </div>
         <IdentityForm
           current={{ name: shop.name, owner, address: store.policies.address ?? "" }}
-          original={profile ? { name: DEMO_SHOPS[profile].name, owner: DEMO_SHOPS[profile].owner, address: "" } : null}
+          original={tpl ? { name: tpl.name, owner: tpl.owner, address: "" } : null}
         />
       </section>
 
@@ -146,7 +153,3 @@ async function Body({ params }: { params: Params }) {
   );
 }
 
-function pick(p: (typeof DEMO_PROFILES)[number]) {
-  const s = DEMO_SHOPS[p];
-  return { name: s.name, segment: s.segment, emoji: s.emoji, tagline: s.tagline, highlights: s.highlights };
-}

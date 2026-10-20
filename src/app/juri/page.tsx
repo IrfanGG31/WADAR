@@ -1,8 +1,10 @@
 import { ShieldCheck } from "lucide-react";
 import Image from "next/image";
+import { Suspense } from "react";
 import { brand } from "@/brand";
 import { JudgeEntry } from "@/components/demo/judge-entry";
 import { PitchCard } from "@/components/demo/pitch-card";
+import { listDemoTemplates } from "@/db/demo-templates";
 
 export const metadata = { title: "Demo untuk Juri" };
 
@@ -26,11 +28,18 @@ export default function JuriPage() {
             transaksi apa pun.
           </p>
         </header>
-        <JudgeEntry />
+        <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-muted" aria-hidden />}>
+          <Shops />
+        </Suspense>
         <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
           <PitchCard />
         </section>
       </div>
     </main>
   );
+}
+
+async function Shops() {
+  const shops = (await listDemoTemplates()).filter((t) => t.onJuri);
+  return <JudgeEntry shops={shops} />;
 }
