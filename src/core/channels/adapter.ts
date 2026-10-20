@@ -9,7 +9,7 @@
  * secrets themselves; they get them from `ChannelCredentials`, resolved server-side per shop.
  */
 
-export type ChatChannelKind = "whatsapp" | "telegram";
+export type ChatChannelKind = "whatsapp" | "telegram" | "fonnte";
 
 /** One message from a buyer, already normalized: the pipeline never sees provider payloads. */
 export interface InboundMessage {

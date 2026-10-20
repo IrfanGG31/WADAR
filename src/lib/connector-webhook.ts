@@ -75,7 +75,7 @@ async function answerConnectorMessages(connection: LoadedConnection, adapter: Ch
   const store = supabaseWidgetStore(db, { embedQuery: getQueryEmbedder() });
   const generator = { forTenant: async (tenantId: string) => chatGenerator(await getTenantAi(tenantId)) };
   const credentials = credentialsOf(connection);
-  const token = connection.kind === "telegram" ? connection.secrets.bot_token : connection.secrets.access_token;
+  const token = connection.kind === "telegram" ? connection.secrets.bot_token : connection.kind === "fonnte" ? connection.secrets.token : connection.secrets.access_token;
 
   return processConnectorMessages(
     {
@@ -89,7 +89,7 @@ async function answerConnectorMessages(connection: LoadedConnection, adapter: Ch
           body: { text: m.text, client_id: createHash("sha256").update(m.externalMessageId).digest("hex").slice(0, 32) },
           now: new Date(),
         });
-        if (connection.kind === "whatsapp" && result.status === 200 && !result.body.duplicate) {
+        if ((connection.kind === "whatsapp" || connection.kind === "fonnte") && result.status === 200 && !result.body.duplicate) {
           await linkChatToCustomer(db, connection.tenantId, "whatsapp", m.externalUserId).catch(() => undefined);
         }
         return result;
@@ -104,7 +104,9 @@ async function answerConnectorMessages(connection: LoadedConnection, adapter: Ch
       acknowledge: (m) =>
         connection.kind === "telegram"
           ? telegramTyping(token ?? "", m.externalUserId)
-          : whatsappMarkRead(credentials.phone_number_id ?? "", token ?? "", m.externalMessageId),
+          : connection.kind === "whatsapp"
+            ? whatsappMarkRead(credentials.phone_number_id ?? "", token ?? "", m.externalMessageId)
+            : Promise.resolve(),
     },
     messages,
   );

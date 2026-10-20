@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AgentSettingsForm } from "./agent-settings-form";
 import { AiProviderForm } from "./ai-provider-form";
 import { ApiKeyManager } from "./api-key-manager";
-import { TelegramConnect, WhatsAppConnect, type ConnectorView } from "./channel-connect";
+import { FonnteConnect, TelegramConnect, WhatsAppConnect, type ConnectorView } from "./channel-connect";
 import { WebhookManager } from "./webhook-manager";
 import { SchemaPendingNotice } from "./schema-pending-notice";
 import { Step, type StepState } from "./step";
@@ -80,7 +80,7 @@ async function Steps({ params }: { params: Params }) {
     listApiKeys(shop.id),
     getAgentSettings(shop.id),
     listOpenAgentTasks(shop.id),
-    supabase.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id).in("channel", ["whatsapp", "telegram", "api"]),
+    supabase.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id).in("channel", ["whatsapp", "telegram", "fonnte", "api"]),
     supabase.from("marketplace_imports").select("id", { count: "exact", head: true }).eq("tenant_id", shop.id),
     listChannelConnections(shop.id),
     getPurchaseAgentSettings(shop.id),
@@ -100,11 +100,13 @@ async function Steps({ params }: { params: Params }) {
           last_event_label: c.last_event_at ? formatDateTime(c.last_event_at, shop.timezone) : null,
           username: c.settings.username,
           ...(c.kind === "whatsapp" ? { callback_url: `${origin}/api/channels/whatsapp/${c.id}`, verify_token: await whatsappVerifyToken(c.id) } : {}),
+          ...(c.kind === "fonnte" ? { webhook_url: `${origin}/api/channels/fonnte/${c.id}?secret=TERSEMBUNYI` } : {}),
         }
       : null;
-  const [telegram, whatsapp] = await Promise.all([
+  const [telegram, whatsapp, fonnte] = await Promise.all([
     connectorView(connectors.connections.find((c) => c.kind === "telegram")),
     connectorView(connectors.connections.find((c) => c.kind === "whatsapp")),
+    connectorView(connectors.connections.find((c) => c.kind === "fonnte")),
   ]);
   const connectorActive = connectors.connections.some((c) => c.status === "active");
 
@@ -275,6 +277,7 @@ async function Steps({ params }: { params: Params }) {
         <div className="flex flex-col gap-4">
           {connectors.installed ? (
             <div className="flex flex-col gap-4">
+              <FonnteConnect view={fonnte} />
               <TelegramConnect view={telegram} />
               <WhatsAppConnect view={whatsapp} />
             </div>

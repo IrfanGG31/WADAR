@@ -76,7 +76,7 @@ export interface ConnectorLink {
 }
 
 /** Where a buyer message came from: the web widget, or an outside app through the WADAR API. */
-export type ChatChannel = "widget" | "whatsapp" | "telegram" | "api";
+export type ChatChannel = "widget" | "whatsapp" | "telegram" | "fonnte" | "api";
 
 /** Buyer id from an outside app: a phone number, a Telegram chat id, any stable handle. */
 export function isValidExternalUserId(value: string | undefined | null): value is string {

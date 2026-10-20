@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ChatChannelKind } from "@/core/channels/adapter";
+import { FonnteConnectInput, fonnteValidateToken } from "@/core/channels/fonnte";
 import {
   newWebhookSecret,
   TelegramConnectInput,
@@ -155,6 +156,40 @@ export async function connectWhatsApp(slug: string, input: unknown): Promise<Cha
     : { note: `Tersambung ke ${display}. Kirim pesan WhatsApp ke nomor ini untuk mencoba.` };
 }
 
+// ── Fonnte (WhatsApp via QR) ───────────────────────────────────────────────
+
+/** Paste the Fonnte device token → validate → save (encrypted) → show webhook URL for user to paste in Fonnte dashboard. */
+export async function connectFonnte(slug: string, input: unknown): Promise<ChannelActionResult & { webhookUrl?: string }> {
+  const parsed = FonnteConnectInput.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Token belum valid." };
+  const { shop, denied } = await ownerShop(slug);
+  if (denied) return { error: denied };
+  const { origin, isPublicHttps } = await requestOrigin();
+  if (!isPublicHttps) return { error: NOT_PUBLIC };
+
+  const token = parsed.data.token;
+  const check = await fonnteValidateToken(token);
+  if (!check.ok) return { error: check.error };
+  const webhookSecret = newWebhookSecret();
+  const cipher = seal({ token, webhook_secret: webhookSecret });
+  if (!cipher) return { error: NO_KEY };
+
+  const supabase = await createClient();
+  const { data: id, error } = await supabase.rpc("save_channel_connection", {
+    p_tenant_id: shop.id,
+    p_kind: "fonnte",
+    p_label: `WA Fonnte · ${check.device}`,
+    p_settings: { device_name: check.device },
+    p_secret_cipher: cipher,
+    p_secret_hint: secretHint(token),
+  });
+  if (error || !id) return { error: saveError(error ?? {}) };
+  const webhookUrl = `${origin}/api/channels/fonnte/${id}?secret=${webhookSecret}`;
+  await setStatus(id as string, true);
+  revalidatePath(page(slug));
+  return { note: `Tersambung ke ${check.device}. Salin webhook URL di bawah, lalu tempel di dashboard Fonnte (Device → Webhook).`, webhookUrl };
+}
+
 // ── Both ────────────────────────────────────────────────────────────────────
 
 /** "Tes": asks Telegram/Meta whether the connection still works, and records the answer. */
@@ -176,6 +211,10 @@ export async function testChannel(slug: string, kind: ChatChannelKind): Promise<
     } else {
       note = `Sehat. ${c.label} menerima pesan${r.info.pending_update_count ? `, ${r.info.pending_update_count} menunggu diproses` : ""}.`;
     }
+  } else if (kind === "fonnte") {
+    const r = await fonnteValidateToken(c.secrets.token ?? "");
+    if (!r.ok) problem = r.error;
+    else note = `Sehat. Device ${r.device} terhubung.`;
   } else {
     const r = await whatsappNumberInfo(c.settings.phone_number_id ?? "", c.secrets.access_token ?? "");
     if (!r.ok) problem = r.error;
@@ -199,10 +238,10 @@ export async function disconnectChannel(slug: string, kind: ChatChannelKind): Pr
   const { error } = await supabase.rpc("delete_channel_connection", { p_id: data.id });
   if (error) return { error: isSchemaPending(error) ? SCHEMA_PENDING_MESSAGE : "Belum terputus. Coba lagi sebentar." };
   revalidatePath(page(slug));
-  return {
-    note:
-      kind === "telegram"
-        ? "Terputus. Bot tidak lagi dijawab WADAR; riwayat chat tetap ada."
-        : "Terputus dari WADAR. Hapus juga webhook di Meta (WhatsApp › Configuration) kalau nomor ini dipakai aplikasi lain.",
+  const notes: Record<ChatChannelKind, string> = {
+    telegram: "Terputus. Bot tidak lagi dijawab WADAR; riwayat chat tetap ada.",
+    whatsapp: "Terputus dari WADAR. Hapus juga webhook di Meta (WhatsApp › Configuration) kalau nomor ini dipakai aplikasi lain.",
+    fonnte: "Terputus. Hapus juga webhook URL di dashboard Fonnte (Device → Webhook) supaya tidak error.",
   };
+  return { note: notes[kind] };
 }

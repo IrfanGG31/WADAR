@@ -19,6 +19,7 @@ export const AI_PRESETS: readonly AiPreset[] = [
   { key: "gemini", name: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", keyUrl: "https://aistudio.google.com/apikey", modelHint: "nama model Gemini dari ai.google.dev" },
   { key: "groq", name: "Groq", baseUrl: "https://api.groq.com/openai/v1", keyUrl: "https://console.groq.com/keys", modelHint: "nama model dari console.groq.com/docs/models" },
   { key: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", keyUrl: "https://platform.deepseek.com/api_keys", modelHint: "nama model dari api-docs.deepseek.com" },
+  { key: "9router", name: "9Router", baseUrl: "https://9router.ai/v1", keyUrl: "https://9router.ai/", modelHint: "nama model dari dashboard 9Router" },
   { key: "custom", name: "Lainnya / server sendiri", baseUrl: "", keyUrl: "", modelHint: "nama model persis seperti di dokumentasi penyedia" },
 ];
 

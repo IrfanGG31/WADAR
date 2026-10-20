@@ -8,10 +8,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { connectTelegram, connectWhatsApp, disconnectChannel, reconnectTelegram, testChannel, type ChannelActionResult } from "./channel-actions";
+import { connectFonnte, connectTelegram, connectWhatsApp, disconnectChannel, reconnectTelegram, testChannel, type ChannelActionResult } from "./channel-actions";
 
 export interface ConnectorView {
-  kind: "telegram" | "whatsapp";
+  kind: "telegram" | "whatsapp" | "fonnte";
   label: string;
   status: "pending" | "active" | "error";
   last_error: string | null;
@@ -19,6 +19,7 @@ export interface ConnectorView {
   username?: string;
   callback_url?: string;
   verify_token?: string | null;
+  webhook_url?: string;
 }
 
 type Message = { ok: boolean; text: string } | undefined;
@@ -162,6 +163,94 @@ export function TelegramConnect({ view }: { view: ConnectorView | null }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <Label htmlFor="tg-token">{view ? "Ganti bot (token baru)" : "Token bot"}</Label>
           <Input id="tg-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456789:AAH…" autoComplete="off" />
+        </div>
+        <Button type="submit" disabled={pending || !token.trim()} className="sm:w-40">
+          {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+          {pending ? "Menyambungkan…" : "Sambungkan"}
+        </Button>
+      </form>
+      <Feedback message={message} />
+    </Card>
+  );
+}
+
+/** Fonnte WhatsApp via QR: paste the device token, WADAR gives a webhook URL to paste back in Fonnte dashboard. */
+export function FonnteConnect({ view }: { view: ConnectorView | null }) {
+  const [token, setToken] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState(view?.webhook_url ?? "");
+  const router = useRouter();
+  const { slug } = useParams<{ slug: string }>();
+  const [message, setMessage] = useState<Message>();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Card icon={<MessageCircle className="h-5 w-5" />} title="WhatsApp via Fonnte (QR)" sub="Pakai nomor WA biasa tanpa akun bisnis Meta. Scan QR di fonnte.com, tempel token di sini.">
+      {view ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Status view={view} />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => {
+                setMessage(undefined);
+                startTransition(async () => {
+                  const r = await testChannel(slug, "fonnte");
+                  setMessage(r.error ? { ok: false, text: r.error } : { ok: true, text: r.note ?? "Sehat." });
+                  router.refresh();
+                });
+              }}>
+                Tes
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => {
+                setMessage(undefined);
+                startTransition(async () => {
+                  const r = await disconnectChannel(slug, "fonnte");
+                  setMessage(r.error ? { ok: false, text: r.error } : { ok: true, text: r.note ?? "Terputus." });
+                  router.refresh();
+                });
+              }}>
+                Putuskan
+              </Button>
+            </div>
+          </div>
+          {(webhookUrl || view.webhook_url) && (
+            <div className="flex flex-col gap-1 rounded-lg bg-background p-3">
+              <p className="text-xs font-medium text-navy">Webhook URL (tempel di Fonnte › Device › Webhook)</p>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md bg-surface px-2 py-1.5 text-xs">{webhookUrl || view.webhook_url}</code>
+                <CopyButton text={webhookUrl || view.webhook_url || ""} />
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <Guide
+          title="Cara menyambungkan Fonnte (5 langkah)"
+          steps={[
+            <>Daftar di {link("https://fonnte.com", "fonnte.com")} kalau belum punya akun.</>,
+            <>Buka <b>Device</b>, klik <b>Connect</b>, scan QR code pakai WhatsApp di HP.</>,
+            <>Setelah terhubung, salin <b>Token</b> dari halaman device (ikon kunci atau tab Token).</>,
+            <>Tempel token di bawah, klik <b>Sambungkan</b>.</>,
+            <>Setelah tersambung, salin <b>Webhook URL</b> yang muncul, lalu tempel di Fonnte (Device → Webhook → Reply URL).</>,
+          ]}
+        />
+      )}
+      <form
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setMessage(undefined);
+          startTransition(async () => {
+            const r = await connectFonnte(slug, { token });
+            if (r.webhookUrl) setWebhookUrl(r.webhookUrl);
+            setMessage(r.error ? { ok: false, text: r.error } : { ok: true, text: r.note ?? "Tersambung." });
+            if (!r.error) setToken("");
+            router.refresh();
+          });
+        }}
+      >
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <Label htmlFor="fn-token">{view ? "Ganti token" : "Token Fonnte"}</Label>
+          <Input id="fn-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token dari dashboard Fonnte" autoComplete="off" />
         </div>
         <Button type="submit" disabled={pending || !token.trim()} className="sm:w-40">
           {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}

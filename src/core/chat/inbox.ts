@@ -78,12 +78,13 @@ export function faqDraftFrom(
   return { question: asked.content.trim().slice(0, 200), answer: (reply?.content ?? "").trim().slice(0, 700) };
 }
 
-export type InboxChannel = "widget" | "whatsapp" | "telegram" | "api";
+export type InboxChannel = "widget" | "whatsapp" | "telegram" | "fonnte" | "api";
 
 export const CHANNEL_LABEL: Record<InboxChannel, string> = {
   widget: "Web",
   whatsapp: "WhatsApp",
   telegram: "Telegram",
+  fonnte: "WA (Fonnte)",
   api: "Aplikasi",
 };
 
