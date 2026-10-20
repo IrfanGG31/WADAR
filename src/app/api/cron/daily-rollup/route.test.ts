@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import vercel from "../../../../../vercel.json";
 import { isPublicPath } from "@/proxy";
 
-const admin = { tag: "service-role" };
+const postJournal = vi.fn(async (_fn: string, _args: unknown) => ({ data: 4, error: null }));
+const admin = { tag: "service-role", rpc: (fn: string, args: unknown) => postJournal(fn, args) };
 const listShopsForRollup = vi.fn(async (db: unknown) => {
   if (db !== admin) throw new Error("not service role");
   return [{ id: "t1", timezone: "Asia/Jakarta" }];
@@ -44,7 +45,8 @@ describe("GET /api/cron/daily-rollup (Vercel Cron)", () => {
     const res = await call("Bearer s3cret");
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(await res.json()).toMatchObject({ days: 2, shops: 1, fin_rows: 2, stock_rows: 3, errors: [] });
+    expect(await res.json()).toMatchObject({ days: 2, shops: 1, fin_rows: 2, stock_rows: 3, errors: [], journal: { posted: 4, errors: 0 } });
+    expect(postJournal).toHaveBeenCalledWith("post_journal", { p_tenant_id: "t1" });
     const [, tenantId, window] = rollupShopDays.mock.calls[0];
     expect(tenantId).toBe("t1");
     expect(window.to < window.from).toBe(false);

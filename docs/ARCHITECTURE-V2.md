@@ -22,6 +22,7 @@ penghubung** (`stock.move`, `account.move`). WADAR memakai pola yang sama, denga
 | **Penjualan / POS** | Sales + POS | `sales`, `sale_items` (append-only), `channels`, `marketplace_imports` | `cart`, `sale-schema`, `sale-void`, `marketplace-import`, `channel-settings` | `record_sale`, `void_sale`, `import_marketplace_orders` |
 | **Keuangan** | Accounting (ringan) | `expenses` (append-only), `fin_daily_rollup` | `money` (BigInt, largest remainder), `finance`, `finance-insight`, `expense` | `void_expense`, insert pengeluaran |
 | **Pembelian** | Purchase | `suppliers`, `supplier_products`, `purchase_orders`, `purchase_order_lines`, `purchase_receipts`, `purchase_payments` | `purchasing` | `create/update/order/cancel/receive/pay_purchase_order` (ADR-005) |
+| **Akuntansi** | Accounting | `accounts`, `journal_entries`, `journal_lines` (append-only, seimbang) | `ledger` | `post_journal` (idempoten, ADR-006) |
 | **CRM** | Contacts + CRM | `customers` | `customers`, `customer-profile` | update terbatas kolom (nama, catatan, label) |
 | **Pengetahuan (RAG)** | Knowledge | `kb_documents`, `kb_chunks` (pgvector + tsvector), `store_profile` | `chat/kb`, `chat/kb-doc`, `chat/retrieval`, `chat/store-policies` | FAQ, dokumen, profil toko |
 | **Percakapan** | Discuss / Live chat | `conversations`, `messages`, `notifications` | `chat/pipeline`, `chat/guardrails`, `chat/widget-service` | pipeline chat |
@@ -72,8 +73,8 @@ satu basis pengetahuan berada di satu ruang vektor.
 
 1. **Pembelian (Purchase):** **selesai (ADR-005)** — pemasok, PO, terima barang → `stock_movements kind=purchase`,
    bayar; Autopilot membuat draf PO per pemasok dan menyetujui sendiri sampai batas nominal pemilik.
-2. **Jurnal double-entry:** `journal_entries` + `journal_lines` (trigger: debit = kredit, append-only) diisi dari
-   penjualan, pembelian, dan pengeluaran. `fin_daily_rollup` tetap sebagai cache baca.
+2. **Jurnal double-entry:** **selesai (ADR-006)** — `journal_entries` + `journal_lines` (debit = kredit,
+   append-only) dari penjualan, pembelian, pengeluaran, dan stok; layar Keuangan › Neraca & Jurnal.
 3. **Event outbox:** `outbox_events` ditulis di transaksi yang sama dengan perubahan; handler idempoten
    (`processed_events`) menggantikan pemanggilan lintas modul langsung. Webhook keluar untuk aplikasi luar.
 4. **Konektor resmi:** WhatsApp Cloud API dan Telegram Bot API — **selesai (ADR-004)**. Sisa: sinkron pesanan

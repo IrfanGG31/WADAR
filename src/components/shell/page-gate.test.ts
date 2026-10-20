@@ -33,6 +33,7 @@ describe("restricted pages are gated", () => {
     ["keuangan/page.tsx", "finance"],
     ["keuangan/detail/page.tsx", "finance"],
     ["keuangan/margin/page.tsx", "finance"],
+    ["keuangan/neraca/page.tsx", "finance"],
     ["konsultasi/page.tsx", "consult"],
     ["pengaturan/page.tsx", "settings"],
     ["pengaturan/anggota/page.tsx", "team"],
