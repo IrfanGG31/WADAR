@@ -14,7 +14,7 @@ function Start({ profile }: { profile: DemoProfile }) {
       name="profile"
       value={profile}
       disabled={pending}
-      className="mt-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+      className="mt-auto flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
     >
       {mine ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ArrowRight className="h-4 w-4" aria-hidden />}
       {mine ? "Menyiapkan toko (±5 detik)…" : "Coba toko ini"}
@@ -32,11 +32,28 @@ export interface JudgeShop {
 }
 
 /** Public judge entry: each visitor gets a private copy of the chosen demo shop. */
-export function JudgeEntry({ shops }: { shops: JudgeShop[] }) {
+export function JudgeEntry({ shops, compact = false }: { shops: JudgeShop[]; compact?: boolean }) {
   return (
-    <form action={startDemo} className="grid gap-4 md:grid-cols-3">
+    <form action={startDemo} className={compact ? "grid gap-3" : "grid gap-4 md:grid-cols-3"}>
       {shops.map((s) => {
         const p = s.profile;
+        if (compact) {
+          return (
+            <div key={p} className="lift flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface text-2xl" aria-hidden>
+                {s.emoji}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">{s.segment}</p>
+                <p className="font-semibold text-navy">{s.name}</p>
+                <p className="text-sm text-muted-foreground">{s.tagline}</p>
+              </div>
+              <div className="sm:w-44">
+                <Start profile={p} />
+              </div>
+            </div>
+          );
+        }
         return (
           <div key={p} className="lift flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-3xl" aria-hidden>

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { brand } from "@/brand";
 import { JudgeEntry } from "@/components/demo/judge-entry";
 import { PitchCard } from "@/components/demo/pitch-card";
+import { JuriTour } from "@/components/juri/juri-tour";
 import { listDemoTemplates } from "@/db/demo-templates";
 
 export const metadata = { title: "Demo untuk Juri" };
@@ -20,8 +21,8 @@ export default function JuriPage() {
           </div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-navy md:text-4xl">Coba WADAR di toko sungguhan</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Pilih satu jenis usaha. WADAR menyiapkan toko contoh berisi 30 hari penjualan, khusus untuk Anda. Setelah masuk, tekan tombol{" "}
-            <b>Mode Juri</b> di pojok kanan bawah untuk tur 1 menit.
+            Ikuti tur 2 menit bersama asisten, atau langsung pilih satu jenis usaha di bawah. WADAR menyiapkan toko contoh berisi 30 hari penjualan,
+            khusus untuk Anda.
           </p>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-success" aria-hidden /> Tanpa daftar. Setiap pengunjung mendapat salinan sendiri; silakan coba
@@ -41,5 +42,13 @@ export default function JuriPage() {
 
 async function Shops() {
   const shops = (await listDemoTemplates()).filter((t) => t.onJuri);
-  return <JudgeEntry shops={shops} />;
+  return (
+    <div className="flex flex-col gap-6">
+      <JuriTour shops={shops} />
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-semibold text-navy">Atau langsung masuk toko contoh:</p>
+        <JudgeEntry shops={shops} />
+      </div>
+    </div>
+  );
 }
