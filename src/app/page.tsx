@@ -1,7 +1,6 @@
 import { ArrowRight, BookOpen, Check, PackageSearch, ReceiptText } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { brand } from "@/brand";
 import { DemoButtons } from "@/components/demo-buttons";
 import { Button } from "@/components/ui/button";
 import { AnnouncementPill, BrandLockup, Hero, ProductFrame, SiteHeader } from "@/components/ui/saa-s-template";
@@ -38,20 +37,20 @@ export default function LandingPage() {
 
       <main>
         <Hero
-          pill={<AnnouncementPill>Kasir, stok, keuangan, dan chat pembeli dalam satu aplikasi</AnnouncementPill>}
+          pill={<AnnouncementPill>AI + Kasir (POS) + Pelanggan (CRM) untuk UMKM</AnnouncementPill>}
           title={
             <>
               Toko jalan terus.
               <br />
-              Angkanya jelas, pembelinya terjawab.
+              Angkanya jelas, keputusannya tepat.
             </>
           }
-          description={brand.tagline}
+          description="Asisten AI yang menyatukan kasir, pelanggan, dan laporan, lalu memberi tahu apa yang perlu kamu lakukan hari ini."
           actions={
             <>
               <DemoButtons />
               <p className="text-xs text-muted-foreground">
-                Toko contoh dengan data 90 hari, tanpa daftar.{" "}
+                Toko contoh warkop, warung makan, atau kelontong. Tanpa daftar.{" "}
                 <Link href="/masuk" className="font-medium text-primary underline-offset-4 hover:underline">
                   Sudah punya toko? Masuk
                 </Link>
@@ -173,7 +172,7 @@ export default function LandingPage() {
                 <div>
                   <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">Lihat dulu dengan toko contoh</h2>
                   <p className="mt-3 max-w-md text-white/75">
-                    90 hari penjualan, stok, pengeluaran, dan chat pembeli. Coba catat transaksi, lihat untungnya berubah.
+                    Pilih warkop, warung makan, atau toko kelontong. Coba catat transaksi, lihat untungnya berubah, dan tanya asistennya.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 md:items-end">

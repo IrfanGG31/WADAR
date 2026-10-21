@@ -66,6 +66,11 @@ export function JuriTour({ shops }: { shops: JudgeShop[] }) {
     say(GREETING);
   };
 
+  const startRef = useRef(start);
+  useEffect(() => {
+    startRef.current = start;
+  });
+
   const close = () => {
     clearTimers();
     setTyping(false);
@@ -130,6 +135,13 @@ export function JuriTour({ shops }: { shops: JudgeShop[] }) {
   }, [open]);
 
   useEffect(() => () => clearTimers(), []);
+
+  // /juri?tur=1 (from the landing page) opens the tour right away.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tur") !== "1") return;
+    const raf = requestAnimationFrame(() => startRef.current());
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const sceneIndex = typeof step === "number" ? step : step === "done" ? SCENES.length : -1;
   const ex = EXAMPLES[segment];
